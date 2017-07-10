@@ -24,13 +24,15 @@
 #define RANK_8 (RANK_1 << 56)
 
 #define MAX_MOVES 128
-#define MAX_PLY   128
+#define MAX_PLY   64
 
 #define RANK(a) ((a) >> 3)
 #define FILE(a) ((a) &  7)
 
-#define _abs(a) ((a) < 0 ? -(a) : (a))
-#define flip(a) ((a)^1)
+#define _abs(a)   ((a) < 0 ? -(a) : (a))
+#define flip(a)   ((a)^1)
+#define _max(a,b) ((a) > (b) ?(a) : (b))
+#define _min(a,b) ((a) < (b) ?(a) : (b))
 
 #define backRank(a) ((a) == WHITE ? RANK_1 : RANK_8)
 
@@ -393,6 +395,63 @@ namespace Util
 			default:
 				return "";
 		}
+	}
+
+	/**
+	 ******************************************************************
+	 *
+	 * Get the xBoard-compatible form of a set of internal move bits
+	 *
+	 * @param[in] move The move to convert
+	 *
+	 * @return The xBoard representation of this move
+	 *
+	 ******************************************************************
+	 */
+	static std::string printCoordinate(int move)
+	{
+		const SQUARE from     = static_cast<SQUARE>(FROM(move));
+		const SQUARE to       = static_cast<SQUARE>(TO(move));
+		const piece_t promote =
+							static_cast<piece_t>(PROMOTE(move));
+
+		std::string out(SQUARE_STR[from]);
+		out += SQUARE_STR[to];
+		out += piece2str(promote);
+
+		return out;
+	}
+
+	/**
+	 ******************************************************************
+	 *
+	 * Display a position
+	 *
+	 * @param[in] pieces An array of 64 characters that represents the
+	 *                   locations of all pieces
+	 *
+	 ******************************************************************
+	 */
+	static void showPosition(const char* pieces)
+	{
+		int prev_rank = 8;
+		for (int sq = 63; sq >= -1; sq--)
+		{
+			if (RANK(sq) != prev_rank)
+			{
+				std::cout << "\n ---+---+---+---+---+---+---+--- \n";
+				if (sq == -1) break;
+
+				prev_rank = RANK(sq);
+			}
+
+			std::cout << "| " << pieces[sq] << " ";
+
+			if (sq % 8 == 0)
+				std::cout << "|";
+		}
+
+		std::cout << std::endl;
 	}
 }
 

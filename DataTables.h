@@ -691,7 +691,9 @@ private:
 				uint64 attacks =
 						   computeDiagAttacks(i, occ_set[j]);
 
-				bishop_attacks[index] = attacks;
+				bishop_attacks[index]  = attacks;
+				bishop_mobility[index] =
+							 Util::bitCount<uint64>(attacks);
 			}
 		}
 	}
@@ -743,7 +745,9 @@ private:
 				uint64 attacks =
 					computeRookAttacks(i, occ_set[j]);
 
-				rook_attacks[index] = attacks;
+				rook_attacks[index]  = attacks;
+				rook_mobility[index] =
+					  Util::bitCount<uint64>(attacks);
 			}
 		}
 	}
@@ -1333,6 +1337,13 @@ private:
 	uint64 bishop_attacks[ATTACKS_DIAG_DB_SIZE];
 
 	/*
+	 * A database that contains the mobility of bishops, as a function
+	 * of square and occupancy. A higher mobility score indicates that
+	 * the bishop can move to more squares
+	 */
+	int bishop_mobility[ATTACKS_DIAG_DB_SIZE];
+
+	/*
 	 * The occupancy squares we mask the occupied squares bitboard with
 	 * to obtain a key into the bishop database
 	 */
@@ -1387,6 +1398,13 @@ private:
 	 * Database containing "attacks from" bitboards for a rook
 	 */
 	uint64 rook_attacks[ATTACKS_ROOK_DB_SIZE];
+
+	/*
+	 * A database that contains the mobility of rooks as a function
+	 * of square and occupancy. A higher mobility score indicates a
+	 * rook can move to more squares
+	 */
+	int rook_mobility[ATTACKS_ROOK_DB_SIZE];
 
 	/*
 	 * The occupancy squares we mask the occupied squares bitboard with

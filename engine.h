@@ -6,6 +6,7 @@
 #include "movegen.h"
 #include "position.h"
 #include "protocol.h"
+#include "search.h"
 #include "StateMachine.h"
 
 #include <iostream>
@@ -19,10 +20,11 @@ public:
 	ChessEngine(const DataTables& tables)
 		: _cmd(),
 		  _movegen(tables),
+		  _node(_movegen),
 		  _position(tables, true),
 		  _quit(false),
 		  _tables(tables),
-		  _xboard(_position, *this)
+		  _xboard(_node, _position, *this)
 	{
 	}
 
@@ -59,15 +61,21 @@ private:
 
 	bool init_commands()
 	{
-		AbortIf(_cmd.install("new", _xboard, &xBoard::cmdNew) < 0,
-				false);
 		AbortIf(_cmd.install("divide", _xboard, &xBoard::divide2) < 0,
 				false);
-		AbortIf(_cmd.install("move", _xboard, &xBoard::move) < 0,
+		AbortIf(_cmd.install("go", _xboard, &xBoard::go) < 0,
+				false);
+		AbortIf(_cmd.install("usermove", _xboard, &xBoard::usermove) < 0,
+				false);
+		AbortIf(_cmd.install("new", _xboard, &xBoard::cmdNew) < 0,
 				false);
 		AbortIf(_cmd.install("perft", _xboard, &xBoard::perft2) < 0,
 				false);
+		AbortIf(_cmd.install("print", _xboard, &xBoard::print) < 0,
+				false);
 		AbortIf(_cmd.install("quit", *this, &ChessEngine::quit) < 0,
+				false);
+		AbortIf(_cmd.install("sd", _xboard, &xBoard::sd) < 0,
 				false);
 		AbortIf(_cmd.install("setboard", _xboard, &xBoard::setboard) < 0,
 				false);
@@ -77,6 +85,10 @@ private:
 
 	CommandInterface _cmd;
 	MoveGen  _movegen;
+
+	// Note: _node requires a constructed
+	//       _movegen
+	Node     _node; 
 	Position _position;
 	bool     _quit;
 	const DataTables& _tables;

@@ -8,6 +8,7 @@
 
 #include "DataTables.h"
 #include "position.h"
+#include "search.h"
 #include "StateMachine.h"
 
 /*
@@ -29,9 +30,10 @@ class xBoard
 {
 public:
 
-	xBoard(Position& position, xBoardStateMachine& state_machine)
-		: _position(position),
-		  _state_machine(state_machine)
+	xBoard(Node& node,
+		   Position& position, xBoardStateMachine& state_machine)
+		: _node(node),
+		  _position(position), _state_machine(state_machine)
 	{
 	}
 
@@ -74,7 +76,48 @@ public:
 			_state_machine.updateState(xBoardStateMachine::FORCE);
 	}
 
-	bool move(const std::string& move)
+	bool go(const std::string& args)
+	{
+		bool success = 
+			_state_machine.updateState(xBoardStateMachine::READY);
+
+		int best_move = 0;
+		int score = _node.search(_position, best_move);
+
+		/*
+		 * I don't expect xBoard to issue "go" when there are no moves
+		 * available, but just in case...
+		 */
+		if (best_move == 0)
+		{
+			std::cout << "result ";
+			switch (score)
+			{
+			case  SCORE_INF:
+				std::cout << "1-0 {White Wins}" << std::endl;
+				break;
+			case -SCORE_INF:
+				std::cout << "0-1 {Black Wins}" << std::endl;
+				break;
+			default:
+				std::cout << "1/2-1/2 {Draw}"   << std::endl;
+			}
+
+			return true;
+		}
+		else
+		{
+			std::cout << "move " << Util::printCoordinate(best_move)
+				<< " score=" << score << " [ ";
+			_node.get_pv();
+			std::cout << "]" << std::endl;
+
+			return
+				_position.makeMove(best_move);
+		}
+	}
+
+	bool usermove(const std::string& move)
 	{
 		/*
 		 * Note: parseCoordinate() retrieves the origin and
@@ -161,9 +204,69 @@ public:
 		return true;
 	}
 
-	bool print(const std::string& args)
+	bool print(const std::string& args) const
 	{
+		char pieces[64];
+		uint64 one = 1;
 
+		for (int i = 0; i < 64; i++)
+		{
+			switch (_position.pieces[i])
+			{
+			case PAWN:
+				if (_position.occupied[BLACK] & (one << i))
+					pieces[i] = 'p';
+				else
+					pieces[i] = 'P';
+				break;
+			case KNIGHT:
+				if (_position.occupied[BLACK] & (one << i))
+					pieces[i] = 'n';
+				else
+					pieces[i] = 'N';
+				break;
+			case BISHOP:
+				if (_position.occupied[BLACK] & (one << i))
+					pieces[i] = 'b';
+				else
+					pieces[i] = 'B';
+				break;
+			case ROOK:
+				if (_position.occupied[BLACK] & (one << i))
+					pieces[i] = 'r';
+				else
+					pieces[i] = 'R';
+				break;
+			case QUEEN:
+				if (_position.occupied[BLACK] & (one << i))
+					pieces[i] = 'q';
+				else
+					pieces[i] = 'Q';
+				break;
+			case KING:
+				if (_position.occupied[BLACK] & (one << i))
+					pieces[i] = 'k';
+				else
+					pieces[i] = 'K';
+				break;
+			default:
+				pieces[i] = ' ';
+			}
+		}
+
+		Util::showPosition(pieces);
+		return true;
+	}
+
+	bool sd(const std::string& _depth)
+	{
+		int depth = _min(Util::str_to_int32(_depth, 10), MAX_PLY);
+		if (depth < 0)
+			return false;
+		else
+			_node.set_depth(depth);
+
+		return true;
 	}
 
 	bool setboard(const std::string& fen)
@@ -187,6 +290,8 @@ public:
 	}
 
 private:
+
+	Node&        _node;
 	Position&    _position;
 
 	xBoardStateMachine&

@@ -22,6 +22,7 @@ extern const char* SQUARE_STR[65];
  */
 class MoveGen
 {
+	friend class Evaluator;
 
 public:
 
@@ -859,6 +860,12 @@ public:
 	    }
 
 	    return move;
+	}
+
+	uint32* generateChecks(const Position& pos, int to_move,
+						  uint32* moves) const
+	{
+		return NULL;
 	}
 
 	/**
@@ -1759,7 +1766,7 @@ public:
 		uint32 moves[MAX_MOVES];
 
 		/*
-		 * Generate all possible captures and non-captures
+		 * Generate strictly legal moves:
 		 */
 		uint32* end;
 

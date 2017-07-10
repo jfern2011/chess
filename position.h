@@ -35,6 +35,8 @@ class Position
 	friend class PositionTest;
 	friend class MoveGen;
 	friend class xBoard;
+	friend class Evaluator;
+	friend class Node;
 
 public:
 
@@ -1357,6 +1359,53 @@ private:
 	inline uint64 attacksFromRook(int square, uint64 occupied) const
 	{
 		return tables.rook_attacks[tables.rook_offsets[square] +
+					(((occupied & tables.rook_attacks_mask[square])
+						* rook_magics[square]) >> tables.rook_db_shifts[square])];
+	}
+
+	/**
+	 * Get the mobility of a bishop on \a square. This is hashed to
+	 * avoid computing it on the fly
+	 *
+	 * @param[in] square   The bishop's location
+	 * @param[in] occupied Occupied squares bitboard
+	 *
+	 * @return A popcnt() of attacksFromBishop()
+	 */
+	inline int getBishopMobility(int square, uint64 occupied) const
+	{
+		return tables.bishop_mobility[tables.bishop_offsets[square] +
+					(((occupied & tables.bishop_attacks_mask[square])
+						* diag_magics[square]) >> tables.bishop_db_shifts[square])];
+	}
+
+	/**
+	 * Get the mobility of a queen on \a square. This is hashed to
+	 * avoid computing it on the fly
+	 *
+	 * @param[in] square   The queen's location
+	 * @param[in] occupied Occupied squares bitboard
+	 *
+	 * @return A popcnt() of attacksFromQueen()
+	 */
+	inline int getQueenMobility(int square, uint64 occupied) const
+	{
+		return getRookMobility(square, occupied)
+				+ getBishopMobility(square, occupied);
+	}
+
+	/**
+	 * Returns the mobility of a rook on \a square. This is hashed to
+	 * avoid computing it on the fly
+	 *
+	 * @param[in] square   The rook's location
+	 * @param[in] occupied Occupied squares bitboard
+	 *
+	 * @return A popcnt() of attacksFromRook()
+	 */
+	inline int getRookMobility(int square, uint64 occupied) const
+	{
+		return tables.rook_mobility[tables.rook_offsets[square] +
 					(((occupied & tables.rook_attacks_mask[square])
 						* rook_magics[square]) >> tables.rook_db_shifts[square])];
 	}
