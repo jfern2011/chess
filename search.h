@@ -1,6 +1,8 @@
 #ifndef __SEARCH_H__
 #define __SEARCH_H__
 
+#include <cstring>
+
 #include "eval.h"
 
 class Node
@@ -11,13 +13,18 @@ public:
 	/**
 	 * Constructor
 	 *
-	 * @param[in] movegen A move generator object
-	 * @param[in] save_pv Flag indicating whether or not to save the
-	 *                    principal variation in searches
+	 * @param [in] movegen A move generator object
+	 * @param [in] save_pv Flag indicating whether or not to save the
+	 *                     principal variation in searches
 	 */
 	Node(const MoveGen& movegen, bool save_pv=true)
 		: _depth(1),
-		  _evaluator(movegen), _movegen(movegen), _save_pv(save_pv)
+		  _evaluator(movegen),
+		  _mate_found(false),
+		  _mate_plies(MAX_PLY),
+		  _movegen(movegen),
+		  _node_count(0),
+		  	_save_pv( save_pv )
 	{
 	}
 
@@ -40,14 +47,70 @@ public:
 	}
 
 	/**
+	 * Determine if a checkmate was found during the most recent search
+	 *
+	 * @return True if a mate was found
+	 */
+	bool mate_found() const
+	{
+		return _mate_found;
+	}
+
+	/**
+	 * The current number of plies to mate based on the most recent
+	 * search
+	 *
+	 * @return Number of plies to mate, or MAX_PLY if no mate was
+	 *         found
+	 */
+	int get_mate_plies() const
+	{
+		return _mate_plies;
+	}
+
+	/**
+	 * Retrieve the most recent total number of nodes searched
+	 *
+	 * @return The node count
+	 */
+	int get_node_count() const
+	{
+		return _node_count;
+	}
+
+	/**
 	 * Print the principal variation obtained from the most recent
 	 * search
+	 *
+	 * @param[in] to_move   Side on move, e.g. WHITE
+	 * @param[in] full_move Full move number
 	 */
-	void get_pv() const
+	void get_pv(int to_move, int full_move) const
 	{
-		for (int ply = _depth; ply >= 0; --ply)
-			std::cout << Util::printCoordinate(_pv[_depth][ply])
-				<< " ";
+		const int end_ply =
+					_mate_found ? (_depth-_mate_plies) : 0;
+
+		for (int ply = _depth; ply > end_ply; )
+		{
+			int stop = 2;
+
+			std::cout << full_move++ << ". ";
+			if (to_move == BLACK && ply == _depth)
+			{
+				stop = 1;
+					std::cout << "... ";
+			}
+			
+			for (int i = 0; i < stop; i++)
+			{
+				std::cout << Util::printCoordinate(_pv[_depth][ply])
+					<< " "; 
+				if (--ply == end_ply)
+					break;
+			}
+		}
+
+		std::cout << std::endl;
 	}
 
 	/**
@@ -78,25 +141,27 @@ public:
 
 		if (nMoves == 0)
 		{
-			if (in_check)
-				return (-sign) * SCORE_INF;
-			else
-				return 0;
+			return
+				in_check ? ((-sign) * MATE_SCORE) : 0;
 		}
 
-		int score = (-sign) * SCORE_INF;
+		_mate_found = false;
+
+		int score = (-sign) * MATE_SCORE;
 		best_move = 0;
+		_node_count = 0;
 
 		for (register int i = 0; i < nMoves; i++)
 		{
 			bool raised_alpha = false;
 
 			pos.makeMove(moves[i]);
+			_node_count++;
 
 			if (pos.toMove == flip(WHITE))
 			{
 				const int temp =
-					-_search(pos, _depth-1, -SCORE_INF, SCORE_INF);
+					-_search(pos, _depth-1, -MATE_SCORE, MATE_SCORE);
 
 				if (temp > score)
 				{
@@ -108,7 +173,7 @@ public:
 			else
 			{
 				const int temp =
-					 _search(pos, _depth-1, -SCORE_INF, SCORE_INF);
+					 _search(pos, _depth-1, -MATE_SCORE, MATE_SCORE);
 
 				if (temp < score)
 				{
@@ -125,13 +190,29 @@ public:
 			 */
 			if (_save_pv && (raised_alpha || i == 0))
 			{
-				_pv[_depth][_depth] = best_move;
+				_pv[_depth][_depth] = moves[i];
 
 				for (register int i = _depth-1; i >= 0; i--)
 				{
 					_pv[_depth][i] = _pv[_depth-1][i];
 				}
 			}
+		}
+
+		if (best_move == 0)
+			best_move = moves[0];
+
+		/*
+		 * Figure out the number of moves to checkmate:
+		 */
+		if (_abs(score) >= MATE_SCORE)
+		{
+			_mate_found = true;
+			int ply = _depth;
+
+			for (; _pv[_depth][ply] && ply > 0; ply--);
+
+			_mate_plies = _depth - ply;
 		}
 
 		return score;
@@ -154,7 +235,10 @@ private:
 
 	int            _depth;
 	Evaluator      _evaluator;
+	bool           _mate_found;
+	int            _mate_plies;
 	const MoveGen& _movegen;
+	uint32         _node_count;
 	int            _pv[MAX_PLY][MAX_PLY];
 	bool           _save_pv;
 
@@ -178,15 +262,24 @@ private:
 
 		if (nMoves == 0)
 		{
-			return in_check ? (-SCORE_INF) : 0;
+			//  Indicate this is the end of a variation
+			//  with a null move:
+			if (_save_pv)
+				_pv[depth][depth] = 0;
+
+			// Scale the mate score to favor checkmates
+			// in fewer moves:
+			return
+				in_check ? ((-MATE_SCORE) * depth) : 0;
 		}
 
-		if (depth < 0)
+		if (depth <= 0)
 			return sign * _evaluator.evaluate(pos);
 
 		for (register int i = 0; i < nMoves; i++)
 		{
 			pos.makeMove(moves[i]);
+			_node_count++;
 
 			const int score = -_search( pos, depth-1, -beta, -alpha );
 

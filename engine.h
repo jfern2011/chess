@@ -69,7 +69,11 @@ private:
 				false);
 		AbortIf(_cmd.install("new", _xboard, &xBoard::cmdNew) < 0,
 				false);
+		AbortIf(_cmd.install("nopost", _xboard, &xBoard::nopost) < 0,
+				false);
 		AbortIf(_cmd.install("perft", _xboard, &xBoard::perft2) < 0,
+				false);
+		AbortIf(_cmd.install("post", _xboard, &xBoard::post) < 0,
 				false);
 		AbortIf(_cmd.install("print", _xboard, &xBoard::print) < 0,
 				false);

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string>
 
+#include "clock.h"
 #include "DataTables.h"
 #include "position.h"
 #include "search.h"
@@ -33,7 +34,7 @@ public:
 	xBoard(Node& node,
 		   Position& position, xBoardStateMachine& state_machine)
 		: _node(node),
-		  _position(position), _state_machine(state_machine)
+		  _position(position), _post(false), _state_machine(state_machine)
 	{
 	}
 
@@ -82,7 +83,16 @@ public:
 			_state_machine.updateState(xBoardStateMachine::READY);
 
 		int best_move = 0;
-		int score = _node.search(_position, best_move);
+
+		int64 t_start = Clock::get_monotonic_time();
+
+		int score =
+			_node.search(_position, best_move);
+
+		int64 t_stop  = Clock::get_monotonic_time();
+
+		int centiseconds =
+				(t_stop - t_start) * 100 / NS_PER_SEC;
 
 		/*
 		 * I don't expect xBoard to issue "go" when there are no moves
@@ -91,30 +101,71 @@ public:
 		if (best_move == 0)
 		{
 			std::cout << "result ";
-			switch (score)
-			{
-			case  SCORE_INF:
+
+			if (score >= MATE_SCORE)
 				std::cout << "1-0 {White Wins}" << std::endl;
-				break;
-			case -SCORE_INF:
+			else if (score <= -MATE_SCORE)
 				std::cout << "0-1 {Black Wins}" << std::endl;
-				break;
-			default:
+			else
 				std::cout << "1/2-1/2 {Draw}"   << std::endl;
-			}
 
 			return true;
 		}
 		else
 		{
-			std::cout << "move " << Util::printCoordinate(best_move)
-				<< " score=" << score << " [ ";
-			_node.get_pv();
-			std::cout << "]" << std::endl;
+			if (_post)
+			{
+				/*
+				 * Saturate mate scores to a centipawn value of 100K,
+				 * as required by xBoard
+				 */
+				if (score > 0)
+					score = _min(score,  MATE_SCORE);
+				else
+					score = _max(score, -MATE_SCORE);
+
+				float scaled_score =
+					static_cast<float>(score) / Evaluator::PAWN_VALUE;
+
+				int centipawns = static_cast<int>(scaled_score * 100);
+
+				std::cout
+					<< _node.get_depth() << " "
+					<< centipawns   << " ";
+				if (_node.mate_found())
+				{
+					if (score > 0)
+						std::cout << "+ ";
+					else
+						std::cout << "- ";
+					std::cout << (_node.get_mate_plies() + 1)/2
+						<< " ";
+				}
+				std::cout
+					<< centiseconds << " "
+					<< _node.get_node_count()
+					<< " ";
+
+				_node.get_pv( _position.toMove , _position.fullMove );
+			}
+
+			std::cout << "move "
+				<< Util::printCoordinate(best_move)
+				<< std::endl;
 
 			return
 				_position.makeMove(best_move);
 		}
+	}
+
+	bool nopost(const std::string& args)
+	{
+		return !(_post = false);
+	}
+
+	bool post(const std::string& args)
+	{
+		return ( _post = true );
 	}
 
 	bool usermove(const std::string& move)
@@ -293,6 +344,7 @@ private:
 
 	Node&        _node;
 	Position&    _position;
+	bool         _post;
 
 	xBoardStateMachine&
 			_state_machine;

@@ -3,10 +3,13 @@
 
 #include "movegen.h"
 
-#define SCORE_INF 1000000
+#define MATE_SCORE 1000000
 
 class Evaluator
 {
+
+public:
+
 	typedef enum
 	{
 		PAWN_VALUE   = 1000,
@@ -16,8 +19,6 @@ class Evaluator
 		QUEEN_VALUE  = 9750
 
 	} value_t;
-
-public:
 
 	Evaluator(const MoveGen& movegen)
 		: _movegen(movegen)
