@@ -164,6 +164,109 @@ public:
 	}
 
 	/**
+	 * Get the FEN representation of this position
+	 *
+	 * @return The FEN position, or an empty string if this position was
+	 *         not initialized
+	 */
+	std::string get_fen() const
+	{
+		int empty = 0; char empty_s[8];
+
+		std::string fen = "";
+			if (!is_init) return (fen);
+
+		for (register int i = 63; i >= 0; i--)
+		{
+			std::sprintf(empty_s, "%d", empty);
+			if (pieces[i] != INVALID)
+			{
+				bool whitePiece =
+					static_cast<bool>(tables.set_mask[i] & occupied[WHITE]);
+
+				if (empty != 0)
+				{
+					fen += empty_s;  empty = 0;
+				}
+
+				switch (pieces[i])
+				{
+				case PAWN:
+					fen += (whitePiece ? "P" : "p");
+					break;
+				case KNIGHT:
+					fen += (whitePiece ? "N" : "n");
+					break;
+				case BISHOP:
+					fen += (whitePiece ? "B" : "b");
+					break;
+				case ROOK:
+					fen += (whitePiece ? "R" : "r");
+					break;
+				case QUEEN:
+					fen += (whitePiece ? "Q" : "q");
+					break;
+				default:
+					fen += (whitePiece ? "K" : "k");
+				}
+			}
+			else
+				empty++;
+
+			// Start the next rank:
+			if (i % 8 == 0)
+			{
+				if (empty != 0)
+				{
+					std::sprintf(empty_s, "%d", empty);
+					empty = 0;
+					fen += empty_s; 
+				}
+				if (i != 0)
+					fen += "/";
+			}
+		}
+
+		if (toMove == WHITE)
+			fen += " w ";
+		else
+			fen += " b ";
+
+		if (castleRights[ply][WHITE] & castle_K)
+			fen += "K";
+		if (castleRights[ply][WHITE] & castle_Q)
+			fen += "Q";
+		if (castleRights[ply][BLACK] & castle_K)
+			fen += "k";
+		if (castleRights[ply][BLACK] & castle_Q)
+			fen += "q";
+
+		if (castleRights[ply][WHITE] == 0 &&
+			castleRights[ply][BLACK] == 0)
+			fen += "-";
+
+		fen += " ";
+
+		if (epInfo[ply].target != BAD_SQUARE)
+			fen += SQUARE_STR[epInfo[ply].target];
+		else
+			fen += "-";
+
+		char halfMove_s[8];
+		char fullMove_s[8];
+
+		std::sprintf(halfMove_s, "%d", halfMove);
+		std::sprintf(fullMove_s, "%d", fullMove);
+
+		std::string space = " ";
+
+		fen +=  space + std::string(halfMove_s) +
+			    space + fullMove_s;
+
+		return fen;
+	}
+
+	/**
 	 * Get the player whose turn it is to move
 	 *
 	 * @return  WHITE or BLACK, or ~0 on error

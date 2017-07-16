@@ -275,38 +275,6 @@ namespace Util
 	/**
 	 ******************************************************************
 	 *
-	 * Extract the move bits into human-readable form (mostly for
-	 * diagnostic reasons)
-	 *
-	 * @param [in] c The move to parse
-	 *
-	 ******************************************************************
-	 */
-	static std::string piece2str(piece_t); // Forward declaration
-
-	static void printMove(int move)
-	{
-		const piece_t captured = static_cast<piece_t>(CAPTURED(move));
-		const int from         = FROM(move);
-		const piece_t moved    = static_cast<piece_t>(MOVED(move));
-		const piece_t promote  = static_cast<piece_t>(PROMOTE(move) );
-		const int to           = TO(move);
-
-		std::cout << "captured: "
-			<< piece2str(captured) << "\n";
-		std::cout << "from:     "
-			<< SQUARE_STR[from]    << "\n";
-		std::cout << "moved:    "
-			<< piece2str(moved)    << "\n";
-		std::cout << "promote:  "
-			<< piece2str(promote)  << "\n";
-		std::cout << "to:       "
-				<< SQUARE_STR[to] << std::endl;
-	}
-
-	/**
-	 ******************************************************************
-	 *
 	 * Determine whether or not the given character represents a piece
 	 * per algebraic notation
 	 *
@@ -395,6 +363,36 @@ namespace Util
 			default:
 				return "";
 		}
+	}
+
+	/**
+	 ******************************************************************
+	 *
+	 * Extract the move bits into human-readable form (mostly for
+	 * diagnostic reasons)
+	 *
+	 * @param [in] move The move to parse
+	 *
+	 ******************************************************************
+	 */
+	static void printMove(int move)
+	{
+		const piece_t captured = static_cast<piece_t>(CAPTURED(move));
+		const int from         = FROM(move);
+		const piece_t moved    = static_cast<piece_t>(MOVED(move));
+		const piece_t promote  = static_cast<piece_t>(PROMOTE(move) );
+		const int to           = TO(move);
+
+		std::cout << "captured: "
+			<< piece2str(captured) << "\n";
+		std::cout << "from:     "
+			<< SQUARE_STR[from]    << "\n";
+		std::cout << "moved:    "
+			<< piece2str(moved)    << "\n";
+		std::cout << "promote:  "
+			<< piece2str(promote)  << "\n";
+		std::cout << "to:       "
+				<< SQUARE_STR[to] << std::endl;
 	}
 
 	/**

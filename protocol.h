@@ -71,6 +71,14 @@ public:
 		return true;
 	}
 
+	/**
+	 * @TODO Implement this
+	 */
+	bool divide3(const std::string& depth)
+	{
+		return true;
+	}
+
 	bool force(const std::string& args)
 	{
 		return
@@ -245,6 +253,23 @@ public:
 		std::clock_t t = std::clock();
 
 		int nodes= gen.perft2(_position, Util::str_to_int32(depth,10));
+
+		t = std::clock() - t;
+
+		std::cout << "nodes=" << nodes << " time="
+			<< ((float)t)/CLOCKS_PER_SEC
+			<< std::endl;
+
+		return true;
+	}
+
+	bool perft3(const std::string& depth)
+	{
+		MoveGen gen(tables);
+
+		std::clock_t t = std::clock();
+
+		int nodes= gen.perft3(_position, Util::str_to_int32(depth,10));
 
 		t = std::clock() - t;
 
