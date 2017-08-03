@@ -36,6 +36,13 @@
 
 #define backRank(a) ((a) == WHITE ? RANK_1 : RANK_8)
 
+#define swapUint32(a,b) \
+{                       \
+	uint32 temp = a;    \
+	a = b;              \
+	b = temp;           \
+}
+
 /**
  * Moves are packed in 21 bits:
  *

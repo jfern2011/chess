@@ -10,6 +10,11 @@ class Evaluator
 
 public:
 
+	/**
+	 * A mapping from piece enumeration to its value:
+	 */
+	static const int piece_value[7];
+
 	typedef enum
 	{
 		PAWN_VALUE   = 1000,
@@ -20,6 +25,11 @@ public:
 
 	} value_t;
 
+	/**
+	 * Constructor
+	 *
+	 * @param[in] movegen A MoveGen object
+	 */
 	Evaluator(const MoveGen& movegen)
 		: _movegen(movegen)
 	{
@@ -144,6 +154,20 @@ public:
 private:
 
 	const MoveGen& _movegen;
+};
+
+/*
+ * Note: This needs to correlate with the piece_t definition:
+ */
+const int Evaluator::piece_value[7] =
+{
+	INVALID      ,
+	PAWN_VALUE   ,
+	ROOK_VALUE   ,
+	KNIGHT_VALUE ,
+	BISHOP_VALUE ,
+	QUEEN_VALUE  ,
+	MATE_SCORE
 };
 
 #endif

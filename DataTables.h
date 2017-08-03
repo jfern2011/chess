@@ -24,6 +24,7 @@ class DataTables
 {
 	friend class Position;
 	friend class MoveGen;
+	friend class Node;
 	
 public:
 

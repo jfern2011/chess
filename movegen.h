@@ -23,6 +23,7 @@ extern const char* SQUARE_STR[65];
 class MoveGen
 {
 	friend class Evaluator;
+	friend class Node;
 
 public:
 
@@ -508,56 +509,6 @@ public:
 		}
 
 		/*
-		 * Generate rook moves
-		 */
-		pieces = pos.rooks[to_move];
-		while (pieces)
-		{
-			const int from = getMSB64(pieces);
-
-			/*
-			 * For a speed boost: If this rook is pinned along a diagonal
-			 * then we cannot move it, so don't bother generating an
-			 * "attacks from" bitboard. If pinned along a rank then clear
-			 * the "along file" bits of its "attacks from" bitboard so
-			 * that we'll iterate through a smaller set of "from" squares
-			 * (similar idea if pinned along a file):
-			 */
-			uint64 restrictAttacks = ~0;
-
-			if (tables.set_mask[from] & pinned)
-			{
-				switch (tables.directions[from][pos.kingSq[to_move]])
-				{
-				case ALONG_A1H8:
-				case ALONG_H1A8:
-					clearBit64(from, pieces);
-					continue;
-				case ALONG_RANK:
-					restrictAttacks = tables.ranks64[from];
-					break;
-				default:
-					restrictAttacks = tables.files64[from];
-				}
-			}
-
-			uint64 captures =
-				pos.attacksFromRook(from, occupied)
-								& target & restrictAttacks;
-
-			while (captures)
-			{
-				const int to = getMSB64(captures);
-				*move++ =
-						pack(pos.pieces[to],from, ROOK, INVALID, to);
-
-				clearBit64(to, captures);
-			}
-
-			clearBit64(from, pieces);
-		}
-
-		/*
 		 * Generate bishop moves
 		 */
 		pieces = pos.bishops[to_move];
@@ -601,6 +552,56 @@ public:
 				const int to = getMSB64(captures);
 				*move++ =
 					pack( pos.pieces[to],from, BISHOP, INVALID, to );
+
+				clearBit64(to, captures);
+			}
+
+			clearBit64(from, pieces);
+		}
+
+		/*
+		 * Generate rook moves
+		 */
+		pieces = pos.rooks[to_move];
+		while (pieces)
+		{
+			const int from = getMSB64(pieces);
+
+			/*
+			 * For a speed boost: If this rook is pinned along a diagonal
+			 * then we cannot move it, so don't bother generating an
+			 * "attacks from" bitboard. If pinned along a rank then clear
+			 * the "along file" bits of its "attacks from" bitboard so
+			 * that we'll iterate through a smaller set of "from" squares
+			 * (similar idea if pinned along a file):
+			 */
+			uint64 restrictAttacks = ~0;
+
+			if (tables.set_mask[from] & pinned)
+			{
+				switch (tables.directions[from][pos.kingSq[to_move]])
+				{
+				case ALONG_A1H8:
+				case ALONG_H1A8:
+					clearBit64(from, pieces);
+					continue;
+				case ALONG_RANK:
+					restrictAttacks = tables.ranks64[from];
+					break;
+				default:
+					restrictAttacks = tables.files64[from];
+				}
+			}
+
+			uint64 captures =
+				pos.attacksFromRook(from, occupied)
+								& target & restrictAttacks;
+
+			while (captures)
+			{
+				const int to = getMSB64(captures);
+				*move++ =
+						pack(pos.pieces[to],from, ROOK, INVALID, to);
 
 				clearBit64(to, captures);
 			}
