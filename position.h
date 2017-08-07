@@ -796,6 +796,9 @@ public:
 		Util::str_v posn_info;
 		Util::split(tokens.back(), posn_info, ' ');
 
+		halfMove = 0;
+		fullMove = 1;
+
 		switch (posn_info.size())
 		{
 			default:

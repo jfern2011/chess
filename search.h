@@ -26,7 +26,8 @@ public:
 		  _movegen(movegen),
 		  _node_count(0),
 		  _qnode_count(0),
-		  	_save_pv( save_pv )
+		   _save_pv( save_pv ),
+		  _time_used(0)
 	{
 	}
 
@@ -115,6 +116,20 @@ public:
 	}
 
 	/**
+	 * Print statistics from the previous search to standard output
+	 */
+	void print_stats() const
+	{
+		const double q_frac =
+			static_cast<double>(_qnode_count) / _node_count;
+
+		std::cout << "Time used (s) = " << _time_used  << "\n";
+		std::cout << "Nodes         = " << _node_count << "\n";
+		std::cout << "Quiesce       = " << _qnode_count
+				  	<< " (" << q_frac * 100 << "%)" << std::endl;
+	}
+
+	/**
 	 * Search for the best move from the given position
 	 *
 	 * @param[in]  pos       The current position
@@ -129,6 +144,9 @@ public:
 		const int sign = pos.toMove == WHITE ? 1 : -1;
 
 		uint32* end;
+
+		const int64 start_time =
+						  Clock::get_monotonic_time();
 
 		const bool in_check = pos.inCheck(pos.toMove);
 
@@ -203,7 +221,8 @@ public:
 			{
 				_pv[0][0] = moves[i];
 
-				for ( register int j = 1; j < _depth; j++ )
+				for ( register int j = 1;
+						_pv[1][j] && j < MAX_PLY; j++ )
 				{
 					_pv[0][j] = _pv[1][j];
 				}
@@ -222,6 +241,13 @@ public:
 
 			_mate_plies = ply-1;
 		}
+
+		const int64 stop_time =
+						 Clock::get_monotonic_time();
+
+		_time_used =
+			static_cast<double>(stop_time-start_time)
+				/ NS_PER_SEC;
 
 		return score;
 	}
@@ -250,6 +276,7 @@ private:
 	int            _pv[MAX_PLY][MAX_PLY];
 	uint32         _qnode_count;
 	bool           _save_pv;
+	double         _time_used;
 
 	/**
 	 * Bubble sort algorithm. This is used for move ordering (at least
@@ -457,7 +484,8 @@ private:
 			else
 				_pv[depth][depth] = 0;
 
-			for (register int i = depth+1; i < _depth; i++)
+			for (register int i = depth+1;
+					_pv[depth+1][i] && i < MAX_PLY; i++)
 			{
 				_pv[depth][i] = _pv[depth+1][i];
 			}
@@ -741,7 +769,7 @@ private:
 		 * Forward this position to quiesce() after we've hit
 		 * the search limit:
 		 */
-		if (depth > _depth)
+		if (_depth <= depth)
 			return quiesce(pos, depth, alpha, beta);
 
 		const bool in_check = pos.inCheck(pos.toMove);
@@ -795,7 +823,8 @@ private:
 		{
 			_pv[depth][depth] = moves[best_index];
 
-			for (register int i = depth+1; i < _depth; i++)
+			for (register int i = depth+1;
+					_pv[depth+1][i] && i < MAX_PLY; i++)
 			{
 				_pv[depth][i] = _pv[depth+1][i];
 			}

@@ -355,6 +355,12 @@ public:
 		return true;
 	}
 
+	bool stat(const std::string& args)
+	{
+		_node.print_stats();
+		return true;
+	}
+
 	bool undo(const std::string& args)
 	{
 

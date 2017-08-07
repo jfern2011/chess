@@ -83,6 +83,8 @@ private:
 				false);
 		AbortIf(_cmd.install("setboard", _xboard, &xBoard::setboard) < 0,
 				false);
+		AbortIf(_cmd.install("stat", _xboard, &xBoard::stat) < 0,
+				false);
 
 		return true;
 	}
