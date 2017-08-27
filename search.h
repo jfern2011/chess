@@ -179,8 +179,7 @@ public:
 		 * Clear the principal variation. Note that PV read-out ends
 		 * when we hit the first null move
 		 */
-		for (register int i = 0; i < MAX_PLY; i++)
-			_pv[0][i] = 0;
+		clearPV();
 
 		for (register int i = 0; i < nMoves ; i++)
 		{
@@ -219,13 +218,7 @@ public:
 			 */
 			if (_save_pv && (raised_alpha || i == 0))
 			{
-				_pv[0][0] = moves[i];
-
-				for ( register int j = 1;
-						_pv[1][j] && j < MAX_PLY; j++ )
-				{
-					_pv[0][j] = _pv[1][j];
-				}
+				savePV(0, moves[i]);
 			}
 		}
 
@@ -279,6 +272,87 @@ private:
 	double         _time_used;
 
 	/**
+	 * Routine that implements the negamax alpha-beta search algorithm
+	 * from an interior node
+	 *
+	 * @param[in] pos   The position at this depth
+	 * @param[in] depth Current search depth
+	 * @param[in] alpha Lower bound on the value of this position
+	 * @param[in] beta  Upper bound on the value of this position
+	 *
+	 * @return The score of this position if it falls within the given
+	 *         bounds, \a alpha if the score is less than the lower
+	 *         bound or \a beta if the score is greater than the upper
+	 *         bound
+	 */
+	int _search(Position& pos, int depth, int alpha, int beta)
+	{
+		uint32 moves[MAX_MOVES];
+		uint32* end;
+
+		/*
+		 * Forward this position to quiesce() after we've hit
+		 * the search limit:
+		 */
+		if (_depth <= depth)
+			return quiesce(pos, depth, alpha, beta);
+
+		const bool in_check = pos.inCheck(pos.toMove);
+
+		if (in_check)
+			end =
+			   _movegen.generateCheckEvasions(pos, pos.toMove, moves);
+		else
+			end = _movegen.generateLegalMoves(pos, pos.toMove, moves);
+
+		const int nMoves = end - moves;
+
+		if (nMoves == 0)
+		{
+			//  Indicate this is the end of a variation
+			//  with a null move:
+			if (_save_pv)
+				savePV(depth, 0);
+
+			// Scale the mate score to favor checkmates
+			// in fewer moves:
+			return in_check ?
+					((-MATE_SCORE) * (MAX_PLY-depth)) : 0;
+		}
+
+		int best_index = -1;
+
+		for (register int i = 0; i < nMoves; i++)
+		{
+			pos.makeMove(moves[i]);
+			_node_count++;
+
+			const int score = -_search( pos, depth+1, -beta, -alpha);
+
+			pos.unMakeMove(moves[i]);
+
+			if (beta <= score)
+				return beta;
+
+			if (score > alpha)
+			{
+				best_index = i;
+				alpha = score;
+			}
+		}
+
+		/*
+		 * Save the principal variation up to this node:
+		 */
+		if (_save_pv && 0 <= best_index)
+		{
+			savePV(depth, moves[best_index]);
+		}
+
+		return alpha;
+	}
+
+	/**
 	 * Bubble sort algorithm. This is used for move ordering (at least
 	 * for now)
 	 *
@@ -312,6 +386,16 @@ private:
 		}
 
 		return passes;
+	}
+
+	/**
+	 * Clear the principal variation (i.e. fill the PV with null moves)
+	 */
+	inline void clearPV()
+	{
+		for (register int i = 0; i < MAX_PLY; i++)
+			for (register int j = 0; j < MAX_PLY; j++)
+				_pv[i][j] = 0;
 	}
 
 	/**
@@ -373,7 +457,7 @@ private:
 				//  Indicate this is the end of a variation
 				//  with a null move:
 				if (_save_pv)
-					_pv[depth][depth] = 0;
+					savePV(depth, 0);
 
 				// Scale the mate score to favor checkmates
 				// in fewer moves:
@@ -401,7 +485,7 @@ private:
 
 		bool raised_alpha = false;
 
-		if (alpha <= score)
+		if (alpha < score)
 		{
 			/*
 			 * Set the flag indicating we want to save the PV that lead
@@ -418,7 +502,7 @@ private:
 		if (nMoves == 0 || MAX_PLY <= depth)
 		{
 			if (_save_pv)
-				_pv[depth][depth] = 0;
+				savePV(depth, 0);
 			return score;
 		}
 
@@ -480,18 +564,39 @@ private:
 		if (_save_pv && raised_alpha)
 		{
 			if (0 <= best_index)
-				_pv[depth][depth] = moves[best_index];
+				savePV(depth, moves[best_index]);
 			else
-				_pv[depth][depth] = 0;
-
-			for (register int i = depth+1;
-					_pv[depth+1][i] && i < MAX_PLY; i++)
-			{
-				_pv[depth][i] = _pv[depth+1][i];
-			}
+				savePV(depth, 0);
 		}
 
 		return alpha;
+	}
+
+	/**
+	 * Save the principal variation, starting at the specified depth
+	 *
+	 * @param[in] depth The current search depth
+	 * @param[in] move  The move to save at depth \a depth
+	 */
+	inline void savePV(int depth, int move)
+	{
+		if (depth < MAX_PLY)
+		{
+			_pv[depth][depth] = move;
+
+			// Null move signals the end of a variation:
+			if (move == 0)
+				return;
+		}
+
+		if (depth+1 < MAX_PLY)
+		{
+			for (register int i= depth+1; i < MAX_PLY; i++)
+			{
+				if ((_pv[depth][i] = _pv[depth+1][i]) == 0)
+					break;
+			}
+		}
 	}
 
 	/**
@@ -758,79 +863,6 @@ private:
         	scores[i-1] = -_max(-scores[i-1], scores[i]);
 
 		return scores[0];
-	}
-
-	int _search(Position& pos, int depth, int alpha, int beta)
-	{
-		uint32 moves[MAX_MOVES];
-		uint32* end;
-
-		/*
-		 * Forward this position to quiesce() after we've hit
-		 * the search limit:
-		 */
-		if (_depth <= depth)
-			return quiesce(pos, depth, alpha, beta);
-
-		const bool in_check = pos.inCheck(pos.toMove);
-
-		if (in_check)
-			end =
-			   _movegen.generateCheckEvasions(pos, pos.toMove, moves);
-		else
-			end = _movegen.generateLegalMoves(pos, pos.toMove, moves);
-
-		const int nMoves = end - moves;
-
-		if (nMoves == 0)
-		{
-			//  Indicate this is the end of a variation
-			//  with a null move:
-			if (_save_pv)
-				_pv[depth][depth] = 0;
-
-			// Scale the mate score to favor checkmates
-			// in fewer moves:
-			return in_check ?
-					((-MATE_SCORE) * (MAX_PLY-depth)) : 0;
-		}
-
-		int best_index = -1;
-
-		for (register int i = 0; i < nMoves; i++)
-		{
-			pos.makeMove(moves[i]);
-			_node_count++;
-
-			const int score = -_search( pos, depth+1, -beta, -alpha);
-
-			pos.unMakeMove(moves[i]);
-
-			if (beta <= score)
-				return beta;
-
-			if (score > alpha)
-			{
-				best_index = i;
-				alpha = score;
-			}
-		}
-
-		/*
-		 * Save the principal variation up to this node:
-		 */
-		if (_save_pv && 0 <= best_index)
-		{
-			_pv[depth][depth] = moves[best_index];
-
-			for (register int i = depth+1;
-					_pv[depth+1][i] && i < MAX_PLY; i++)
-			{
-				_pv[depth][i] = _pv[depth+1][i];
-			}
-		}
-
-		return alpha;
 	}
 };
 
