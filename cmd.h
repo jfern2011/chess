@@ -208,7 +208,7 @@ public:
 
 	/**
 	 * Determine if a command has been installed by name. Note this is
-	 * is case-insensitive
+	 * case-insensitive
 	 *
 	 * @param [in] _cmd The name of the command
 	 *

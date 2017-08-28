@@ -35,6 +35,7 @@ public:
 	bool init()
 	{
 		AbortIfNot(init_commands(), false);
+		AbortIfNot(_node.init(), false);
 
 		std::cout << "Ready"  << std::endl;
 		return true;
@@ -42,7 +43,7 @@ public:
 
 	bool run()
 	{
-		while (!_quit)
+		while (!_quit && !_node.quit_requested())
 		{
 			::usleep(100000); // 100 ms
 			_cmd.poll();

@@ -8,7 +8,6 @@
 
 #include "DataTables.h"
 
-
 /*
  * Bit masks for determining castling rights:
  */
@@ -309,6 +308,18 @@ public:
 		 */
 		if (!is_init) return false;
 
+		if (move == 0)
+		{
+			/*
+			 * This is a null move. Switch sides and remove
+			 * the en passant target:
+			 */
+			toMove = flip(toMove);
+			_saveEP = epInfo[ply];
+			epInfo[ply].clear();
+			return true;
+		}
+
 		const int captured = CAPTURED(move);
 		const int from     = FROM(move);
 		const int moved    = MOVED(move);
@@ -510,15 +521,20 @@ public:
 								&= tables.clear_mask[to+8];
 						}
 					}
+
+					material[flip(toMove)] -= PAWN_VALUE;
 					break;
 				case KNIGHT:
 					knights[flip(toMove)] &= tables.clear_mask[to];
+					material[flip(toMove)] -= KNIGHT_VALUE;
 					break;
 				case BISHOP:
 					bishops[flip(toMove)] &= tables.clear_mask[to];
+					material[flip(toMove)] -= BISHOP_VALUE;
 					break;
 				case QUEEN:
 					queens[flip(toMove)]  &= tables.clear_mask[to];
+					material[flip(toMove)] -= QUEEN_VALUE;
 					break;
 				case ROOK:
 					rooks[flip(toMove)]   &= tables.clear_mask[to];
@@ -540,6 +556,8 @@ public:
 								castleRights[ply][flip(toMove)] &= castle_K;
 						}
 					}
+
+					material[flip(toMove)] -= ROOK_VALUE;
 					break;
 			}
 
@@ -622,6 +640,11 @@ public:
 		std::printf("Half Move:     %d\n", halfMove);
 		std::printf("Full Move:     %d\n", fullMove);
 		std::printf("ply:           %d\n", ply);
+
+		std::printf("Material[WHITE] = %u\n",
+			material[WHITE]);
+		std::printf("Material[BLACK] = %u\n",
+			material[BLACK]);
 
 		printBoard();
 
@@ -911,8 +934,27 @@ public:
 		 */
 		if (!validate(fen, xboard))
 		{
-			*this = backup; return(false);
+			*this = backup;
+				return(false);
 		}
+
+		/*
+		 * Compute the material score for both sides. This avoids
+		 * having to do so during static eval
+		 */
+		material[WHITE] =
+			Util::bitCount(pawns[WHITE])   * PAWN_VALUE   +
+			Util::bitCount(knights[WHITE]) * KNIGHT_VALUE + 
+			Util::bitCount(bishops[WHITE]) * BISHOP_VALUE + 
+			Util::bitCount(rooks[WHITE])   * ROOK_VALUE   +
+			Util::bitCount(queens[WHITE])  * QUEEN_VALUE;
+
+		material[BLACK] =
+			Util::bitCount(pawns[BLACK])   * PAWN_VALUE   + 
+			Util::bitCount(knights[BLACK]) * KNIGHT_VALUE + 
+			Util::bitCount(bishops[BLACK]) * BISHOP_VALUE + 
+			Util::bitCount(rooks[BLACK])   * ROOK_VALUE   +
+			Util::bitCount(queens[BLACK])  * QUEEN_VALUE;
 
 		is_init = true;
 			return is_init;
@@ -968,6 +1010,17 @@ public:
 	bool unMakeMove(int move)
 	{
 		if (!is_init) return false;
+
+		if (move == 0)
+		{
+			/*
+			 * This is a null move. Switch sides and restore
+			 * the en passant target:
+			 */
+			toMove = flip(toMove);
+			epInfo[ply] = _saveEP;
+			return true;
+		}
 
 		const int captured = CAPTURED(move);
 		const int from     = FROM(move);
@@ -1096,6 +1149,8 @@ public:
 			switch (captured)
 			{
 				case PAWN:
+					material[flip(toMove)] += PAWN_VALUE;
+
 					/*
 					 * This was an en passant capture if the target
 					 * square matches epInfo.target:
@@ -1135,15 +1190,19 @@ public:
 					break;
 				case KNIGHT:
 					knights[flip(toMove)] |= tables.set_mask[to];
+					material[flip(toMove)] += KNIGHT_VALUE;
 					break;
 				case QUEEN:
 					queens[flip(toMove)]  |= tables.set_mask[to];
+					material[flip(toMove)] += QUEEN_VALUE;
 					break;
 				case ROOK:
 					rooks[flip(toMove)]   |= tables.set_mask[to];
+					material[flip(toMove)] += ROOK_VALUE;
 					break;
 				case BISHOP:
 					bishops[flip(toMove)] |= tables.set_mask[to];
+					material[flip(toMove)] += BISHOP_VALUE;
 					break;
 			}
 		}
@@ -1381,31 +1440,33 @@ public:
 	{
 		bool temp = 
 
-			bishops[0]           == rhs.bishops[0] &&
-			bishops[1]           == rhs.bishops[1] &&
+			bishops[0]           == rhs.bishops[0]           &&
+			bishops[1]           == rhs.bishops[1]           &&
 			castleRights[ply][0] == rhs.castleRights[ply][0] && 
 			castleRights[ply][1] == rhs.castleRights[ply][1] && 
-			epInfo[ply].target   == rhs.epInfo[ply].target && 
-			epInfo[ply].src[0]   == rhs.epInfo[ply].src[0] &&
-			epInfo[ply].src[1]   == rhs.epInfo[ply].src[1];
-			fullMove             == rhs.fullMove &&
-			halfMove             == rhs.halfMove &&
-			is_init              == rhs.is_init && 
-			kings[0]             == rhs.kings[0] &&
-			kings[1]             == rhs.kings[1] &&
-			kingSq[0]            == rhs.kingSq[0] && 
-			kingSq[1]            == rhs.kingSq[1] &&
-			knights[0]           == rhs.knights[0] &&
-			knights[1]           == rhs.knights[1] &&
-			occupied[0]          == rhs.occupied[0] &&
-			occupied[1]          == rhs.occupied[1] &&
-			pawns[0]             == rhs.pawns[0] &&
-			pawns[1]             == rhs.pawns[1] &&
-			ply                  == rhs.ply &&
-			queens[0]            == rhs.queens[0] &&
-			queens[1]            == rhs.queens[1] &&
-			rooks[0]             == rhs.rooks[0] &&
-			rooks[1]             == rhs.rooks[1] &&
+			epInfo[ply].target   == rhs.epInfo[ply].target   && 
+			epInfo[ply].src[0]   == rhs.epInfo[ply].src[0]   &&
+			epInfo[ply].src[1]   == rhs.epInfo[ply].src[1]   &&
+			fullMove             == rhs.fullMove             &&
+			halfMove             == rhs.halfMove             &&
+			is_init              == rhs.is_init              && 
+			kings[0]             == rhs.kings[0]             &&
+			kings[1]             == rhs.kings[1]             &&
+			kingSq[0]            == rhs.kingSq[0]            &&
+			kingSq[1]            == rhs.kingSq[1]            &&
+			knights[0]           == rhs.knights[0]           &&
+			knights[1]           == rhs.knights[1]           &&
+			material[0]          == rhs.material[0]          &&
+			material[1]          == rhs.material[1]          &&
+			occupied[0]          == rhs.occupied[0]          &&
+			occupied[1]          == rhs.occupied[1]          &&
+			pawns[0]             == rhs.pawns[0]             &&
+			pawns[1]             == rhs.pawns[1]             &&
+			ply                  == rhs.ply                  &&
+			queens[0]            == rhs.queens[0]            &&
+			queens[1]            == rhs.queens[1]            &&
+			rooks[0]             == rhs.rooks[0]             &&
+			rooks[1]             == rhs.rooks[1]             &&
 			toMove               == rhs.toMove;
 
 		if (temp)
@@ -1546,6 +1607,9 @@ private:
 			castleRights[i][1] = 0;
 		}
 
+		material[BLACK] = 0;
+		material[WHITE] = 0;
+
 		halfMove = -1;
 		fullMove = -1;
 		toMove = 0;
@@ -1574,12 +1638,14 @@ private:
 	uint64    kings[2];
 	int32     kingSq[2];
 	uint64    knights[2];
+	uint32    material[2];
 	uint64    occupied[2];
 	uint64    pawns[2];
 	piece_t   pieces[64];
 	int32     ply;
 	uint64    queens[2];
 	uint64    rooks[2];
+	EnPassant _saveEP;
 
 	const DataTables& tables;
 

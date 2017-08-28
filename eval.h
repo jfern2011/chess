@@ -3,27 +3,10 @@
 
 #include "movegen.h"
 
-#define MATE_SCORE 1000000
-
 class Evaluator
 {
 
 public:
-
-	/**
-	 * A mapping from piece enumeration to its value:
-	 */
-	static const int piece_value[7];
-
-	typedef enum
-	{
-		PAWN_VALUE   = 1000,
-		KNIGHT_VALUE = 3250,
-		BISHOP_VALUE = 3250,
-		ROOK_VALUE   = 5000,
-		QUEEN_VALUE  = 9750
-
-	} value_t;
 
 	/**
 	 * Constructor
@@ -48,22 +31,8 @@ public:
 
 	inline int32 evaluateMaterial(const Position& pos) const
 	{
-		const int whiteMaterial =
-			_movegen.popCnt64(pos.pawns[WHITE])   * PAWN_VALUE   + 
-			_movegen.popCnt64(pos.knights[WHITE]) * KNIGHT_VALUE + 
-			_movegen.popCnt64(pos.bishops[WHITE]) * BISHOP_VALUE + 
-			_movegen.popCnt64(pos.rooks[WHITE])   * ROOK_VALUE   +
-			_movegen.popCnt64(pos.queens[WHITE])  * QUEEN_VALUE;
-
-		const int blackMaterial =
-			_movegen.popCnt64(pos.pawns[BLACK])   * PAWN_VALUE   + 
-			_movegen.popCnt64(pos.knights[BLACK]) * KNIGHT_VALUE + 
-			_movegen.popCnt64(pos.bishops[BLACK]) * BISHOP_VALUE + 
-			_movegen.popCnt64(pos.rooks[BLACK])   * ROOK_VALUE   +
-			_movegen.popCnt64(pos.queens[BLACK])  * QUEEN_VALUE;
-
 		return
-			whiteMaterial - blackMaterial;
+			pos.material[WHITE] - pos.material[BLACK];
 	}
 
 	inline int32 evaluateMobility(const Position& pos) const
@@ -154,20 +123,6 @@ public:
 private:
 
 	const MoveGen& _movegen;
-};
-
-/*
- * Note: This needs to correlate with the piece_t definition:
- */
-const int Evaluator::piece_value[7] =
-{
-	INVALID      ,
-	PAWN_VALUE   ,
-	ROOK_VALUE   ,
-	KNIGHT_VALUE ,
-	BISHOP_VALUE ,
-	QUEEN_VALUE  ,
-	MATE_SCORE
 };
 
 #endif

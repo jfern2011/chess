@@ -34,7 +34,10 @@ public:
 	xBoard(Node& node,
 		   Position& position, xBoardStateMachine& state_machine)
 		: _node(node),
-		  _position(position), _post(false), _state_machine(state_machine)
+		  _position(position),
+		  _post(false),
+		  _sd_limit(MAX_PLY ),
+		  _state_machine(state_machine)
 	{
 	}
 
@@ -90,80 +93,104 @@ public:
 		bool success = 
 			_state_machine.updateState(xBoardStateMachine::READY);
 
-		int best_move = 0;
+		int best_move;
 
-		int64 t_start = Clock::get_monotonic_time();
-
-		int score =
-			_node.search(_position, best_move);
-
-		int64 t_stop  = Clock::get_monotonic_time();
-
-		int centiseconds =
-				(t_stop - t_start) * 100 / NS_PER_SEC;
-
-		/*
-		 * I don't expect xBoard to issue "go" when there are no moves
-		 * available, but just in case...
-		 */
-		if (best_move == 0)
+		for (int depth = _min( 2, _sd_limit ); depth <= _sd_limit; depth++)
 		{
-			std::cout << "result ";
+			best_move = 0;
 
-			if (score >= MATE_SCORE)
-				std::cout << "1-0 {White Wins}" << std::endl;
-			else if (score <= -MATE_SCORE)
-				std::cout << "0-1 {Black Wins}" << std::endl;
-			else
-				std::cout << "1/2-1/2 {Draw}"   << std::endl;
+			int64 t_start = Clock::get_monotonic_time();
 
-			return true;
-		}
-		else
-		{
-			if (_post)
+			_node.set_depth(depth);
+			int score =
+				_node.search(_position, best_move);
+
+			int64 t_stop  = Clock::get_monotonic_time();
+
+			if (abort_search())
+				return true;
+
+			/*
+			 * Based on the search we just did, estimate the number of
+			 * nodes to search such that 0.5 seconds will have
+			 * elapsed. This will be the number of nodes to
+			 * search before interrupting the search to check for user
+			 * input:
+			 */
+			const double seconds =
+				static_cast<double>(t_stop - t_start) / NS_PER_SEC;
+			const int centiseconds = seconds * 100;
+
+			if (seconds > 0)
 			{
-				/*
-				 * Saturate mate scores to a centipawn value of 100K,
-				 * as required by xBoard
-				 */
-				if (score > 0)
-					score = _min(score,  MATE_SCORE);
-				else
-					score = _max(score, -MATE_SCORE);
-
-				float scaled_score =
-					static_cast<float>(score) / Evaluator::PAWN_VALUE;
-
-				int centipawns = static_cast<int>(scaled_score * 100);
-
-				std::cout
-					<< _node.get_depth() << " "
-					<< centipawns   << " ";
-				if (_node.mate_found())
-				{
-					if (score > 0)
-						std::cout << "+ ";
-					else
-						std::cout << "- ";
-					std::cout << (_node.get_mate_plies() + 1)/2
-						<< " ";
-				}
-				std::cout
-					<< centiseconds << " "
-					<< _node.get_node_count()
-					<< " ";
-
-				_node.get_pv( _position.toMove , _position.fullMove );
+				const double nps = _node.get_node_count() /seconds;
+				_node.set_input_check_delay(0.5*nps);
 			}
 
-			std::cout << "move "
-				<< Util::printCoordinate(best_move)
-				<< std::endl;
+			/*
+			 * I don't expect xBoard to issue "go" when there are no moves
+			 * available, but just in case...
+			 */
+			if (best_move == 0)
+			{
+				std::cout << "result ";
 
-			return
-				_position.makeMove(best_move);
+				if (score >= MATE_SCORE)
+					std::cout << "1-0 {White Wins}" << std::endl;
+				else if (score <= -MATE_SCORE)
+					std::cout << "0-1 {Black Wins}" << std::endl;
+				else
+					std::cout << "1/2-1/2 {Draw}"   << std::endl;
+
+				return true;
+			}
+			else
+			{
+				if (_post)
+				{
+					/*
+					 * Saturate mate scores to a centipawn value of 100K,
+					 * as required by xBoard
+					 */
+					if (score > 0)
+						score = _min(score,  MATE_SCORE);
+					else
+						score = _max(score, -MATE_SCORE);
+
+					const float scaled_score =
+						static_cast<float>(score) / PAWN_VALUE;
+
+					const int centipawns =
+						static_cast<int>( scaled_score * 100 );
+
+					std::cout
+						<< _node.get_depth() << " "
+						<< centipawns   << " ";
+					if (_node.mate_found())
+					{
+						if (score > 0)
+							std::cout << "+ ";
+						else
+							std::cout << "- ";
+						std::cout << (_node.get_mate_plies() + 1)/2
+							<< " ";
+					}
+					std::cout
+						<< centiseconds << " "
+						<< _node.get_node_count()
+						<< " ";
+
+					_node.get_pv( _position.toMove , _position.fullMove );
+				}
+			}
 		}
+
+		std::cout << "move "
+			<< Util::printCoordinate(best_move)
+			<< std::endl;
+
+		return
+			_position.makeMove(best_move);
 	}
 
 	bool nopost(const std::string& args)
@@ -340,7 +367,7 @@ public:
 		if (depth < 0)
 			return false;
 		else
-			_node.set_depth(depth);
+			_sd_limit = depth;
 
 		return true;
 	}
@@ -373,9 +400,15 @@ public:
 
 private:
 
+	bool abort_search() const
+	{
+		return _node.quit_requested() || _node.abort_requested();
+	}
+
 	Node&        _node;
 	Position&    _position;
 	bool         _post;
+	int          _sd_limit;
 
 	xBoardStateMachine&
 			_state_machine;

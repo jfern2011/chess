@@ -1,6 +1,8 @@
 #ifndef __SEARCH_H__
 #define __SEARCH_H__
 
+#include "clock.h"
+#include "cmd.h"
 #include <cstring>
 
 #include "eval.h"
@@ -19,14 +21,21 @@ public:
 	 *                     principal variation in searches
 	 */
 	Node(const MoveGen& movegen, bool save_pv=true)
-		: _depth(1),
+		: _abort_requested(false),
+		  _base_R(3),
+		  _depth (1),
 		  _evaluator(movegen),
+		  _input_check_delay(100000),
+		  _interrupt_handler(),
 		  _mate_found(false),
 		  _mate_plies(MAX_PLY),
 		  _movegen(movegen),
+		  _next_input_check(0),
+		  _nmr_scale (6),
 		  _node_count(0),
 		  _qnode_count(0),
-		   _save_pv( save_pv ),
+		  _quit_requested(false),
+		   _save_pv(save_pv),
 		  _time_used(0)
 	{
 	}
@@ -39,6 +48,16 @@ public:
 	}
 
 	/**
+	 * Check if an "abort" command was sent
+	 *
+	 * @return True if this command was issued
+	 */
+	bool abort_requested() const
+	{
+		return _abort_requested;
+	}
+
+	/**
 	 * Get the current search depth
 	 *
 	 * @return The current depth limit. Note that this does not include
@@ -47,6 +66,22 @@ public:
 	int get_depth() const
 	{
 		return _depth;
+	}
+
+	/**
+	 * Initialize the interrupt handler. This is used to handle command
+	 * requests during an active search
+	 *
+	 * @return True on success
+	 */
+	bool init()
+	{
+		AbortIf(_interrupt_handler.install("abort",
+						*this, &Node::set_abort) < 0, false);
+		AbortIf(_interrupt_handler.install("quit",
+						*this, &Node::set_quit ) < 0, false);
+
+		return true;
 	}
 
 	/**
@@ -130,12 +165,26 @@ public:
 	}
 
 	/**
+	 * Check whether a "quit" command was sent
+	 *
+	 * @return True if this command was issued
+	 */
+	bool quit_requested() const
+	{
+		return _quit_requested;
+	}
+
+	/**
+	 ******************************************************************
+	 *
 	 * Search for the best move from the given position
 	 *
 	 * @param[in]  pos       The current position
 	 * @param[out] best_move The best move to play
 	 *
 	 * @return The score of the position
+	 *
+	 ******************************************************************
 	 */
 	int search(Position& pos, int& best_move)
 	{
@@ -176,6 +225,14 @@ public:
 		_node_count = _qnode_count = 0;
 
 		/*
+		 * Once we hit _input_check_delay nodes, we'll pause to check
+		 * for user input. We could just do this at scheduled time
+		 * intervals, but the overhead associated with requesting the
+		 * system time at every interior node isn't worth it
+		 */
+		_next_input_check = _input_check_delay;
+
+		/*
 		 * Clear the principal variation. Note that PV read-out ends
 		 * when we hit the first null move
 		 */
@@ -188,9 +245,12 @@ public:
 			pos.makeMove(moves[i]);
 			_node_count++;
 
+			_abort_requested = _quit_requested = false;
+
 			if (pos.toMove == flip(WHITE))
 			{
-				const int temp = -_search(pos,1,init_alpha,init_beta);
+				const int temp =
+					-_search( pos, 1, init_alpha, init_beta, true );
 
 				if (temp > score)
 				{
@@ -201,7 +261,8 @@ public:
 			}
 			else
 			{
-				const int temp =  _search(pos,1,init_alpha,init_beta);
+				const int temp =
+					 _search( pos, 1, init_alpha, init_beta, true );
 
 				if (temp < score)
 				{
@@ -212,6 +273,9 @@ public:
 			}
 
 			pos.unMakeMove(moves[i]);
+
+			if (_abort_requested || _quit_requested)
+				return 0;
 
 			/*
 			 * Save the principal variation up to this node:
@@ -258,41 +322,83 @@ public:
 		return (_depth = _min(MAX_PLY, depth));
 	}
 
+	/**
+	 * Set the delay, in nodes, between checks for user input
+	 *
+	 * @param[in] delay Desired delay
+	 */
+	void set_input_check_delay(int delay)
+	{
+		_input_check_delay = delay;
+	}
+
 private:
 
-	int            _depth;
-	Evaluator      _evaluator;
-	bool           _mate_found;
-	int            _mate_plies;
-	const MoveGen& _movegen;
-	uint32         _node_count;
-	int            _pv[MAX_PLY][MAX_PLY];
-	uint32         _qnode_count;
-	bool           _save_pv;
-	double         _time_used;
+	bool             _abort_requested;
+
+	/**
+	 * The base value of the depth reduction parameter used by the null
+	 * move heuristic
+	 */
+	const int        _base_R;
+	int              _depth;
+	Evaluator        _evaluator;
+
+	/**
+	 * The number of nodes to search before pausing to check for input
+	 */
+	int              _input_check_delay;
+	CommandInterface _interrupt_handler;
+	bool             _mate_found;
+	int              _mate_plies;
+	const MoveGen&   _movegen;
+	int              _next_input_check;
+	const int        _nmr_scale;
+	uint32           _node_count;
+	int              _pv[MAX_PLY][MAX_PLY];
+	uint32           _qnode_count;
+	bool             _quit_requested;
+	bool             _save_pv;
+	double           _time_used;
 
 	/**
 	 * Routine that implements the negamax alpha-beta search algorithm
 	 * from an interior node
 	 *
-	 * @param[in] pos   The position at this depth
-	 * @param[in] depth Current search depth
-	 * @param[in] alpha Lower bound on the value of this position
-	 * @param[in] beta  Upper bound on the value of this position
+	 * @param[in] pos     The position at this depth
+	 * @param[in] depth   Current search depth
+	 * @param[in] alpha   Lower bound on the value of this position
+	 * @param[in] beta    Upper bound on the value of this position
+	 * @param[in] do_null If true, try a null move
 	 *
 	 * @return The score of this position if it falls within the given
 	 *         bounds, \a alpha if the score is less than the lower
 	 *         bound or \a beta if the score is greater than the upper
 	 *         bound
 	 */
-	int _search(Position& pos, int depth, int alpha, int beta)
+	int _search(Position& pos, int depth, int alpha, int beta,
+				bool do_null)
 	{
 		uint32 moves[MAX_MOVES];
 		uint32* end;
 
 		/*
-		 * Forward this position to quiesce() after we've hit
-		 * the search limit:
+		 * Check if a search abort was requested. If true, return beta
+		 * so that the calling node produces a cutoff and returns as
+		 * well. Otherwise, check if it is time to poll the input file
+		 * descriptor for commands
+		 */
+		if (_abort_requested || _quit_requested)
+			return beta;
+		else if (_node_count >= _next_input_check)
+		{
+			_interrupt_handler.poll();
+				_next_input_check = _node_count + _input_check_delay;
+		}
+
+		/*
+		 * Forward this position to quiesce() after we have hit our
+		 * search limit:
 		 */
 		if (_depth <= depth)
 			return quiesce(pos, depth, alpha, beta);
@@ -319,6 +425,42 @@ private:
 			return in_check ?
 					((-MATE_SCORE) * (MAX_PLY-depth)) : 0;
 		}
+		else if (do_null && !in_check)
+		{
+			const int R = _base_R + depth/_nmr_scale;
+
+			/*
+			 * Assume (conservatively) we're in zugzwang if we only
+			 * have pawns left:
+			 */
+			bool zugzwang =
+				(pos.pawns[pos.toMove] | pos.kings[pos.toMove])
+				== pos.occupied[pos.toMove];
+
+			/*
+			 * Null move heuristic. Since we're not in check (and
+			 * not in zugzwang), try passing this turn (e.g. the
+			 * opponent gets two turns in a row). If we can still
+			 * raise alpha enough to get a cutoff, then chances
+			 * are we'll definitely get a cutoff by searching in
+			 * the usual way. Note that we initially reduce by two
+			 * plies, and further reduce for every increase in
+			 * depth by three plies:
+			 */
+			if (do_null && !zugzwang && depth+R < _depth)
+			{
+				pos.makeMove(0);
+				_node_count++;
+
+				const int score =
+					-_search(pos, depth+R, -beta, -alpha, false );
+
+				pos.unMakeMove(0);
+
+				if (beta <= score)
+					return beta;
+			}
+		}
 
 		int best_index = -1;
 
@@ -327,7 +469,8 @@ private:
 			pos.makeMove(moves[i]);
 			_node_count++;
 
-			const int score = -_search( pos, depth+1, -beta, -alpha);
+			const int score =
+				-_search(pos,depth+1,-beta, -alpha, true);
 
 			pos.unMakeMove(moves[i]);
 
@@ -421,14 +564,14 @@ private:
 		if (PROMOTE(a) && !CAPTURED(a))
 			gain_a = 0;
 		else
-			gain_a = Evaluator::piece_value[CAPTURED(a)] -
-					 Evaluator::piece_value[MOVED(a)];
+			gain_a =
+				piece_value[CAPTURED(a)] - piece_value[MOVED(a)];
 
 		if (PROMOTE(b) && !CAPTURED(b))
 			gain_b = 0;
 		else
-			gain_b = Evaluator::piece_value[CAPTURED(b)] -
-					 Evaluator::piece_value[MOVED(b)];
+			gain_b =
+				piece_value[CAPTURED(b)] - piece_value[MOVED(b)];
 
 		return
 			gain_b <= gain_a;
@@ -532,8 +675,8 @@ private:
 				const int captured =
 								  CAPTURED(moves[i]);
 
-				if (moved != PAWN && Evaluator::piece_value[captured] <
-					Evaluator::piece_value[moved])
+				if (moved != PAWN &&
+					piece_value[captured] < piece_value[moved])
 				{
 					if (see(pos, TO(moves[i]), pos.toMove) < 0)
 						continue;
@@ -620,7 +763,7 @@ private:
 
 		piece_t captured = pos.pieces[square];
 		scores[0] =
-			 Evaluator::piece_value[captured];
+			piece_value[captured];
 
 		/*
 		 * Bitmap of our defenders:
@@ -846,8 +989,8 @@ private:
 			to_move = flip(to_move);
 
 			scores[score_index] =
-				Evaluator::piece_value[last_moved]
-					- scores[score_index-1];
+				piece_value[last_moved]
+				-scores[score_index-1];
 			score_index += 1;
 		}
 
@@ -863,6 +1006,18 @@ private:
         	scores[i-1] = -_max(-scores[i-1], scores[i]);
 
 		return scores[0];
+	}
+
+	bool set_abort(const std::string& args)
+	{
+		_abort_requested = true;
+		return true;
+	}
+
+	bool set_quit (const std::string& args)
+	{
+		_quit_requested  = true;
+		return true;
 	}
 };
 

@@ -68,6 +68,8 @@
 	  ((promote) << 18) |    \
 	  ((to) << 6))
 
+#define MATE_SCORE 1000000
+
 //=====================================================================
 // Externs
 //=====================================================================
@@ -99,6 +101,30 @@ typedef enum
 	NONE
 
 } direction_t;
+
+typedef enum
+{
+	PAWN_VALUE   = 1000,
+	KNIGHT_VALUE = 3250,
+	BISHOP_VALUE = 3250,
+	ROOK_VALUE   = 5000,
+	QUEEN_VALUE  = 9750
+
+} value_t;
+
+/**
+ * A mapping from piece enumeration to its value:
+ */
+const int piece_value[7] = 
+{
+	INVALID      ,
+	PAWN_VALUE   ,
+	ROOK_VALUE   ,
+	KNIGHT_VALUE ,
+	BISHOP_VALUE ,
+	QUEEN_VALUE  ,
+	MATE_SCORE
+};
 
 enum SQUARE
 {
