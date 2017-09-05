@@ -238,6 +238,66 @@ public:
 		else
 			return false;
 
+		if (pos.reset("2n1k3/1P5p/8/1N3pP1/8/2P5/P2r4/4K2R w K - 0 1",
+					  false))
+		{
+			int score = node.see(pos, D6, WHITE);
+			std::cout << "see(D6) = " << score
+				<< std::endl;
+		}
+		else
+			return false;
+
+		if (pos.reset("2n1k3/1P5p/8/1NP2pP1/8/8/P2r4/4K2R w K - 0 1",
+					  false))
+		{
+			int score = node.see(pos, D6, WHITE);
+			std::cout << "see(D6) = " << score
+				<< std::endl;
+		}
+		else
+			return false;
+
+		if (pos.reset("2n1k3/1P5p/8/1NP1PpP1/8/8/P2r4/4K2R w K - 0 1",
+					  false))
+		{
+			int score = node.see(pos, D6, WHITE);
+			std::cout << "see(D6) = " << score
+				<< std::endl;
+		}
+		else
+			return false;
+
+		if (pos.reset("2n1k3/1P5p/8/1NP1PpP1/8/8/P2r4/4K2R w K - 0 1",
+					  false))
+		{
+			int score = node.see(pos, A3, WHITE);
+			std::cout << "see(A3) = " << score
+				<< std::endl;
+		}
+		else
+			return false;
+
+		if (pos.reset("4k3/1P5p/8/1nP1PpP1/8/8/P2r4/4K2R w K - 0 1",
+					  false))
+		{
+			int score = node.see(pos, H2, WHITE);
+			std::cout << "see(H2) = " << score
+				<< std::endl;
+		}
+		else
+			return false;
+
+		if (pos.reset("4k3/1P5p/8/1nP1PpP1/8/8/P2r4/4K2R w K - 0 1",
+					  false))
+		{
+			int score = node.see(pos, H3, WHITE);
+			std::cout << "see(H3) = " << score
+				<< std::endl;
+		}
+		else
+			return false;
+
 		return true;
 	}
 };

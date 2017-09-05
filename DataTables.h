@@ -1330,6 +1330,10 @@ private:
 
 		back_rank[WHITE] = RANK_1;
 		back_rank[BLACK] = RANK_8;
+
+		for (int i = 0; i < 7; i++)
+			for (int j = 0; j < 7; j++)
+				exchange[i][j] = piece_value[i] - piece_value[j];
 	}
 
 	/*
@@ -1538,7 +1542,7 @@ private:
 	uint64 ray_extend[64][64];
 
 	/*
-	 * Describes how two ray segments are connected (along a file,
+	 * Describes how two squares are connected (along a file, a
 	 * diagonal, etc.)
 	 */
 	direction_t directions[64][64];
@@ -1551,6 +1555,12 @@ private:
 	uint64 ranks64[64];
 	uint64 a1h8_64[64];
 	uint64 h1a8_64[64];
+
+	/*
+	 *  Material exchange[piece captured][piece moved]. A positive
+	 *  value indicates material was gained
+	 */
+	int exchange[7][7];
 };
 
 #endif

@@ -117,13 +117,18 @@ typedef enum
  */
 const int piece_value[7] = 
 {
-	INVALID      ,
+	0            ,
 	PAWN_VALUE   ,
 	ROOK_VALUE   ,
 	KNIGHT_VALUE ,
 	BISHOP_VALUE ,
 	QUEEN_VALUE  ,
-	MATE_SCORE
+
+	// Set the king's value to zero. When sorting
+	// captures, this ensures that capturing 
+	// with the king always wins material as long
+	// as it is legal
+	0
 };
 
 enum SQUARE
@@ -179,6 +184,39 @@ namespace Util
 
 		return (one << index1) |
 				createBitboard(std::forward<T2>(indexes)...);
+	}
+
+	/**
+	 ******************************************************************
+	 *
+	 * Convert a piece enumeration to its equivalent character
+	 * representation in Algebraic notation
+	 *
+	 * @param[in] piece The piece to convert
+	 *
+	 * @return The upper case character equivalent
+	 *
+	 ******************************************************************
+	 */
+	char enum2piece(piece_t piece)
+	{
+		switch (piece)
+		{
+		case PAWN:
+			return 'P';
+		case KNIGHT:
+			return 'N';
+		case BISHOP:
+			return 'B';
+		case ROOK:
+			return 'R';
+		case QUEEN:
+			return 'Q';
+		case KING:
+			return 'K';
+		default:
+			return '\0';
+		}
 	}
 
 	/**
@@ -448,7 +486,7 @@ namespace Util
 
 		std::string out(SQUARE_STR[from]);
 		out += SQUARE_STR[to];
-		out += piece2str(promote);
+		out += enum2piece(promote);
 
 		return out;
 	}

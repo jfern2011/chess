@@ -13,6 +13,8 @@ class Node
 
 public:
 
+	static const int NUM_KILLERS = 2;
+
 	/**
 	 * Constructor
 	 *
@@ -25,13 +27,15 @@ public:
 		  _base_R(3),
 		  _depth (1),
 		  _evaluator(movegen),
+		  _failed_high(false),
+		  _failed_low(false),
 		  _input_check_delay(100000),
 		  _interrupt_handler(),
 		  _mate_found(false),
 		  _mate_plies(MAX_PLY),
 		  _movegen(movegen),
 		  _next_input_check(0),
-		  _nmr_scale (6),
+		  _nmr_scale (MAX_PLY),
 		  _node_count(0),
 		  _qnode_count(0),
 		  _quit_requested(false),
@@ -55,6 +59,26 @@ public:
 	bool abort_requested() const
 	{
 		return _abort_requested;
+	}
+
+	/**
+	 * Get a flag indicating that the last search failed high
+	 *
+	 * @return True if the searched failed high
+	 */
+	bool failed_high() const
+	{
+		return _failed_high;
+	}
+
+	/**
+	 * Get a flag indicating that the last search failed low
+	 *
+	 * @return True if the searched failed low
+	 */
+	bool failed_low() const
+	{
+		return _failed_low;
 	}
 
 	/**
@@ -233,6 +257,16 @@ public:
 		_next_input_check = _input_check_delay;
 
 		/*
+		 * Clear the killer moves list as this becomes stale after
+		 * each depth iteration
+		 */
+		for (register int i = 0; i < MAX_PLY; i++)
+		{
+			for (register int j = 0; j < NUM_KILLERS; j++)
+				_killers[i][j] = 0;
+		}
+
+		/*
 		 * Clear the principal variation. Note that PV read-out ends
 		 * when we hit the first null move
 		 */
@@ -343,12 +377,15 @@ private:
 	const int        _base_R;
 	int              _depth;
 	Evaluator        _evaluator;
+	bool             _failed_high;
+	bool             _failed_low;
 
 	/**
 	 * The number of nodes to search before pausing to check for input
 	 */
 	int              _input_check_delay;
 	CommandInterface _interrupt_handler;
+	int              _killers[MAX_PLY][NUM_KILLERS];
 	bool             _mate_found;
 	int              _mate_plies;
 	const MoveGen&   _movegen;
@@ -382,6 +419,11 @@ private:
 		uint32 moves[MAX_MOVES];
 		uint32* end;
 
+		// List of moves we defer searching until after more promising
+		// moves are tried first:
+		uint32 deferred_list[MAX_MOVES];
+		int num_deferred = 0;
+
 		/*
 		 * Check if a search abort was requested. If true, return beta
 		 * so that the calling node produces a cutoff and returns as
@@ -401,95 +443,317 @@ private:
 		 * search limit:
 		 */
 		if (_depth <= depth)
-			return quiesce(pos, depth, alpha, beta);
+			return quiesce( pos, depth, alpha, beta );
 
 		const bool in_check = pos.inCheck(pos.toMove);
+		bool captures = true;
+		int best_move = 0, nMoves = 0;
 
 		if (in_check)
+		{
 			end =
 			   _movegen.generateCheckEvasions(pos, pos.toMove, moves);
-		else
-			end = _movegen.generateLegalMoves(pos, pos.toMove, moves);
+			nMoves = end-moves;
 
-		const int nMoves = end - moves;
-
-		if (nMoves == 0)
-		{
-			//  Indicate this is the end of a variation
-			//  with a null move:
-			if (_save_pv)
-				savePV(depth, 0);
-
-			// Scale the mate score to favor checkmates
-			// in fewer moves:
-			return in_check ?
-					((-MATE_SCORE) * (MAX_PLY-depth)) : 0;
-		}
-		else if (do_null && !in_check)
-		{
-			const int R = _base_R + depth/_nmr_scale;
-
-			/*
-			 * Assume (conservatively) we're in zugzwang if we only
-			 * have pawns left:
-			 */
-			bool zugzwang =
-				(pos.pawns[pos.toMove] | pos.kings[pos.toMove])
-				== pos.occupied[pos.toMove];
-
-			/*
-			 * Null move heuristic. Since we're not in check (and
-			 * not in zugzwang), try passing this turn (e.g. the
-			 * opponent gets two turns in a row). If we can still
-			 * raise alpha enough to get a cutoff, then chances
-			 * are we'll definitely get a cutoff by searching in
-			 * the usual way. Note that we initially reduce by two
-			 * plies, and further reduce for every increase in
-			 * depth by three plies:
-			 */
-			if (do_null && !zugzwang && depth+R < _depth)
+			if (nMoves == 0)
 			{
-				pos.makeMove(0);
-				_node_count++;
+				//  Indicate this is the end of a variation
+				//  with a null move:
+				if (_save_pv)
+					savePV(depth, 0);
 
-				const int score =
-					-_search(pos, depth+R, -beta, -alpha, false );
+				// Scale the mate score to favor checkmates
+				// in fewer moves:
+				return in_check ?
+					((-MATE_SCORE) * (MAX_PLY-depth)) : 0;
+			}
+		}
+		else
+		{
+			end = _movegen.generateCaptures( pos, pos.toMove, moves );
+			nMoves = end-moves;
 
-				pos.unMakeMove(0);
+			if (nMoves == 0)
+			{
+				/*
+				 * No captures are available, let's see if there are
+				 * any non-captures:
+				 */
+				captures = false;
+				end =
+				 _movegen.generateNonCaptures(pos,pos.toMove,moves);
+				 nMoves = end-moves;
 
-				if (beta <= score)
-					return beta;
+				 if (nMoves == 0)
+				 {
+				 	/*
+				 	 * We are not in check but there are no moves left
+				 	 * to make, so it's a draw
+				 	 */
+					if (_save_pv)
+						savePV(depth, 0);
+
+					return 0;
+				 }
+			}
+
+			if (do_null)
+			{
+				const int R = _base_R + depth/_nmr_scale;
+
+				/*
+				 * Assume (conservatively) we're in zugzwang if we only
+				 * have pawns left:
+				 */
+				bool zugzwang =
+					(pos.pawns[pos.toMove] | pos.kings[pos.toMove])
+					== pos.occupied[pos.toMove];
+
+				/*
+				 * Null move heuristic. Since we're not in check (and
+				 * not in zugzwang), try passing this turn (e.g. the
+				 * opponent gets two turns in a row). If we can still
+				 * raise alpha enough to get a cutoff, then chances
+				 * are we'll definitely get a cutoff by searching in
+				 * the usual way. Note that we initially reduce by two
+				 * plies, and further reduce for every increase in
+				 * depth by three plies:
+				 */
+				if (do_null && !zugzwang && depth+R < _depth)
+				{
+					pos.makeMove(0);
+					_node_count++;
+
+					const int score =
+						-_search(pos, depth+R, -beta, -beta+1, false);
+
+					pos.unMakeMove(0);
+
+					if (beta <= score)
+						return beta;
+				}
 			}
 		}
 
-		int best_index = -1;
-
-		for (register int i = 0; i < nMoves; i++)
+		if (in_check || captures)
 		{
-			pos.makeMove(moves[i]);
-			_node_count++;
+			/*
+		 	 *  First, search the captures or, if we are in check,
+		 	 *  the evasions list:
+		 	 */
+			bubbleSort( moves, nMoves );
 
-			const int score =
-				-_search(pos,depth+1,-beta, -alpha, true);
-
-			pos.unMakeMove(moves[i]);
-
-			if (beta <= score)
-				return beta;
-
-			if (score > alpha)
+			for (register int i = 0; i < nMoves; i++)
 			{
-				best_index = i;
-				alpha = score;
+				const int move=moves[i];
+
+				/*
+				 *  If this is a losing capture or a non-capturing
+				 *  evasion, defer searching it
+				 */
+				const piece_t captured =
+						static_cast<piece_t>(CAPTURED(move));
+				const piece_t moved    =
+						static_cast<piece_t>(MOVED   (move));
+
+				if (captured == INVALID)
+				{
+					deferred_list[num_deferred++] = move;
+					continue;
+				}
+
+				if (pos.tables.exchange[captured][moved] < 0)
+				{
+					if (see(pos, TO(move), pos.toMove)   < 0)
+					{
+						deferred_list[num_deferred++] = move;
+						continue;
+					}
+				}
+
+				pos.makeMove(move);
+				_node_count++;
+
+				const int score =
+						-_search( pos,depth+1,-beta,-alpha,true );
+
+				pos.unMakeMove(move);
+
+				if (beta <= score)
+					return beta;
+
+				if (score > alpha)
+				{
+					best_move = move;
+					alpha = score;
+				}
+			}
+		}
+
+		/*
+		 * Next, try killer moves. First we try a couple from this
+		 * ply, and if those don't cause a cutoff, try a couple
+		 * from the previous two plies. If we did not get a cutoff
+		 * still...
+		 */
+		int killers_tried[2*NUM_KILLERS];
+		int nKillers_tried = 0;
+
+		for ( int i = 0; i < NUM_KILLERS; i++)
+		{
+			const int move=_killers[depth][i];
+
+			if ( _movegen.validateMove(pos, move, in_check))
+			{
+				pos.makeMove(move);
+				_node_count++;
+
+				const int score =
+					-_search(pos,depth+1,-beta,-alpha,true);
+
+				pos.unMakeMove(move);
+
+				if (beta <= score)
+					return beta;
+
+				if (score > alpha)
+				{
+					best_move = move;
+					alpha = score;
+				}
+
+				killers_tried[nKillers_tried++]
+					= move;
+			}
+		}
+
+		if (depth >= 2)
+		{
+			for ( int i = 0;  i < NUM_KILLERS; i++ )
+			{
+				const int move=_killers[depth-2][i];
+
+				if ( _movegen.validateMove(pos, move, in_check))
+				{
+					pos.makeMove(move);
+					_node_count++;
+
+					const int score =
+						-_search(pos,depth+1,-beta,-alpha,true);
+
+					pos.unMakeMove(move);
+
+					if (beta <= score)
+						return beta;
+
+					if (score > alpha)
+					{
+						best_move = move;
+						alpha = score;
+					}
+
+					killers_tried[nKillers_tried++]
+						= move;
+				}
+			}
+		}
+
+		/*
+		 * Next, try a couple of counter moves:
+		 */
+
+		/*
+		 * Search remaining captures or non-capture check evasions
+		 */
+		if (num_deferred > 0)
+		{
+			for (register int i = 0; i < num_deferred; i++)
+			{
+				const int move = deferred_list[i];
+
+				pos.makeMove(move);
+				_node_count++;
+
+				const int score =
+						-_search( pos,depth+1,-beta,-alpha,true );
+
+				pos.unMakeMove(move);
+
+				if (beta <= score)
+				{
+					if (CAPTURED(move) != INVALID)
+						insert_killer(depth, move);
+					return beta;
+				}
+
+				if (score > alpha)
+				{
+					best_move = move;
+					alpha = score;
+				}
+			}
+		}
+
+		/*
+		 * Search remaining moves, which include non-captures only
+		 */
+		if (!in_check)
+		{
+			uint32* nonCaptures;
+			if (captures)
+			{
+				/*
+				 * We still need to generate the list of captures:
+				 */
+				nonCaptures = end;
+				end = _movegen.generateNonCaptures(
+							pos,pos.toMove,nonCaptures);
+				nMoves =
+					end-nonCaptures;
+			}
+			else
+			{
+				nonCaptures = moves;
+			}
+
+			for (register int i = 0; i < nMoves; i++)
+			{
+				const int move = nonCaptures[i];
+
+				for (register int j = 0; j < nKillers_tried; j++ )
+				{
+					if (move == killers_tried[j])
+						continue;
+				}
+
+				pos.makeMove(move);
+				_node_count++;
+
+				const int score =
+						-_search( pos,depth+1,-beta,-alpha,true );
+
+				pos.unMakeMove(move);
+
+				if (beta <= score)
+				{
+					insert_killer(depth, move);
+					return beta;
+				}
+
+				if (score > alpha)
+				{
+					best_move = move;
+					alpha = score;
+				}
 			}
 		}
 
 		/*
 		 * Save the principal variation up to this node:
 		 */
-		if (_save_pv && 0 <= best_index)
+		if (_save_pv && best_move > 0)
 		{
-			savePV(depth, moves[best_index]);
+			savePV( depth, best_move );
 		}
 
 		return alpha;
@@ -542,8 +806,8 @@ private:
 	}
 
 	/**
-	 * Compare two captures. This is used by quiesce() to sort its list
-	 * of captures
+	 *  Compare two captures. This is used by quiesce() to sort its list
+	 *  of captures
 	 *
 	 * Captures are compared using the MVV/LVA approach, e.g. PxQ is
 	 * ordered before PxR
@@ -551,7 +815,8 @@ private:
 	 * @param[in] a The first value
 	 * @param[in] b The value to compare the first against
 	 *
-	 * @return True if \a b is less than \a a; returns false otherwise
+	 * @return True if \a b is less than or equal to \a a; returns false
+	 *         otherwise
 	 */
 	inline static bool compare(uint32 a, uint32 b)
 	{
@@ -575,6 +840,19 @@ private:
 
 		return
 			gain_b <= gain_a;
+	}
+
+	/**
+	 * Insert a new killer move into the killers database. This is done
+	 * after each fail-high
+	 *
+	 * @param[in] ply  Insert the killer at this ply
+	 * @param[in] move The killer to insert
+	 */
+	inline void insert_killer(int ply, int move)
+	{
+		Util::xor_swap<int>(_killers[ply][0], _killers[ply][1]);
+		_killers[ply][0] = move;
 	}
 
 	/**
@@ -742,9 +1020,63 @@ private:
 		}
 	}
 
+	/*
+	 * Iterate through a given list of moves, calling _search() on each
+	 * one. This is done here to reduce code redundancy
+	 *
+	 * @param[in] pos     The current position from which to search
+	 * @param[in] moves   The list of moves to search
+	 * @param[in] nMoves  The number of moves in this list
+	 * @param[in] alpha   The current lower bound
+	 * @param[in] beta    The current upper bound
+	 * @param[in] depth   The current search depth
+	 * @param[in] do_null Flag indicating that we're free to try a null
+	 *                    move
+	 * @param[out] best_move The best move
+	 *
+	 * @return The search score
+	 */
+	inline int searchMoves(Position& pos, int* moves, int nMoves,
+						   int alpha, int beta, int depth, int do_null,
+						   int& best_move)
+	{
+		for (register int i = 0; i < nMoves; i++)
+		{
+			const int move = moves[i];
+
+			pos.makeMove(move);
+			_node_count++;
+
+			const int score =
+				-_search(pos, depth+1, -beta, -alpha, do_null);
+
+			pos.unMakeMove(move);
+
+			if (beta <= score)
+				return beta;
+
+			if (score > alpha)
+			{
+				best_move = move;
+				alpha = score;
+			}
+		}
+
+		return alpha;
+	}
+
 	/**
 	 * Static exchange evaluation. This computes the outcome of a sequence
 	 * of captures on \a square
+	 *
+	 * Note: This can also be used to check if it is safe to move to a
+	 * particular square, except for the case of a pawn. For example,
+	 * playing a3 from the following position results in the loss of
+	 * White's pawn (or more, for promotions), but see() thinks it is
+	 * safe. We may decide to fix this at some point, or just stick
+	 * with the caveat:
+	 *
+	 * 4k3/1P5p/8/1nP1PpP1/8/8/P2r4/4K2R w K - 0 1
 	 *
 	 * @param [in] Position The position to evaluate
 	 * @param [in] square   Square on which to perform the static exchange
@@ -1000,7 +1332,7 @@ private:
 		 * propagation of the best score up to the root of
 		 * the tree, i.e. score[0]. This tree looks like a
 		 * binary search tree where at every node we either
-		 * capture or not
+		 * capture or choose not to
 		 */
 		for (int i = score_index-2; i > 0; --i)
         	scores[i-1] = -_max(-scores[i-1], scores[i]);

@@ -307,6 +307,26 @@ public:
 		return true;
 	}
 
+	bool perft4(const std::string& depth)
+	{
+		MoveGen gen(tables);
+
+		std::cout << "Running performance test..."
+			<< std::endl;
+
+		std::clock_t t = std::clock();
+
+		int nodes= gen.perft4(_position, Util::str_to_int32(depth,10));
+
+		t = std::clock() - t;
+
+		std::cout << "nodes=" << nodes << " time="
+			<< ((float)t)/CLOCKS_PER_SEC
+			<< std::endl;
+
+		return true;
+	}
+
 	bool print(const std::string& args) const
 	{
 		char pieces[64];

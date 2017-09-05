@@ -846,7 +846,7 @@ public:
 				{
 					for (int i = 0; i < 64; i++)
 					{
-						if (posn_info[3] == SQUARE_STR[i])
+						if (Util::to_lower(posn_info[3]) == SQUARE_STR[i])
 						{
 							epInfo[ply].target = i; break;
 						}

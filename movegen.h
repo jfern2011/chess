@@ -2398,7 +2398,9 @@ public:
 	 **********************************************************************
 	 *
 	 * Generate non-captures from the given position, returning a pointer
-	 * to the end of the list of moves. 
+	 * to the end of the list of moves.
+	 *
+	 * Note that this generates a set of strictly legal moves
 	 *
 	 * @param[in] pos          The current position
 	 * @param[in] to_move      Who to generate moves for (doesn't have
@@ -2413,76 +2415,127 @@ public:
 	uint32* generateNonCaptures(const Position& pos, int to_move,
 								uint32* moves) const
 	{
-		const uint64 occupied = pos.occupied[0] | pos.occupied[1];
-		const uint64 target = ~occupied;
-
+		const uint64 occupied =
+						  pos.occupied[0] | pos.occupied[1];
+		const uint64 target   = ~occupied;
 		uint32* move = moves;
 
+		const uint64 pinned = getPinnedPieces(to_move, pos);
+
 		/*
-		 * Generate pawn moves (but not promotions)
+		 * Generate pawn advances, not including promotions which
+		 * is done in generateCaptures()
 		 */
 		if (to_move == WHITE)
 		{
 			uint64 advances1 =
-				(pos.pawns[WHITE] << 8) & target & (~RANK_8);
+				(pos.pawns[WHITE] << 8) & (~occupied);
+
+			uint64 promotions = advances1 & RANK_8;
+
+			advances1 ^= promotions;
 
 			uint64 advances2 =
-						((advances1 & RANK_3) << 8) & target;
+					  ((advances1 & RANK_3) << 8) & (~occupied);
 
 			while (advances1)
 			{
-				int to = getMSB64(advances1);
-				*move++ =
-					pack(INVALID, to- 8, PAWN, INVALID, to);
+				const int to = getMSB64(advances1);
+				const int from = to-8;
+
+				if ((tables.set_mask[from] & pinned) &&
+					(tables.directions[from][pos.kingSq[WHITE]] !=
+						ALONG_FILE))
+				{
+					clearBit64(to, advances1);
+					continue;
+				}
+
+				*move++= pack(INVALID, from, PAWN, INVALID, to);
 				clearBit64(to, advances1);
 			}
 
 			while (advances2)
 			{
-				int to = getMSB64(advances2);
-				*move++ =
-					pack(INVALID, to-16, PAWN, INVALID, to);
+				const int to = getMSB64(advances2);
+				const int from = to-16;
+
+				if ((tables.set_mask[from] & pinned) &&
+					(tables.directions[from][pos.kingSq[WHITE]] !=
+						ALONG_FILE))
+				{
+					clearBit64(to, advances2);
+					continue;
+				}
+
+				*move++= pack(INVALID, from, PAWN, INVALID, to);
 				clearBit64(to, advances2);
 			}
 		}
 		else
 		{
 			uint64 advances1 =
-				(pos.pawns[BLACK] >> 8) & target & (~RANK_1);
+				(pos.pawns[BLACK] >> 8) & (~occupied);
+
+			uint64 promotions = advances1 & RANK_1;
+
+			advances1 ^= promotions;
 
 			uint64 advances2 =
-						((advances1 & RANK_6) >> 8) & target;
+					 ((advances1 & RANK_6) >> 8) & (~occupied);
 
 			while (advances1)
 			{
-				int to = getMSB64(advances1);
+				const int to   = getMSB64(advances1);
+				const int from = to+8;
+
+				if ((tables.set_mask[from] & pinned) &&
+					(tables.directions[from][pos.kingSq[BLACK]] !=
+						ALONG_FILE))
+				{
+					clearBit64(to, advances1);
+					continue;
+				}
+
 				*move++ =
-					pack(INVALID, to+ 8, PAWN, INVALID, to);
+						pack(INVALID, from, PAWN, INVALID, to);
 				clearBit64(to, advances1);
 			}
 
 			while (advances2)
 			{
-				int to = getMSB64(advances2);
+				const int to = getMSB64(advances2);
+				const int from = to+16;
+
+				if ((tables.set_mask[from] & pinned) &&
+					(tables.directions[from][pos.kingSq[BLACK]] !=
+						ALONG_FILE))
+				{
+					clearBit64(to, advances2);
+					continue;
+				}
+
 				*move++ =
-					pack(INVALID, to+16, PAWN, INVALID, to);
+						pack(INVALID, from, PAWN, INVALID, to);
 				clearBit64(to, advances2);
 			}
 		}
 
 		/*
-		 * Generate knight non-captures
+		 * Generate knight moves
 		 */
-		uint64 pieces = pos.knights[to_move];
+		uint64 pieces = pos.knights[to_move] & (~pinned);
 		while (pieces)
 		{
-			int from = getMSB64(pieces);
+			const int from = getMSB64(pieces);
 				uint64 moves = tables.knight_attacks[from] & target;
 
 			while (moves)
 			{
-				int to = getMSB64(moves);
-				*move++ =  pack(INVALID, from, KNIGHT, INVALID, to);
+				const int to = getMSB64(moves);
+
+				*move++ =
+					pack(pos.pieces[to], from, KNIGHT, INVALID, to);
 				clearBit64(to, moves);
 			}
 
@@ -2490,65 +2543,49 @@ public:
 		}
 
 		/*
-		 * Generate rook non-captures
+		 * Generate rook moves
 		 */
 		pieces = pos.rooks[to_move];
 		while (pieces)
 		{
-			int from = getMSB64(pieces);
-			uint64 moves =
-					pos.attacksFromRook(from, occupied) & target;
+			const int from = getMSB64(pieces);
 
-			while (moves)
+			/*
+			 * For a speed boost: If this rook is pinned along a diagonal
+			 * then we cannot move it, so don't bother generating an
+			 * "attacks from" bitboard. If pinned along a rank then clear
+			 * the "along file" bits of its "attacks from" bitboard so
+			 * that we'll iterate through a smaller set of "from" squares
+			 * (similar idea if pinned along a file):
+			 */
+			uint64 restrictAttacks = ~0;
+
+			if (tables.set_mask[from] & pinned)
 			{
-				int to = getMSB64(moves);
-				*move++ = pack(INVALID, from, ROOK, INVALID, to);
-				clearBit64(to, moves);
+				switch (tables.directions[from][pos.kingSq[to_move]])
+				{
+				case ALONG_A1H8:
+				case ALONG_H1A8:
+					clearBit64(from, pieces);
+					continue;
+				case ALONG_RANK:
+					restrictAttacks = tables.ranks64[from];
+					break;
+				default:
+					restrictAttacks = tables.files64[from];
+				}
 			}
 
-			clearBit64(from, pieces);
-		}
-
-		/*
-		 * Generate bishop non-captures
-		 */
-		pieces =
-			pos.bishops[to_move];
-		while (pieces)
-		{
-			int from = getMSB64(pieces);
 			uint64 moves =
-					pos.attacksFromBishop(from, occupied) & target;
+				pos.attacksFromRook(from, occupied)
+								& target & restrictAttacks;
 
 			while (moves)
 			{
-				int to = getMSB64(moves);
-
-				*move++ = pack(INVALID, from, BISHOP, INVALID, to);
-
-				clearBit64(to, moves);
-			}
-
-			clearBit64(from, pieces);
-		}
-
-		/*
-		 * Generate queen non-captures:
-		 */
-		pieces =
-			pos.queens[to_move];
-		while (pieces)
-		{
-			int from = getMSB64(pieces);
-			uint64 attacksFrom =
-				  pos.attacksFromQueen(from, occupied) & target;
-
-			uint64 moves = attacksFrom & target;
-			while (moves)
-			{
-				int to = getMSB64(moves);
+				const int to = getMSB64(moves);
 				*move++ =
-						pack(INVALID, from, QUEEN, INVALID, to);
+						pack(pos.pieces[to],from, ROOK, INVALID, to);
+
 				clearBit64(to, moves);
 			}
 
@@ -2556,18 +2593,127 @@ public:
 		}
 
 		/*
-		 * Generate king non-captures
+		 * Generate bishop moves
+		 */
+		pieces = pos.bishops[to_move];
+		while (pieces)
+		{
+			const int from = getMSB64(pieces);
+
+			/*
+			 * For a speed boost: If the bishop is pinned along a file or
+			 * rank then we cannot move it, so don't bother generating an
+			 * "attacks from" bitboard. If it's pinned along an a1-h8
+			 * diagonal then clear the "h1-a8" bits of its "attacks from"
+			 * bitboard so that we'll iterate through a smaller set of
+			 * "from" squares (we apply a similar idea if pinned along an
+			 * h1-a8 diagonal):
+			 */
+			uint64 restrictAttacks = ~0;
+
+			if (tables.set_mask[from] & pinned)
+			{
+				switch (tables.directions[from][pos.kingSq[to_move]])
+				{
+				case ALONG_FILE:
+				case ALONG_RANK:
+					clearBit64(from, pieces);
+					continue;
+				case ALONG_A1H8:
+					restrictAttacks = tables.a1h8_64[from];
+					break;
+				default:
+					restrictAttacks = tables.h1a8_64[from];
+				}
+			}
+
+			uint64 moves =
+				pos.attacksFromBishop(from, occupied)
+								& target & restrictAttacks;
+
+			while (moves)
+			{
+				const int to = getMSB64(moves);
+				*move++ =
+					pack( pos.pieces[to],from, BISHOP, INVALID, to );
+
+				clearBit64(to, moves);
+			}
+
+			clearBit64(from, pieces);
+		}
+
+		/*
+		 * Generate queen moves
+		 */
+		pieces = pos.queens[to_move];
+		while (pieces)
+		{
+			const int from = getMSB64(pieces);
+
+			/*
+			 * For a speed boost - If this queen is pinned, then we'll
+			 * only iterate through "from" squares in the direction of
+			 * the pin:
+			 */
+			uint64 restrictAttacks = ~0;
+
+			if (tables.set_mask[from] & pinned)
+			{
+				switch (tables.directions[from][pos.kingSq[to_move]])
+				{
+				case ALONG_A1H8:
+					restrictAttacks = tables.a1h8_64[from];
+					break;
+				case ALONG_H1A8:
+					restrictAttacks = tables.h1a8_64[from];
+					break;
+				case ALONG_RANK:
+					restrictAttacks = tables.ranks64[from];
+					break;
+				default:
+					restrictAttacks = tables.files64[from];
+				}
+			}
+
+			uint64 moves =
+				pos.attacksFromQueen(from, occupied)
+										& target & restrictAttacks;
+
+			while (moves)
+			{
+				const int to = getMSB64(moves);
+				*move++ =
+					pack(pos.pieces[to],from, QUEEN, INVALID, to );
+					
+				clearBit64(to, moves);
+			}
+
+			clearBit64(from, pieces);
+		}
+
+		/*
+		 * Generate king non-castle moves
 		 */
 		pieces = pos.kings[to_move];
 		while (pieces)
 		{
-			int from = getMSB64(pieces);
-				uint64 moves = tables.king_attacks[from] & target;
+			const int from = getMSB64(pieces);
+				uint64 moves =  tables.king_attacks[ from ] & target;
 
 			while (moves)
 			{
-				int to = getMSB64(moves);
-				*move++ =  pack(INVALID, from, KING, INVALID, to);
+				const int to = getMSB64(moves);
+
+				if (pos.underAttack(to, flip(to_move)))
+				{
+					clearBit64(to, moves);
+					continue;
+				}
+
+				*move++ =
+						pack(pos.pieces[to],from, KING, INVALID, to);
+
 				clearBit64(to, moves);
 			}
 
@@ -2582,8 +2728,8 @@ public:
 			if (pos.castleRights[pos.ply][WHITE] & castle_K)
 			{
 				if (!(occupied & (tables.set_mask[G1] | tables.set_mask[F1]))
-					&& !pos.inCheck(WHITE)
-					&& !pos.underAttack(F1, BLACK))
+					&& !pos.underAttack(F1, BLACK)
+					&& !pos.underAttack(G1, BLACK))
 						*move++ = pack(INVALID, E1, KING, INVALID, G1);
 			}
 
@@ -2591,8 +2737,8 @@ public:
 			{
 				if (!(occupied & (tables.set_mask[C1] |
 								  tables.set_mask[D1] | tables.set_mask[B1]))
-					&& !pos.inCheck(WHITE)
-					&& !pos.underAttack(D1, BLACK))
+					&& !pos.underAttack(D1, BLACK)
+					&& !pos.underAttack(C1, BLACK))
 						*move++ = pack(INVALID, E1, KING, INVALID, C1);
 			}
 		}
@@ -2601,8 +2747,8 @@ public:
 			if (pos.castleRights[pos.ply][BLACK] & castle_K)
 			{
 				if (!(occupied & (tables.set_mask[G8] | tables.set_mask[F8]))
-					&& !pos.inCheck(BLACK)
-					&& !pos.underAttack(F8, WHITE))
+					&& !pos.underAttack(F8, WHITE)
+					&& !pos.underAttack(G8, WHITE))
 						*move++ = pack(INVALID, E8, KING, INVALID, G8);
 			}
 
@@ -2610,8 +2756,8 @@ public:
 			{
 				if (!(occupied & (tables.set_mask[C8] |
 								  tables.set_mask[D8] | tables.set_mask[B8]))
-					&& !pos.inCheck(BLACK)
-					&& !pos.underAttack(D8, WHITE))
+					&& !pos.underAttack(D8, WHITE)
+					&& !pos.underAttack(C8, WHITE))
 						*move++ = pack(INVALID, E8, KING, INVALID, C8);
 			}
 		}
@@ -2776,6 +2922,53 @@ public:
 	}
 
 	/**
+	 * Performance test. Walks the move generation tree of strictly
+	 * legal moves, counting up the number of resulting positions
+	 *
+	 * @param[in] pos   The position to run the test on
+	 * @param[in] depth The maximum depth to traverse
+	 *
+	 * @return The number of possible positions up to and including
+	 *         \a depth
+	 */
+	int perft4(Position& pos, int depth)
+	{
+		uint32 moves[MAX_MOVES];
+
+		/*
+		 * Here we are testing both generateCaptures() and
+		 * generateNonCaptures(), which together should
+		 * generate a complete set of strictly legal moves
+		 */
+		uint32* end;
+
+		if (pos.inCheck(pos.toMove))
+			end =
+			   generateCheckEvasions(pos, pos.toMove, moves );
+		else
+			end = generateNonCaptures(pos, pos.toMove,
+					generateCaptures(pos, pos.toMove, moves));
+
+		const int nMoves = end - moves;
+
+		if (depth <= 1)
+			return nMoves;
+
+		int nodes = 0;
+
+		for (register int i = 0; i < nMoves; i++)
+		{
+			pos.makeMove(moves[i]);
+
+			nodes += perft4(pos, depth-1);
+
+			pos.unMakeMove(moves[i]);
+		}
+
+		return nodes;
+	}
+
+	/**
 	 *  This is the perft() routine used to test the move generator
 	 *  that generates checks
 	 *
@@ -2876,6 +3069,227 @@ public:
 		}
 
 		return nodes;
+	}
+
+	/**
+	 * Verify that a proposed move can be played legally from the given
+	 * position
+	 *
+	 * @param[in] pos   The position
+	 * @param[in] move  The move
+	 * @param[in] check True if the side to move is in check
+	 *
+	 * @return True if the move can be played
+	 */
+	bool validateMove(const Position& pos, int move, bool check) const
+	{
+		const int captured = CAPTURED(move);
+		const int from     = FROM(move);
+		const int moved    = MOVED(move);
+		const int promote  = PROMOTE(move);
+		const int to       = TO(move);
+
+		const int to_move = pos.toMove;
+		const int ply = pos.ply;
+
+		/*
+		 * Verify that (1) the moved piece exists on the "from" square,
+		 * (2) we occupy the "from" square, and (3) we do not occupy
+		 * the "to" square:
+		 */
+		if (!(pos.pieces[from] == moved &&
+			(pos.occupied[to_move] & tables.set_mask[from]) &&
+				(pos.occupied[to_move] & tables.set_mask[to]) == 0))
+			return false;
+
+		if (check)
+		{
+			/*
+			 * Verify we are not trying to castle while in check:
+			 */
+			if (moved == KING && _abs(from-to) == 2)
+				return false;
+
+			const uint64 attacks_king =
+				pos.attacksTo(pos.kingSq[to_move],flip(to_move));
+
+			if (attacks_king & (attacks_king-1))
+			{
+				/*
+			 	 * If we're in a double check, and we didn't move
+			 	 * the king, this move is illegal:
+			 	 */
+				if (moved != KING) return false;
+			}
+			else if (moved != KING)
+			{
+				/*
+				 * If this move neither captures nor blocks the checking
+				 * piece, it is illegal:
+				 */
+				const int attacker = getMSB64( attacks_king );
+				if (to != attacker && !(tables.set_mask[to]
+					& tables.ray_segment[attacker][pos.kingSq[to_move]]))
+				{
+					return false;
+				}
+			}
+		}
+
+		/*
+		 * If this piece is pinned, make sure we're only moving it
+		 * along the pin direction
+		 */
+		direction_t pin_dir = NONE;
+		if (moved != KING)
+		{
+			pin_dir  =  isPinned( pos, from, to_move );
+			if (pin_dir != NONE &&
+				pin_dir != tables.directions[from][to])
+				return false;
+		}
+
+		const uint64 occupied =
+			pos.occupied[0] | pos.occupied[1];
+
+		bool en_passant = false;
+		switch (moved)
+		{
+		case PAWN:
+			if (captured && pos.pieces[to] == INVALID)
+			{
+				en_passant = true;
+				/*
+				 * Check if en passant is playable from the position:
+				 */
+				if (!(pos.epInfo[ply].target == to &&
+					(pos.epInfo[ply].src[0] == from ||
+						pos.epInfo[ply].src[1] == from)))
+					return false;
+
+				/*
+				 * The capturing pawn isn't pinned but we still want
+				 * want to prevent against this sort of thing:
+				 *
+				 * 4k3/8/8/2KPp1r1/8/8/8/8 w - e6 0 2
+				 *
+				 * In this case white still can't capture en passant
+				 * because of the rook!
+				 */
+				const uint64 temp =
+								occupied  ^ tables.set_mask[from];
+
+				const int vic =
+					to_move == WHITE ? (to-8) : (to+8);
+
+				const uint64 rank_attacks =
+					pos.attacksFromRook(vic,temp) & tables.ranks64[from];
+
+				const uint64 rooksQueens =
+					pos.rooks[flip(to_move)] | pos.queens[flip(to_move)];
+
+				if ((rank_attacks & pos.kings[to_move]) &&
+						(rank_attacks & rooksQueens))
+					return false;
+			}
+			else if (_abs(from-to) == 8)
+			{
+				/*
+				 * If this is a pawn advance, make sure the "to" square
+				 * is vacant:
+				 */
+				if (pos.pieces[to] != INVALID)
+					return false;
+			}
+			else if (_abs(from-to) == 16)
+			{
+				/*
+				 * If this is a double pawn advance, make sure both
+				 * squares are vacant:
+				 */
+				const int step1 = to_move == WHITE ? (to+8) : (to-8);
+				if (pos.pieces[to] != INVALID ||
+						pos.pieces[step1] != INVALID)
+					return false;
+			}
+			break;
+		case BISHOP:
+		case ROOK:
+		case QUEEN:
+			/*
+			 * If this is a sliding piece, make sure there are no
+			 * occupied squares between "from" and "to":
+			 */
+			if (tables.ray_segment[from][to] & occupied)
+				return false;
+			break;
+		case KING:
+			/*
+			 * Note that if this is a castling move, we don't need
+			 * to check for a rook on its home square as that's
+			 * already taken care of in the castleRights[ply] data
+			 */
+			if (_abs(from-to) == 2 && !check)
+			{
+				if (FILE(to) == FILE(G1) &&
+					(pos.castleRights[ply][to_move] & castle_K))
+				{
+					if (to_move == WHITE &&
+						((occupied & (tables.set_mask[G1] | tables.set_mask[F1]))
+						|| pos.underAttack(F1, BLACK)
+						|| pos.underAttack(G1, BLACK)))
+					{
+						return false;
+					}
+					else if (to_move == BLACK &&
+						((occupied & (tables.set_mask[G8] | tables.set_mask[F8]))
+						|| pos.underAttack(F8, WHITE)
+						|| pos.underAttack(G8, WHITE)))
+					{
+						return false;
+					}
+				}
+				else if (FILE(to) == FILE(C1) &&
+					(pos.castleRights[ply][to_move] & castle_Q))
+				{
+					if (to_move == WHITE &&
+						((occupied & (tables.set_mask[B1] |
+									  tables.set_mask[C1] | tables.set_mask[D1]))
+						|| pos.underAttack(C1, BLACK)
+						|| pos.underAttack(D1, BLACK)))
+					{
+						return false;
+					}
+					if (to_move == BLACK &&
+						((occupied & (tables.set_mask[B8] |
+									  tables.set_mask[C8] | tables.set_mask[D8]))
+						|| pos.underAttack(C8, BLACK)
+						|| pos.underAttack(D8, BLACK)))
+					{
+						return false;
+					}
+				}
+			}
+
+			/*
+			 * Make sure we aren't trying to move the king
+			 * into check:
+			 */
+			else if ( pos.underAttack(to, flip(to_move)) )
+				return false;
+		}
+
+		/*
+		 * If we captured a piece, verify it is on "to" (unless
+		 * we played en passant). Note that it isn't worth
+		 * checking that the captured piece belongs to the
+		 * opponent since we already know we don't have a piece
+		 * on the "to" square
+		 */
+		if (!en_passant && pos.pieces[to] != captured)
+			return false;
+
+		return true;
 	}
 
 private:
@@ -3084,6 +3498,63 @@ private:
 		}
 
 		return pinned;
+	}
+
+	/**
+	 **********************************************************************
+	 *
+	 * Determine whether a piece on a particular square would be pinned
+	 * on the king
+	 *
+	 * @param[in] pos     The current Position
+	 * @param[in] square  Square of interest
+	 * @param[in] to_move The player who'd have his piece pinned
+	 *
+	 * @return The direction of the pin
+	 *
+	 **********************************************************************
+	 */
+	inline direction_t
+			isPinned(const Position& pos, int square, int to_move) const
+	{
+		const uint64 occupied =
+			pos.occupied[0] | pos.occupied[1];
+
+		if (pos.attacksFromQueen(square, occupied) & pos.kings[to_move])
+		{
+			switch(tables.directions[square][pos.kingSq[to_move]])
+			{
+			case ALONG_RANK:
+				if (pos.attacksFromRook( square, occupied)
+						& tables.ranks64[square]
+						& (pos.rooks[flip(to_move)] |
+							pos.queens[flip(to_move)]))
+					return ALONG_RANK;
+				break;
+			case ALONG_FILE:
+				if (pos.attacksFromRook( square, occupied)
+						& tables.files64[square]
+						& (pos.rooks[flip(to_move)] |
+							pos.queens[flip(to_move)]))
+					return ALONG_FILE;
+				break;
+			case ALONG_A1H8:
+				if (pos.attacksFromBishop(square, occupied)
+					  & tables.a1h8_64[square]
+					  & (pos.bishops[flip(to_move)] |
+					  		 pos.queens[flip(to_move)]))
+					return ALONG_A1H8;
+				break;
+			case ALONG_H1A8:
+				if (pos.attacksFromBishop(square, occupied)
+					  & tables.h1a8_64[square]
+					  & (pos.bishops[flip(to_move)] |
+					  		 pos.queens[flip(to_move)]))
+					return ALONG_H1A8;
+			}
+		}
+
+		return NONE;
 	}
 
 	/**
