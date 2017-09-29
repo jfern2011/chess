@@ -3207,7 +3207,7 @@ public:
 				 * If this is a double pawn advance, make sure both
 				 * squares are vacant:
 				 */
-				const int step1 = to_move == WHITE ? (to+8) : (to-8);
+				const int step1 = to_move == WHITE ? (to-8) : (to+8);
 				if (pos.pieces[to] != INVALID ||
 						pos.pieces[step1] != INVALID)
 					return false;

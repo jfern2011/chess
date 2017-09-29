@@ -6,14 +6,13 @@
 #include <cstring>
 
 #include "eval.h"
+#include "HashTable.h"
 
 class Node
 {
 	friend class SEE_UT;
 
 public:
-
-	static const int NUM_KILLERS = 2;
 
 	/**
 	 * Constructor
@@ -25,14 +24,19 @@ public:
 	Node(const MoveGen& movegen, bool save_pv=true)
 		: _abort_requested(false),
 		  _base_R(3),
+		  _counters_enabled(false),
 		  _depth (1),
 		  _evaluator(movegen),
 		  _failed_high(false),
 		  _failed_low(false),
+		  _hash_enabled(true),
+		  _hash_table(),
 		  _input_check_delay(100000),
 		  _interrupt_handler(),
+		  _killers_enabled(true),
 		  _mate_found(false),
 		  _mate_plies(MAX_PLY),
+		  _move_pairs_enabled(true),
 		  _movegen(movegen),
 		  _next_input_check(0),
 		  _nmr_scale (MAX_PLY),
@@ -40,6 +44,7 @@ public:
 		  _qnode_count(0),
 		  _quit_requested(false),
 		   _save_pv(save_pv),
+		  _temp_entry(),
 		  _time_used(0)
 	{
 	}
@@ -185,7 +190,10 @@ public:
 		std::cout << "Time used (s) = " << _time_used  << "\n";
 		std::cout << "Nodes         = " << _node_count << "\n";
 		std::cout << "Quiesce       = " << _qnode_count
-				  	<< " (" << q_frac * 100 << "%)" << std::endl;
+				  	<< " (" << q_frac * 100 << "%)" << "\n";
+		std::cout << "Hash table    = " << _hash_table.in_use()
+			<< "/" << HashTable::TABLE_SIZE
+			<< std::endl;
 	}
 
 	/**
@@ -203,16 +211,25 @@ public:
 	 *
 	 * Search for the best move from the given position
 	 *
-	 * @param[in]  pos       The current position
+	 * @param[in]  _pos      The current position
 	 * @param[out] best_move The best move to play
 	 *
 	 * @return The score of the position
 	 *
 	 ******************************************************************
 	 */
-	int search(Position& pos, int& best_move)
+	int search(const Position& _pos, int& best_move)
 	{
 		uint32 moves[MAX_MOVES];
+
+		/*
+		 * Make a copy of the current (real) position. This is done so
+		 * that we can reset the internal ply counter and keep it in
+		 * sync with the current search depth. This also helps to keep
+		 * the ply from exceeding MAX_PLY
+		 */
+		Position pos(_pos);
+		AbortIfNot(pos.reset(_pos.get_fen(),0),false);
 
 		const int sign = pos.toMove == WHITE ? 1 : -1;
 
@@ -260,10 +277,28 @@ public:
 		 * Clear the killer moves list as this becomes stale after
 		 * each depth iteration
 		 */
-		for (register int i = 0; i < MAX_PLY; i++)
+		for (register int i = 0; i < 2; i++)
 		{
-			for (register int j = 0; j < NUM_KILLERS; j++)
-				_killers[i][j] = 0;
+			for (register int j = 0; j < MAX_PLY; j++)
+				_killers[j][i] = 0;
+		}
+
+		/*
+		 * Clear the list of counter moves (or do we need to?):
+		 */
+		for (register int i = 0; i < 2; i++)
+		{
+			for (register int j = 0; j < 4096; j++)
+			{
+				_counter_moves[0][i][j] = 0;
+				_counter_moves[1][i][j] = 0;
+			}
+		}
+
+		for (register int i = 0; i < 2; i++)
+		{
+			for (register int j = 0; j < 4096; j++)
+				_move_pairs[i][j] = 0;
 		}
 
 		/*
@@ -280,6 +315,8 @@ public:
 			_node_count++;
 
 			_abort_requested = _quit_requested = false;
+
+			_currentMove[0] = moves[i];
 
 			if (pos.toMove == flip(WHITE))
 			{
@@ -375,19 +412,27 @@ private:
 	 * move heuristic
 	 */
 	const int        _base_R;
+	int              _counter_moves[2][2][4096];
+	bool             _counters_enabled;
+	int              _currentMove[MAX_PLY];
 	int              _depth;
 	Evaluator        _evaluator;
 	bool             _failed_high;
 	bool             _failed_low;
+	bool             _hash_enabled;
+	HashTable        _hash_table;
 
 	/**
 	 * The number of nodes to search before pausing to check for input
 	 */
 	int              _input_check_delay;
 	CommandInterface _interrupt_handler;
-	int              _killers[MAX_PLY][NUM_KILLERS];
+	int              _killers[MAX_PLY][2];
+	bool             _killers_enabled;
 	bool             _mate_found;
 	int              _mate_plies;
+	int              _move_pairs[2][4096];
+	bool             _move_pairs_enabled;
 	const MoveGen&   _movegen;
 	int              _next_input_check;
 	const int        _nmr_scale;
@@ -397,6 +442,11 @@ private:
 	bool             _quit_requested;
 	bool             _save_pv;
 	double           _time_used;
+
+	/*
+	 * The hash entry corresponding to our position
+	 */
+	HashEntry        _temp_entry;
 
 	/**
 	 * Routine that implements the negamax alpha-beta search algorithm
@@ -419,11 +469,6 @@ private:
 		uint32 moves[MAX_MOVES];
 		uint32* end;
 
-		// List of moves we defer searching until after more promising
-		// moves are tried first:
-		uint32 deferred_list[MAX_MOVES];
-		int num_deferred = 0;
-
 		/*
 		 * Check if a search abort was requested. If true, return beta
 		 * so that the calling node produces a cutoff and returns as
@@ -445,9 +490,30 @@ private:
 		if (_depth <= depth)
 			return quiesce( pos, depth, alpha, beta );
 
+		// A record of moves we searched first in out move ordering
+		// scheme:
+		uint32 black_list[MAX_MOVES];
+		int n_listed = 0;
+
 		const bool in_check = pos.inCheck(pos.toMove);
 		bool captures = true;
 		int best_move = 0, nMoves = 0;
+
+		/*
+		 * First, probe the hash table to see if we can immediately
+		 * return the result of this position
+		 */
+		uint32 hash_move = 0;
+
+		if (_hash_enabled)
+		{
+			int node_type = 0;
+			int score = lookup_hash_move(pos, in_check, alpha, beta,
+									depth, node_type, do_null);
+
+			if (node_type != 0)
+				return score;
+		}
 
 		if (in_check)
 		{
@@ -524,6 +590,8 @@ private:
 					pos.makeMove(0);
 					_node_count++;
 
+					_currentMove[depth] = 0;
+
 					const int score =
 						-_search(pos, depth+R, -beta, -beta+1, false);
 
@@ -543,159 +611,252 @@ private:
 		 	 */
 			bubbleSort( moves, nMoves );
 
-			for (register int i = 0; i < nMoves; i++)
+			const int score =
+				searchMoves(pos,moves,nMoves,alpha,beta, depth,
+							true,best_move);
+
+			if (beta <= score)
 			{
-				const int move=moves[i];
-
-				/*
-				 *  If this is a losing capture or a non-capturing
-				 *  evasion, defer searching it
-				 */
-				const piece_t captured =
-						static_cast<piece_t>(CAPTURED(move));
-				const piece_t moved    =
-						static_cast<piece_t>(MOVED   (move));
-
-				if (captured == INVALID)
+				if (_hash_enabled)
 				{
-					deferred_list[num_deferred++] = move;
-					continue;
+					insert_hash_entry(pos,depth,false,best_move,
+						FAIL_HI, beta);
 				}
 
-				if (pos.tables.exchange[captured][moved] < 0)
+				return beta;
+			}
+
+			/*
+			 * If we're in check then we've searched all possible
+			 * evasions, so we're done
+			 */
+			if (in_check)
+			{
+				if (_save_pv && best_move > 0)
+					savePV( depth,best_move );
+
+				if (_hash_enabled)
 				{
-					if (see(pos, TO(move), pos.toMove)   < 0)
-					{
-						deferred_list[num_deferred++] = move;
-						continue;
-					}
+					if (best_move > 0)
+						insert_hash_entry(pos,
+									  depth,
+									  false,
+									  best_move,
+									  PV_NODE,
+									  alpha);
+					else
+						insert_hash_entry(pos,
+									  depth,
+									  false,
+									  0,
+									  FAIL_LO,
+									  alpha);
 				}
 
-				pos.makeMove(move);
-				_node_count++;
-
-				const int score =
-						-_search( pos,depth+1,-beta,-alpha,true );
-
-				pos.unMakeMove(move);
-
-				if (beta <= score)
-					return beta;
-
-				if (score > alpha)
-				{
-					best_move = move;
-					alpha = score;
-				}
+				return alpha;
 			}
 		}
 
 		/*
-		 * Next, try killer moves. First we try a couple from this
-		 * ply, and if those don't cause a cutoff, try a couple
-		 * from the previous two plies. If we did not get a cutoff
-		 * still...
+		 * Next apply the killer move heuristic by trying two killers
+		 * at the current ply
 		 */
-		int killers_tried[2*NUM_KILLERS];
-		int nKillers_tried = 0;
-
-		for ( int i = 0; i < NUM_KILLERS; i++)
+		if (_killers_enabled && depth > 1)
 		{
-			const int move=_killers[depth][i];
+			int move = _killers[depth][0];
 
-			if ( _movegen.validateMove(pos, move, in_check))
+			if (!in_list(move, black_list, n_listed)
+				 && _movegen.validateMove(pos, move, in_check))
 			{
-				pos.makeMove(move);
-				_node_count++;
-
 				const int score =
-					-_search(pos,depth+1,-beta,-alpha,true);
-
-				pos.unMakeMove(move);
+					searchMove(pos, alpha, beta, depth,
+						best_move, move, black_list, n_listed);
 
 				if (beta <= score)
-					return beta;
-
-				if (score > alpha)
 				{
-					best_move = move;
-					alpha = score;
-				}
-
-				killers_tried[nKillers_tried++]
-					= move;
-			}
-		}
-
-		if (depth >= 2)
-		{
-			for ( int i = 0;  i < NUM_KILLERS; i++ )
-			{
-				const int move=_killers[depth-2][i];
-
-				if ( _movegen.validateMove(pos, move, in_check))
-				{
-					pos.makeMove(move);
-					_node_count++;
-
-					const int score =
-						-_search(pos,depth+1,-beta,-alpha,true);
-
-					pos.unMakeMove(move);
-
-					if (beta <= score)
-						return beta;
-
-					if (score > alpha)
+					if (_hash_enabled)
 					{
-						best_move = move;
-						alpha = score;
+						insert_hash_entry(pos, depth, false, move,
+							FAIL_HI, beta);
 					}
 
-					killers_tried[nKillers_tried++]
-						= move;
+					return beta;
 				}
 			}
-		}
 
-		/*
-		 * Next, try a couple of counter moves:
-		 */
+			move     = _killers[depth][1];
 
-		/*
-		 * Search remaining captures or non-capture check evasions
-		 */
-		if (num_deferred > 0)
-		{
-			for (register int i = 0; i < num_deferred; i++)
+			if (!in_list(move, black_list, n_listed)
+				 && _movegen.validateMove(pos, move, in_check))
 			{
-				const int move = deferred_list[i];
-
-				pos.makeMove(move);
-				_node_count++;
-
 				const int score =
-						-_search( pos,depth+1,-beta,-alpha,true );
-
-				pos.unMakeMove(move);
+					searchMove(pos, alpha, beta, depth,
+						best_move, move, black_list, n_listed);
 
 				if (beta <= score)
 				{
-					if (CAPTURED(move) != INVALID)
-						insert_killer(depth, move);
-					return beta;
-				}
+					if (_hash_enabled)
+					{
+						insert_hash_entry(pos, depth, false, move,
+							FAIL_HI, beta);
+					}
 
-				if (score > alpha)
-				{
-					best_move = move;
-					alpha = score;
+					return beta;
 				}
 			}
 		}
 
 		/*
-		 * Search remaining moves, which include non-captures only
+		 * Next apply the killer move heuristic by trying two killers
+		 * 2 plies back
+		 */
+		if (_killers_enabled && depth > 2)
+		{
+			int move=_killers[depth-2][0];
+
+			if (!in_list(move, black_list, n_listed)
+				 && _movegen.validateMove(pos, move, in_check))
+			{
+				const int score =
+					searchMove(pos, alpha, beta, depth,
+						best_move, move, black_list, n_listed);
+
+				if (beta <= score)
+				{
+					if (_hash_enabled)
+					{
+						insert_hash_entry(pos, depth, false, move,
+							FAIL_HI, beta);
+					}
+
+					return beta;
+				}
+			}
+
+			move    =_killers[depth-2][1];
+
+			if (!in_list(move, black_list, n_listed)
+				 && _movegen.validateMove(pos, move, in_check))
+			{
+				const int score =
+					searchMove(pos, alpha, beta, depth,
+						best_move, move, black_list, n_listed);
+
+				if (beta <= score)
+				{
+					if (_hash_enabled)
+					{
+						insert_hash_entry(pos, depth, false, move,
+							FAIL_HI, beta);
+					}
+
+					return beta;
+				}
+			}
+		}
+
+		/*
+		 * Next try a couple of counter-moves:
+		 */
+		if (_counters_enabled && depth > 0)
+		{
+			const int prev_move =  _currentMove[depth-1] & 0xFFF;
+			int move            = 
+						_counter_moves[pos.toMove][0][prev_move];
+
+			if (!in_list(move, black_list, n_listed) &&
+				_movegen.validateMove(pos, move, in_check))
+			{
+				const int score =
+					searchMove(pos, alpha, beta, depth,
+						  best_move, move, black_list, n_listed);
+
+				if (beta <= score)
+				{
+					if (_hash_enabled)
+					{
+						insert_hash_entry(pos, depth, false,
+							move, FAIL_HI, beta);
+					}
+
+					return beta;
+				}
+			}
+
+			move      = _counter_moves[pos.toMove][1][prev_move];
+
+			if (!in_list(move, black_list, n_listed) &&
+				_movegen.validateMove(pos, move, in_check))
+			{
+				const int score =
+					searchMove(pos, alpha, beta, depth,
+						  best_move, move, black_list, n_listed);
+
+				if (beta <= score)
+				{
+					if (_hash_enabled)
+					{
+						insert_hash_entry(pos, depth, false,
+							move, FAIL_HI, beta);
+					}
+
+					return beta;
+				}
+			}
+		}
+
+		/*
+		 * Finally, try move pairs (an idea borrowed from Crafty):
+		 */
+		if (_move_pairs_enabled && depth > 1)
+		{
+			const int prev_move =  _currentMove[depth-2] & 0xFFF;
+			int move            = 
+								 _move_pairs[0][prev_move];
+
+			if (!in_list(move, black_list, n_listed) &&
+				_movegen.validateMove(pos, move, in_check))
+			{
+				const int score =
+					searchMove(pos, alpha, beta, depth,
+						  best_move, move, black_list, n_listed);
+
+				if (beta <= score)
+				{
+					if (_hash_enabled)
+					{
+						insert_hash_entry(pos, depth, false, move,
+							FAIL_HI, beta);
+					}
+
+					return beta;
+				}
+			}
+
+			move = _move_pairs[1][prev_move];
+
+			if (!in_list(move, black_list, n_listed)
+				  && _movegen.validateMove(pos, move, in_check))
+			{
+				const int score =
+					searchMove(pos, alpha, beta, depth,
+						  best_move, move, black_list, n_listed);
+
+				if (beta <= score)
+				{
+					if (_hash_enabled)
+					{
+						insert_hash_entry(pos, depth, false, move,
+							FAIL_HI, beta);
+					}
+
+					return beta;
+				}
+			}
+		}
+
+		/*
+		 *  Search remaining moves, which include non-captures only
 		 */
 		if (!in_check)
 		{
@@ -703,7 +864,7 @@ private:
 			if (captures)
 			{
 				/*
-				 * We still need to generate the list of captures:
+				 * We still need to generate the non-captures list:
 				 */
 				nonCaptures = end;
 				end = _movegen.generateNonCaptures(
@@ -716,35 +877,22 @@ private:
 				nonCaptures = moves;
 			}
 
-			for (register int i = 0; i < nMoves; i++)
+			purge_moves(black_list, n_listed,
+							nonCaptures, nMoves);
+
+			const int score =
+				searchMoves(pos,nonCaptures,nMoves,alpha,beta,depth,
+							true,best_move);
+
+			if (beta <= score)
 			{
-				const int move = nonCaptures[i];
-
-				for (register int j = 0; j < nKillers_tried; j++ )
+				if (_hash_enabled)
 				{
-					if (move == killers_tried[j])
-						continue;
+					insert_hash_entry( pos, depth, false, best_move,
+							FAIL_HI, beta );
 				}
 
-				pos.makeMove(move);
-				_node_count++;
-
-				const int score =
-						-_search( pos,depth+1,-beta,-alpha,true );
-
-				pos.unMakeMove(move);
-
-				if (beta <= score)
-				{
-					insert_killer(depth, move);
-					return beta;
-				}
-
-				if (score > alpha)
-				{
-					best_move = move;
-					alpha = score;
-				}
+				return beta;
 			}
 		}
 
@@ -754,6 +902,24 @@ private:
 		if (_save_pv && best_move > 0)
 		{
 			savePV( depth, best_move );
+		}
+
+		if (_hash_enabled)
+		{
+			if (best_move > 0)
+				insert_hash_entry(pos,
+							  depth,
+							  false,
+							  best_move,
+							  PV_NODE,
+							  alpha);
+			else
+				insert_hash_entry(pos,
+							  depth,
+							  false,
+							  0,
+							  FAIL_LO,
+							  alpha);
 		}
 
 		return alpha;
@@ -843,8 +1009,66 @@ private:
 	}
 
 	/**
-	 * Insert a new killer move into the killers database. This is done
-	 * after each fail-high
+	 * Check if the specified move already exists in a given move list
+	 *
+	 * @param[in] move     The move to search for
+	 * @param[in] moves    The list of moves
+	 * @param[in] n_listed Total number of moves
+	 *
+	 * @return True if the list includes this move
+	 */
+	inline bool in_list(int move, uint32* moves, int n_listed) const
+	{
+		for (register int i = 0; i < n_listed; i++)
+		{
+			if (move == moves[i]) return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Insert a new counter-move into the counter-move database. This is
+	 * done after each fail-high
+	 *
+	 * @param[in] key  The key for this entry (a 12-bit integer encoding
+	 *                 from/to squares)
+	 * @param[in] move The counter-move to insert
+	 * @param[in] side The side who played
+	 */
+	inline void insert_counter(int key, int move, int side)
+	{
+		Util::xor_swap<int>(_counter_moves[side][0][key],
+							_counter_moves[side][1][key]);
+		_counter_moves[side][0][key] = move;
+	}
+
+	/**
+	 * Decide on whether to insert a new entry into the hash table,
+	 * overwriting the old entry if needed
+	 */
+	inline void insert_hash_entry(Position& pos, int depth,
+					  bool do_null, int move, int type, int score)
+	{
+		const uint64 key = pos.get_hash_key();
+
+		_temp_entry.age       = 0;
+		_temp_entry.depth     = _depth -depth;
+		_temp_entry.do_null   = do_null;
+		_temp_entry.hits      = 0;
+		_temp_entry.key       = key;
+		_temp_entry.move      = move;
+		_temp_entry.node_type = type;
+		_temp_entry.score     = score;
+
+		HashEntries& entries=_hash_table[key];
+
+		entries.insert(_temp_entry);
+	}
+
+	/**
+	 *  Insert a new killer move into the killers database. This is done
+	 *  after each fail-high
 	 *
 	 * @param[in] ply  Insert the killer at this ply
 	 * @param[in] move The killer to insert
@@ -853,6 +1077,121 @@ private:
 	{
 		Util::xor_swap<int>(_killers[ply][0], _killers[ply][1]);
 		_killers[ply][0] = move;
+	}
+
+	/**
+	 * Insert a new move in the move pairs database. This is a move that
+	 * failed high and is paired with the move played two plies ago,
+	 * i.e. it is a continuation
+	 *
+	 * Borrowed this idea from Crafty :)
+	 *
+	 * @param[in] key  The key for this entry (a 12-bit integer encoding
+	 *                 from/to squares)
+	 * @param[in] move The counter-move to insert
+	 */
+	inline void insert_move_pair(int key, int move)
+	{
+		Util::xor_swap<int>(_move_pairs[0][key],
+							_move_pairs[1][key]);
+		_move_pairs[0][key] = move;
+	}
+
+	/**
+	 * Lookup a move from the hash table
+	 *
+	 * @param[in]  pos      The current position
+	 * @param[in]  in_check Flag indicating the side on move is in check
+	 * @param[in]  alpha    Current lower bound
+	 * @param[in]  beta     Current upper bound
+	 * @param[in]  depth    The current search depth
+	 * @param[out] type     The node type of the hash move looked up
+	 * @param[out] do_null   False if the null move heuristic previously
+	 *                      failed
+	 *
+	 * @return The hashed score of this position, or zero if no move was
+	 *         found (type = 0 in this case)
+	 */
+	inline int lookup_hash_move(const Position& pos, bool in_check,
+								int alpha, int beta, int depth, int& type,
+								bool& do_null)
+	{
+		const uint64 key = pos.get_hash_key();
+
+		HashEntries& entries = _hash_table[ key ];
+
+		for (register int i = 0; i < HashEntries::N_ENTRIES; i++)
+		{
+			HashEntry& entry = entries[i];
+
+			if (entry.key == key && entry.node_type != 0
+				&& entry.depth >= (_depth-depth)
+				&& _movegen.validateMove(pos,entry.move,in_check))
+			{
+				//do_null = entry.do_null;
+				type  = entry.node_type;
+				switch (entry.node_type)
+				{
+				case FAIL_HI:
+					if (beta  <= entry.score)
+					{
+						entry.hits++;
+						return beta;
+					}
+					break;
+				case FAIL_LO:
+					if (entry.score <= alpha)
+					{
+						entry.hits++;
+						return alpha;
+					}
+					break;
+				case PV_NODE:
+					// TODO: Save principal variation
+					entry.hits++;
+					return entry.score;
+				}
+			}
+		}
+
+			type = 0;
+		return 0;
+	}
+
+	/**
+	 * Given a list of generated moves, remove those that are listed in
+	 * an exclusion list
+	 *
+	 * @param[in]     exclude    The list of moves to exclude
+	 * @param[in]     n_exclude  Number of exclusions
+	 * @param[in,out] moves      The list of generated moves
+	 * @param[in]     nMoves     Number of moves
+	 *
+	 */
+	inline void purge_moves(const uint32* exclude, int n_exclude,
+							uint32* moves, int nMoves) const
+	{
+		if (n_exclude == 0)
+			return;
+
+		for (register int i = 0, n_found = 0; i < nMoves; i++)
+		{
+			for (int j = 0; j < n_exclude; j++)
+			{
+				if (moves[i] == exclude[j])
+				{
+						moves[i] = 0; n_found++;
+					break;
+				}
+			}
+
+			/*
+			 * Iterate through the move list until the current excluded
+			 * moves are found:
+			 */
+			if (n_found == n_exclude)
+				return;
+		}
 	}
 
 	/**
@@ -1020,32 +1359,83 @@ private:
 		}
 	}
 
+	/**
+	 * Search the given move and add it to a black list, i.e. a list of
+	 * moves not to try again
+	 *
+	 * @param[in]     pos        The current position
+	 * @param[in,out] alpha      Lower bound
+	 * @param[in]     beta       Upper bound
+	 * @param[in]     depth      Current search depth
+	 * @param[in,out] best_move  The new best move
+	 * @param[in]     move       The move to search
+	 * @param[out]    black_list The black list
+	 * @param[out]    n_listed   Size of the black list
+	 *
+	 * @return The score returned after searching
+	 */
+	inline int searchMove(Position& pos, int& alpha, int beta, int depth,
+						int& best_move, int move, uint32* black_list,
+						  int& n_listed)
+	{
+		pos.makeMove(move);
+		_node_count++;
+
+		_currentMove[depth] = move;
+
+		const int score = -_search(pos, depth+1,-beta, -alpha, true);
+
+		pos.unMakeMove(move);
+
+		black_list[n_listed++]
+			= move;
+
+		if (beta <= score)
+			return beta;
+
+		if (score > alpha)
+		{
+			best_move = move;
+			alpha = score;
+		}
+
+		return alpha;
+	}
+
 	/*
 	 * Iterate through a given list of moves, calling _search() on each
 	 * one. This is done here to reduce code redundancy
 	 *
-	 * @param[in] pos     The current position from which to search
-	 * @param[in] moves   The list of moves to search
-	 * @param[in] nMoves  The number of moves in this list
-	 * @param[in] alpha   The current lower bound
-	 * @param[in] beta    The current upper bound
-	 * @param[in] depth   The current search depth
-	 * @param[in] do_null Flag indicating that we're free to try a null
-	 *                    move
+	 * @param[in]    pos     The current position from which to search
+	 * @param[in]    moves   The list of moves to search
+	 * @param[in]    nMoves  The number of moves in this list
+	 * @param[in,out] alpha  The current lower bound
+	 * @param[in]    beta    The current upper bound
+	 * @param[in]    depth   The current search depth
+	 * @param[in]    do_null Flag that indicates that we're free to try
+	 *                       a null move
 	 * @param[out] best_move The best move
 	 *
 	 * @return The search score
 	 */
-	inline int searchMoves(Position& pos, int* moves, int nMoves,
-						   int alpha, int beta, int depth, int do_null,
-						   int& best_move)
+	inline int searchMoves(Position& pos, uint32* moves, int nMoves,
+						   int& alpha, int beta,
+							 int depth, int do_null, int& best_move)
 	{
 		for (register int i = 0; i < nMoves; i++)
 		{
 			const int move = moves[i];
 
+			/*
+			 * We'll get some null moves if the move list was previously
+			 * purged:
+			 */
+			if (move == 0) continue;
+
 			pos.makeMove(move);
 			_node_count++;
+
+			_currentMove[depth] = move;
 
 			const int score =
 				-_search(pos, depth+1, -beta, -alpha, do_null);
@@ -1053,7 +1443,29 @@ private:
 			pos.unMakeMove(move);
 
 			if (beta <= score)
+			{
+				if (CAPTURED(move) == INVALID)
+				{
+					int prev_key = _currentMove[depth-1];
+					if (_counters_enabled)
+						insert_counter(prev_key & 0xFFF,move,pos.toMove);
+
+					if (_killers_enabled)
+						insert_killer(depth, move);
+
+					if (_move_pairs_enabled)
+					{
+						prev_key = _currentMove[depth-2];
+
+						insert_move_pair(prev_key &0xFFF,
+							move);
+					}
+				}
+
+				// Save for the hash table:
+				best_move = move;
 				return beta;
+			}
 
 			if (score > alpha)
 			{

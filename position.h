@@ -163,6 +163,81 @@ public:
 	}
 
 	/**
+	 * Generates a new hash signature for this position. This should
+	 * be called for every reset()
+	 */
+	void generate_hash()
+	{
+		/*
+		 * Generate pseudo-random numbers used for updating the hash
+		 * keys
+		 */
+
+		std::srand(101687);
+
+		for (int i = 0; i < 2; i++)
+		{
+			hash_input.castle_rights[0][i] = Util::rand64();
+			hash_input.castle_rights[1][i] = Util::rand64();
+		}
+
+		for (int i = 0; i < 8; i++)
+			hash_input.en_passant[i]       = Util::rand64();
+
+		for (int i = 0; i < 6; i++)
+		{
+			for (int j = 0; j < 64; j++)
+			{
+				hash_input.piece[0][i][j]  = Util::rand64();
+
+				hash_input.piece[1][i][j]  = Util::rand64();
+			}
+		}
+
+		hash_input.to_move = Util::rand64();
+
+		/*
+		 * Compute the hash signature for this position
+		 */
+
+		uint64& signature  = save_hash[ply];
+		signature = 0;
+
+		if (epInfo[ply].target != BAD_SQUARE)
+			signature ^=
+				hash_input.en_passant[FILE(epInfo[ply].target)];
+
+		if (toMove)
+			signature ^= hash_input.to_move;
+
+		if (castleRights[ply][WHITE] & castle_K)
+			signature ^= hash_input.castle_rights[WHITE][0];
+		if (castleRights[ply][WHITE] & castle_Q)
+			signature ^= hash_input.castle_rights[WHITE][1];
+		if (castleRights[ply][BLACK] & castle_K)
+			signature ^= hash_input.castle_rights[BLACK][0];
+		if (castleRights[ply][BLACK] & castle_Q)
+			signature ^= hash_input.castle_rights[BLACK][1];
+
+		for (int i = 0; i < 64; i++)
+		{
+				const int piece_index =  pieces[i]-1;
+			if (piece_index < 0) continue;
+
+			if (occupied[BLACK] & tables.set_mask[i])
+			{
+				signature ^=
+						hash_input.piece[BLACK][piece_index][i];
+			}
+			else
+			{
+				signature ^=
+						hash_input.piece[WHITE][piece_index][i];
+			}
+		}
+	}
+
+	/**
 	 * Get the FEN representation of this position
 	 *
 	 * @return The FEN position, or an empty string if this position was
@@ -266,6 +341,16 @@ public:
 	}
 
 	/**
+	 * Get the 64-bit Zobrist key associated with this position
+	 *
+	 * @return The hash key
+	 */
+	inline uint64 get_hash_key() const
+	{
+		return save_hash[ply];
+	}
+
+	/**
 	 * Get the player whose turn it is to move
 	 *
 	 * @return  WHITE or BLACK, or ~0 on error
@@ -327,6 +412,12 @@ public:
 		const int to       = TO(move);
 
 		/*
+		 * Initialize the hash signature:
+		 */
+		uint64& hash = save_hash[ply+1];
+		hash = save_hash[ply];
+
+		/*
 		 * Before doing anything, carry over the castling
 		 * rights to the next ply. Later, when we
 		 * unMakeMove(), we'll have a record of what this
@@ -336,6 +427,17 @@ public:
 				castleRights[ply][0];
 		castleRights[ply+1][1] = 
 				castleRights[ply][1];
+
+		/*
+		 * If we had en passant in the previous ply, remove it
+		 * from the hash key:
+		 */
+		if (epInfo[ply].target != BAD_SQUARE)
+		{
+			hash ^=
+			  hash_input.en_passant[FILE(epInfo[ply].target)];
+		}
+
 		ply++;
 
 		uint64 src; // En passant origin square(s)
@@ -350,6 +452,18 @@ public:
 		 * valid:
 		 */
 		epInfo[ply].clear();
+
+		/*
+		 * Update the hash entry to reflect the new location of
+		 * the piece moved:
+		 */
+		hash ^=
+			hash_input.piece[toMove][moved-1][from];
+
+		if (promote == INVALID)
+			hash ^= hash_input.piece[toMove][moved - 1][ to ];
+		else
+			hash ^= hash_input.piece[toMove][promote-1][ to ];
 
 		switch (moved)
 		{
@@ -391,6 +505,9 @@ public:
 						epInfo[ply].src[0] = to+1;
 					if (src & (tables.set_mask[to-1]))
 						epInfo[ply].src[1] = to-1;
+
+					hash ^=
+			  			hash_input.en_passant[FILE(epInfo[ply].target)];
 				}
 
 				break;
@@ -409,14 +526,24 @@ public:
 					switch (FILE(from))
 					{
 						/*
-						 * Reduce castling rights since we moved this
-						 * rook:
+						 * Reduce castling rights since we moved
+						 * this rook:
 						 */
 						case 0:
-							castleRights[ply][toMove] &= castle_Q;
+							castleRights[ply][toMove]
+								&= castle_Q;
+
+							if (castleRights[ply-1][toMove] & castle_K)
+								hash ^=
+								   hash_input.castle_rights[toMove][0];
 						break;
 						case 7:
-							castleRights[ply][toMove] &= castle_K;
+							castleRights[ply][toMove]
+								&= castle_K;
+
+							if (castleRights[ply-1][toMove] & castle_Q)
+								hash ^=
+								   hash_input.castle_rights[toMove][1];
 					}
 				}
 
@@ -435,6 +562,16 @@ public:
 				kingSq[toMove] = to;
 
 				/*
+				 * Remove castling rights from the hash signature:
+				 */
+				if (castleRights[ply-1][toMove] & castle_K)
+					hash ^=
+						hash_input.castle_rights[toMove][0];
+				if (castleRights[ply-1][toMove] & castle_Q)
+					hash ^=
+						hash_input.castle_rights[toMove][1];
+
+				/*
 				 * Check if this was a castle move and update the
 				 * rook bits accordingly:
 				 */
@@ -444,6 +581,11 @@ public:
 					{
 						if (to == G1)
 						{
+							hash ^=
+								hash_input.piece[WHITE][ROOK-1][H1];
+							hash ^=
+								hash_input.piece[WHITE][ROOK-1][F1];
+
 							pieces[H1] = INVALID;
 							pieces[F1] = ROOK;
 
@@ -453,6 +595,11 @@ public:
 						}
 						else // Queenside castle
 						{
+							hash ^=
+								hash_input.piece[WHITE][ROOK-1][A1];
+							hash ^=
+								hash_input.piece[WHITE][ROOK-1][D1];
+
 							pieces[A1] = INVALID;
 							pieces[D1] = ROOK;
 
@@ -465,6 +612,11 @@ public:
 					{
 						if (to == G8)
 						{
+							hash ^=
+								hash_input.piece[BLACK][ROOK-1][H8];
+							hash ^=
+								hash_input.piece[BLACK][ROOK-1][F8];
+
 							pieces[H8] = INVALID;
 							pieces[F8] = ROOK;
 
@@ -474,6 +626,11 @@ public:
 						}
 						else // Queenside castle
 						{
+							hash ^=
+								hash_input.piece[BLACK][ROOK-1][A8];
+							hash ^=
+								hash_input.piece[BLACK][ROOK-1][D8];
+
 							pieces[A8] = INVALID;
 							pieces[D8] = ROOK;
 
@@ -493,12 +650,27 @@ public:
 
 		if (captured != INVALID)
 		{
+			if (captured != PAWN)
+				hash ^=
+					hash_input.piece[flip(toMove)][captured - 1][to];
+
 			switch (captured)
 			{
 				case PAWN:
 					if (occupied[flip(toMove)] & tables.set_mask[to])
+					{
 						pawns[flip(toMove)] &=
 							tables.clear_mask[to];
+
+						/*
+						 * XOR out the captured pawn from the "to" square,
+						 * otherwise this was an en passant capture in
+						 * which case we need to remove the pawn directly
+						 * behind us
+						 */
+						hash ^=
+						  hash_input.piece[flip(toMove)][PAWN-1][to];
+					}
 					else
 					{
 						// This was an en passant capture:
@@ -510,6 +682,9 @@ public:
 								&= tables.clear_mask[to-8];
 							pawns[BLACK]
 								&= tables.clear_mask[to-8];
+
+							hash ^=
+						  		hash_input.piece[BLACK][PAWN-1][to-8];
 						}
 						else
 						{
@@ -519,6 +694,9 @@ public:
 								&= tables.clear_mask[to+8];
 							pawns[WHITE]
 								&= tables.clear_mask[to+8];
+
+							hash ^=
+						  		hash_input.piece[WHITE][PAWN-1][to+8];
 						}
 					}
 
@@ -543,6 +721,8 @@ public:
 						(tables.back_rank[flip(toMove)] &
 										tables.set_mask[to]))
 					{
+						const int x_side = flip(toMove);
+
 						/*
 						 * Remove castling rights for the rook that
 						 * was captured:
@@ -551,9 +731,26 @@ public:
 						{
 							case 0:
 								castleRights[ply][flip(toMove)] &= castle_Q;
+
+
+								/*
+								 * Update the opponent's castle rights Zobrist
+								 * key:
+								 */
+								if (castleRights[ply-1][x_side] & castle_K)
+									hash ^=
+										hash_input.castle_rights[x_side][0];
 							break;
 							case 7:
 								castleRights[ply][flip(toMove)] &= castle_K;
+
+								/*
+								 * Update the opponent's castle rights Zobrist
+								 * key:
+								 */
+								if (castleRights[ply-1][x_side] & castle_Q)
+									hash ^=
+										hash_input.castle_rights[x_side][1];
 						}
 					}
 
@@ -572,6 +769,8 @@ public:
 			fullMove += 1;
 
 		toMove = flip(toMove);
+
+			hash ^= hash_input.to_move;
 		return true;
 	}
 
@@ -822,6 +1021,11 @@ public:
 		halfMove = 0;
 		fullMove = 1;
 
+		/*
+		 * Reset the ply count, which removes all database-driven history
+		 */
+		ply = 0;
+
 		switch (posn_info.size())
 		{
 			default:
@@ -955,6 +1159,11 @@ public:
 			Util::bitCount(bishops[BLACK]) * BISHOP_VALUE + 
 			Util::bitCount(rooks[BLACK])   * ROOK_VALUE   +
 			Util::bitCount(queens[BLACK])  * QUEEN_VALUE;
+
+		/*
+		 * Generate a hash signature for this position
+		 */
+		generate_hash();
 
 		is_init = true;
 			return is_init;
@@ -1430,7 +1639,8 @@ public:
 	}
 
 	/**
-	 * Compare this Position against another, byte-wise
+	 * Compare this Position against another, byte-wise (except for
+	 * hash data)
 	 *
 	 * @param[in] rhs The Position to compare against
 	 *
@@ -1473,9 +1683,13 @@ public:
 		{
 			for (int i = 0; i < 64; i++)
 			{
-				if (pieces[i] !=
-					rhs.pieces[i]) return false;
+				if (pieces[i] != rhs.pieces[i]) return false;
 			}
+
+			/*
+			 * Assume the hash signatures match if everything
+			 * else matches
+			 */
 		}
 
 		return temp;
@@ -1605,6 +1819,8 @@ private:
 
 			castleRights[i][0] = 0;
 			castleRights[i][1] = 0;
+
+			save_hash[i] = 0;
 		}
 
 		material[BLACK] = 0;
@@ -1614,8 +1830,14 @@ private:
 		fullMove = -1;
 		toMove = 0;
 		ply    = 0;
+
+			hash_input.clear();
 	}
 
+	/*
+	 * Structure containing en passant information for
+	 * this position
+	 */
 	typedef struct
 	{
 		int32 target;
@@ -1628,12 +1850,58 @@ private:
 
 	} EnPassant;
 
+	/*
+	 * Structure that contains 64-bit integers used
+	 * to create a hash signature
+	 */
+	typedef struct
+	{
+		uint64 castle_rights[2][2];
+		uint64 en_passant[8];
+		uint64 piece[2][6][64];
+		uint64 to_move;
+
+		/*
+		 * Clear all entries
+		 */
+		void clear()
+		{
+			for (int i = 0; i < 2; i++)
+			{
+				castle_rights[WHITE][i] = 0;
+				castle_rights[BLACK][i] = 0;
+			}
+
+			for (int i = 0; i < 8; i++)
+				en_passant[i] = 0;
+
+			for (int i = 0; i < 6; i++)
+			{
+				for (int j = 0; j < 64; j++)
+				{
+					piece[0][i][j] = 0;
+					piece[1][i][j] = 0;
+				}
+			}
+
+			to_move = 0;
+		}
+
+	} HashInput;
+
+
+	/*
+	 * Note: Limiting data structures to 512 ply means we can only
+	 *       support up to 256 moves
+	 */
+#define DB_LIMIT (MAX_MOVES * 2)
 
 	uint64    bishops[2];
-	char      castleRights[MAX_PLY][2];
-	EnPassant epInfo[MAX_PLY];
+	char      castleRights[DB_LIMIT][2];
+	EnPassant epInfo[DB_LIMIT];
 	int32     fullMove;
 	int32     halfMove;
+	HashInput hash_input;
 	bool      is_init;
 	uint64    kings[2];
 	int32     kingSq[2];
@@ -1646,6 +1914,7 @@ private:
 	uint64    queens[2];
 	uint64    rooks[2];
 	EnPassant _saveEP;
+	uint64    save_hash[DB_LIMIT];
 
 	const DataTables& tables;
 

@@ -23,7 +23,7 @@
 #define RANK_7 (RANK_1 << 48)
 #define RANK_8 (RANK_1 << 56)
 
-#define MAX_MOVES 128
+#define MAX_MOVES 256
 #define MAX_PLY   64
 
 #define RANK(a) ((a) >> 3)
@@ -91,6 +91,16 @@ typedef enum
 	QUEEN   = 5,
 	KING    = 6
 } piece_t;
+
+enum
+{
+	PAWN_INDEX   = 0,
+	KNIGHT_INDEX = 1,
+	BISHOP_INDEX = 2,
+	ROOK_INDEX   = 3,
+	QUEEN_INDEX  = 4,
+	KING_INDEX   = 5
+};
 
 typedef enum
 {
