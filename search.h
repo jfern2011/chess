@@ -26,14 +26,16 @@ public:
 		  _base_R(3),
 		  _counters_enabled(false),
 		  _depth (1),
+		  _doing_pv(false),
 		  _evaluator(movegen),
 		  _failed_high(false),
 		  _failed_low(false),
 		  _hash_enabled(true),
 		  _hash_table(),
+		  _history_enabled(true),
 		  _input_check_delay(100000),
 		  _interrupt_handler(),
-		  _killers_enabled(true),
+		  _killers_enabled(false),
 		  _mate_found(false),
 		  _mate_plies(MAX_PLY),
 		  _move_pairs_enabled(true),
@@ -43,6 +45,7 @@ public:
 		  _node_count(0),
 		  _qnode_count(0),
 		  _quit_requested(false),
+		  _reps(0),
 		   _save_pv(save_pv),
 		  _temp_entry(),
 		  _time_used(0)
@@ -193,6 +196,8 @@ public:
 				  	<< " (" << q_frac * 100 << "%)" << "\n";
 		std::cout << "Hash table    = " << _hash_table.in_use()
 			<< "/" << HashTable::TABLE_SIZE
+			<< "\n";
+		std::cout << "Repetitions   = " << _reps
 			<< std::endl;
 	}
 
@@ -263,7 +268,7 @@ public:
 
 		int score = (-sign) * init_score;
 		best_move = 0;
-		_node_count = _qnode_count = 0;
+		_node_count = _qnode_count = _reps = 0;
 
 		/*
 		 * Once we hit _input_check_delay nodes, we'll pause to check
@@ -299,6 +304,19 @@ public:
 		{
 			for (register int j = 0; j < 4096; j++)
 				_move_pairs[i][j] = 0;
+		}
+
+		/*
+		 * Clear the history moves. Note that these must start off as
+		 * zeros
+		 */
+		for (register int i = 0; i < 64; i++)
+		{
+			for (register int j = 0; j < 64; j++)
+			{
+				_histories[0][i][j] = 0;
+				_histories[1][i][j] = 0;
+			}
 		}
 
 		/*
@@ -421,6 +439,8 @@ private:
 	bool             _failed_low;
 	bool             _hash_enabled;
 	HashTable        _hash_table;
+	bool             _history_enabled;
+	int              _histories[2][64][64];
 
 	/**
 	 * The number of nodes to search before pausing to check for input
@@ -440,6 +460,7 @@ private:
 	int              _pv[MAX_PLY][MAX_PLY];
 	uint32           _qnode_count;
 	bool             _quit_requested;
+	int              _reps;
 	bool             _save_pv;
 	double           _time_used;
 
@@ -481,6 +502,18 @@ private:
 		{
 			_interrupt_handler.poll();
 				_next_input_check = _node_count + _input_check_delay;
+		}
+
+		/*
+		 * If this position is repeated, assume it's a draw:
+		 */
+		if (is_repeat(pos, depth))
+		{
+			_reps++;
+
+			if (0 < beta && _save_pv)
+				savePV(depth, 0);
+			return 0;
 		}
 
 		/*
@@ -880,16 +913,25 @@ private:
 			purge_moves(black_list, n_listed,
 							nonCaptures, nMoves);
 
-			const int score =
-				searchMoves(pos,nonCaptures,nMoves,alpha,beta,depth,
-							true,best_move);
+			int score;
+
+			if (_history_enabled)
+			{
+				score = search_history(pos,nonCaptures, nMoves, alpha,
+						 		beta, depth, best_move);
+			}
+			else
+			{
+				score = searchMoves(pos,nonCaptures,nMoves,alpha,beta,
+								depth, true, best_move);
+			}
 
 			if (beta <= score)
 			{
 				if (_hash_enabled)
 				{
-					insert_hash_entry( pos, depth, false, best_move,
-							FAIL_HI, beta );
+					insert_hash_entry( pos, depth, false,
+						best_move, FAIL_HI, beta );
 				}
 
 				return beta;
@@ -1095,6 +1137,30 @@ private:
 		Util::xor_swap<int>(_move_pairs[0][key],
 							_move_pairs[1][key]);
 		_move_pairs[0][key] = move;
+	}
+
+	/**
+	 * Check for repetitions. This is done by comparing Zobrist keys,
+	 * with the first comparison being done with the position 4
+	 * plies back, since this is the minimum requires plies for a
+	 * repetition to occur. From there we proceed by decrementing by
+	 * two plies at a time until we hit the root (i.e. 2 unmakes)
+	 * in order to catch longer repeat sequences
+	 */
+	inline bool is_repeat(const Position& pos, int depth) const
+	{
+		if (depth > 3)
+		{
+			const uint64 key = pos.get_hash_key();
+
+			for (register int ply = depth-4; ply >= 0; ply -= 2)
+			{
+				if (key == pos.get_hash_key(ply))
+					return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -1359,6 +1425,130 @@ private:
 		}
 	}
 
+	/*
+	 * Intended for searching the set of quiet moves that are not
+	 * killers, counter-moves, or move-pairs
+	 *
+	 * @param[in]     pos       The current position
+	 * @param[in,out] moves     The list of move to search
+	 * @param[in]     nMoves    Size of \a moves
+	 * @param[in,out] alpha     The current lower bound
+	 * @param[in]     beta      The current upper bound
+	 * @param[in]     depth     The current search depth
+	 * @param[out]    best_move The best move if alpha was raised
+	 * @param[in]     do_null   If true, try a null move
+	 *
+	 * @return The score of this position
+	 */
+	inline int search_history(Position& pos, uint32* moves, int nMoves,
+							  int& alpha, int beta, int depth,
+							  int& best_move, bool do_null = true)
+	{
+		const int to_move = pos.toMove;
+
+		while (true)
+		{
+			int best_val = MIN_INT32;
+			int best_id  = -1;
+
+			/*
+			 * 1. Select the move with the highest history score:
+			 */
+			for (register int i = 0; i < nMoves; i++)
+			{
+				if (moves[i] == 0)
+					continue;
+
+				const int from = FROM(moves[i]);
+				const int to   = TO  (moves[i]);
+
+				const int hscore =
+						_histories[to_move][from][to];
+
+				if (hscore > best_val || best_id < 0 )
+				{
+					best_val = hscore;
+					best_id  = i;
+				}
+			}
+
+			/*
+			 * 2. If no best move was found, exit
+			 */
+			if (best_id == -1)
+				break;
+
+			/*
+			 * 3. Otherwise, search this move and mark it null
+			 *    to avoid re-searching it
+			 */
+			const int move = moves[best_id];
+
+			pos.makeMove(move);
+			_node_count++;
+
+			_currentMove[depth] = move;
+
+			const int score =
+				-_search(pos,depth+1,-beta,-alpha, do_null);
+
+			pos.unMakeMove(move);
+
+			moves[best_id] = 0;
+
+			if (beta <= score)
+			{
+				/*
+				 * Save this move in the list of counters, killers,
+				 * pairs, and histories:
+				 */
+				if (CAPTURED(move) == INVALID)
+				{
+					if (_counters_enabled  &&  depth > 0)
+					{
+						int prev_key =
+							_currentMove[depth-1];
+
+						insert_counter(prev_key & 0xFFF,
+							move, to_move);
+					}
+
+					if (_killers_enabled)
+						insert_killer(depth, move);
+
+					if (_move_pairs_enabled && depth > 1)
+					{
+						int prev_key =
+							_currentMove[depth-2];
+
+						insert_move_pair(prev_key &0xFFF,
+							move);
+					}
+
+					if (_history_enabled)
+					{
+						const int draft = (_depth - depth);
+									
+						_histories[to_move][FROM(move)][TO(move)]
+							+= draft * draft;
+					}
+				}
+
+				// Save for the hash table:
+				best_move = move;
+				return beta;
+			}
+
+			if (score > alpha)
+			{
+				best_move = move;
+				alpha = score;
+			}
+		}
+
+		return alpha;
+	}
+
 	/**
 	 * Search the given move and add it to a black list, i.e. a list of
 	 * moves not to try again
@@ -1446,19 +1636,32 @@ private:
 			{
 				if (CAPTURED(move) == INVALID)
 				{
-					int prev_key = _currentMove[depth-1];
-					if (_counters_enabled)
+					if (_counters_enabled  &&  depth > 0)
+					{
+						int prev_key =
+							_currentMove[depth-1];
+
 						insert_counter(prev_key & 0xFFF,move,pos.toMove);
+					}
 
 					if (_killers_enabled)
 						insert_killer(depth, move);
 
-					if (_move_pairs_enabled)
+					if (_move_pairs_enabled && depth > 1)
 					{
-						prev_key = _currentMove[depth-2];
+						int prev_key =
+							_currentMove[depth-2];
 
 						insert_move_pair(prev_key &0xFFF,
 							move);
+					}
+
+					if (_history_enabled)
+					{
+						const int draft = (_depth - depth);
+									
+						_histories[pos.toMove ][ FROM(move) ][ TO(move) ]
+							+= draft * draft;
 					}
 				}
 

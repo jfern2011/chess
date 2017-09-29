@@ -351,6 +351,18 @@ public:
 	}
 
 	/**
+	 * Get the 64-bit Zobrist key associated with this position
+	 *
+	 * @param[in] _ply Get the key at this ply
+	 *
+	 * @return The hash key
+	 */
+	inline uint64 get_hash_key(int _ply) const
+	{
+		return save_hash[_ply];
+	}
+
+	/**
 	 * Get the player whose turn it is to move
 	 *
 	 * @return  WHITE or BLACK, or ~0 on error
@@ -669,7 +681,7 @@ public:
 						 * behind us
 						 */
 						hash ^=
-						  hash_input.piece[flip(toMove)][PAWN-1][to];
+						   hash_input.piece[flip(toMove)][PAWN-1][to];
 					}
 					else
 					{
