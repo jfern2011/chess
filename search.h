@@ -26,7 +26,6 @@ public:
 		  _base_R(3),
 		  _counters_enabled(false),
 		  _depth (1),
-		  _doing_pv(false),
 		  _evaluator(movegen),
 		  _failed_high(false),
 		  _failed_low(false),
@@ -36,6 +35,8 @@ public:
 		  _input_check_delay(100000),
 		  _interrupt_handler(),
 		  _killers_enabled(false),
+		  _lmr_factor(4),
+		  _lmr_thresh(1),
 		  _mate_found(false),
 		  _mate_plies(MAX_PLY),
 		  _move_pairs_enabled(true),
@@ -449,6 +450,8 @@ private:
 	CommandInterface _interrupt_handler;
 	int              _killers[MAX_PLY][2];
 	bool             _killers_enabled;
+	int              _lmr_factor;
+	int              _lmr_thresh;
 	bool             _mate_found;
 	int              _mate_plies;
 	int              _move_pairs[2][4096];
@@ -1436,15 +1439,16 @@ private:
 	 * @param[in]     beta      The current upper bound
 	 * @param[in]     depth     The current search depth
 	 * @param[out]    best_move The best move if alpha was raised
-	 * @param[in]     do_null   If true, try a null move
+	 * @param[in]     do_null   If true, attempt a null move
 	 *
 	 * @return The score of this position
 	 */
 	inline int search_history(Position& pos, uint32* moves, int nMoves,
 							  int& alpha, int beta, int depth,
-							  int& best_move, bool do_null = true)
+							  	int& best_move, bool do_null = true)
 	{
 		const int to_move = pos.toMove;
+		int n_searched = 0;
 
 		while (true)
 		{
@@ -1489,12 +1493,42 @@ private:
 
 			_currentMove[depth] = move;
 
-			const int score =
-				-_search(pos,depth+1,-beta,-alpha, do_null);
+			/*
+			 * Late move reductions. After searching _lmr_thresh moves,
+			 * we start reducing the search depth since the more we
+			 * search the more likely we are to fail low anyway. The
+			 * reduction factor, _lmr_factor, determines how many
+			 * additional moves need to be searched in order to reduce
+			 * by another ply (a linear function)
+			 */
+			bool re_search = true;
+			int score;
+			if (n_searched >= _lmr_thresh && (_depth-depth) > 1)
+			{
+				const int R = 1 + (n_searched-_lmr_thresh)/_lmr_factor;
+
+				const int new_depth = _min(depth+1+R, _depth);
+
+				score = -_search(pos,new_depth,-beta, -alpha, do_null);
+
+				re_search =
+					score > alpha;
+			}
+
+			if (re_search)
+			{
+				/*
+				 * Re-search this move if it raised alpha, which means
+				 * we're in a PV node
+				 */
+				score =
+					-_search(pos,depth+1,-beta,-alpha,do_null);
+			}
 
 			pos.unMakeMove(move);
 
 			moves[best_id] = 0;
+			n_searched++;
 
 			if (beta <= score)
 			{
