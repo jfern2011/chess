@@ -95,6 +95,10 @@ public:
 
 		int best_move;
 
+		// Tell the node this is a new search rather than a
+		// depth iteration:
+		_node.restart_search();
+
 		for (int depth = _min( 2, _sd_limit ); depth <= _sd_limit; depth++)
 		{
 			best_move = 0;

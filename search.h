@@ -26,6 +26,7 @@ public:
 		  _base_R(3),
 		  _counters_enabled(false),
 		  _depth (1),
+		  _doing_pv(false),
 		  _evaluator(movegen),
 		  _failed_high(false),
 		  _failed_low(false),
@@ -42,8 +43,10 @@ public:
 		  _move_pairs_enabled(true),
 		  _movegen(movegen),
 		  _next_input_check(0),
+		  _new_search(true),
 		  _nmr_scale (MAX_PLY),
 		  _node_count(0),
+		  _pvs_enabled(true),
 		  _qnode_count(0),
 		  _quit_requested(false),
 		  _reps(0),
@@ -213,6 +216,15 @@ public:
 	}
 
 	/**
+	 * Set the flag to indicate this is a new search as opposed to a
+	 * new iteration
+	 */
+	void restart_search()
+	{
+		_new_search = true;
+	}
+
+	/**
 	 ******************************************************************
 	 *
 	 * Search for the best move from the given position
@@ -301,6 +313,7 @@ public:
 			}
 		}
 
+		// Seems to work better if we clear, so keep this:
 		for (register int i = 0; i < 2; i++)
 		{
 			for (register int j = 0; j < 4096; j++)
@@ -309,7 +322,7 @@ public:
 
 		/*
 		 * Clear the history moves. Note that these must start off as
-		 * zeros
+		 * zeros (works better when cleared)
 		 */
 		for (register int i = 0; i < 64; i++)
 		{
@@ -321,10 +334,55 @@ public:
 		}
 
 		/*
+		 * If this was not the first depth iteration, store the PV
+		 * from the last iteration
+		 */
+		if (!_new_search)
+		{
+			for (register int ply = 0; ply < MAX_PLY; ply++)
+			{
+				_prev_pv[ply] = _pv[0][ply];
+
+				// Null move indicates the end of this variation:
+				if (_prev_pv[ply] == 0)
+					break;
+			}
+
+			_doing_pv = true;
+		}
+		else
+		{
+			_new_search =
+				_doing_pv = false;
+		}
+
+		/*
 		 * Clear the principal variation. Note that PV read-out ends
 		 * when we hit the first null move
 		 */
 		clearPV();
+
+		if (_doing_pv && _pvs_enabled)
+		{
+			/*
+			 * Place the last PV move at the front of the list:
+			 */
+			_doing_pv = false;
+			for (register int i = 0; i < nMoves; i++)
+			{
+				if (moves[i] == _prev_pv[0])
+				{
+					if (i > 0)
+						Util::xor_swap<uint32>( moves[0], moves[i] );
+					_doing_pv = true;
+					break;
+				}
+			}
+
+			if (!_doing_pv)
+				std::cout << "??? PV retrieval failed."
+					<< std::endl;
+		}
 
 		for (register int i = 0; i < nMoves ; i++)
 		{
@@ -435,6 +493,7 @@ private:
 	bool             _counters_enabled;
 	int              _currentMove[MAX_PLY];
 	int              _depth;
+	bool             _doing_pv;
 	Evaluator        _evaluator;
 	bool             _failed_high;
 	bool             _failed_low;
@@ -458,9 +517,12 @@ private:
 	bool             _move_pairs_enabled;
 	const MoveGen&   _movegen;
 	int              _next_input_check;
+	bool             _new_search;
 	const int        _nmr_scale;
 	uint32           _node_count;
+	uint32           _prev_pv[MAX_PLY];
 	int              _pv[MAX_PLY][MAX_PLY];
+	bool             _pvs_enabled;
 	uint32           _qnode_count;
 	bool             _quit_requested;
 	int              _reps;
@@ -526,7 +588,7 @@ private:
 		if (_depth <= depth)
 			return quiesce( pos, depth, alpha, beta );
 
-		// A record of moves we searched first in out move ordering
+		// A record of moves we searched first in our move ordering
 		// scheme:
 		uint32 black_list[MAX_MOVES];
 		int n_listed = 0;
@@ -534,6 +596,34 @@ private:
 		const bool in_check = pos.inCheck(pos.toMove);
 		bool captures = true;
 		int best_move = 0, nMoves = 0;
+
+		// This is a PV node if alpha > alpha_in (and < beta, of 
+		// course)
+		const int alpha_in = alpha;
+
+		/*
+		 * Search the left-most branch of the three first:
+		 */
+		if (_doing_pv && _pvs_enabled)
+		{
+			int pv_move = _prev_pv[depth];
+			if (pv_move != 0)
+			{
+				if (_movegen.validateMove(pos, pv_move, in_check))
+				{
+					const int score =
+						searchMove(pos, alpha, beta, depth,
+							best_move,pv_move,black_list,n_listed,
+							true);
+
+					if (beta <= score)
+						// Will need to re-search
+						return beta;
+				}
+			}
+			else
+				_doing_pv = false;
+		}
 
 		/*
 		 * First, probe the hash table to see if we can immediately
@@ -921,7 +1011,7 @@ private:
 			if (_history_enabled)
 			{
 				score = search_history(pos,nonCaptures, nMoves, alpha,
-						 		beta, depth, best_move);
+						 		beta, depth, best_move, alpha_in);
 			}
 			else
 			{
@@ -1120,8 +1210,11 @@ private:
 	 */
 	inline void insert_killer(int ply, int move)
 	{
-		Util::xor_swap<int>(_killers[ply][0], _killers[ply][1]);
-		_killers[ply][0] = move;
+		if (move != _killers[ply][0]  &&  move != _killers[ply][1])
+		{
+			Util::xor_swap<int>(_killers[ply][0], _killers[ply][1]);
+			_killers[ply][0] = move;
+		}
 	}
 
 	/**
@@ -1276,6 +1369,47 @@ private:
 
 		const bool in_check = pos.inCheck(pos.toMove);
 
+		int pv_move = 0;
+
+#if defined(TEST_QPV)
+		if (_doing_pv && _pvs_enabled)
+		{
+			/*
+			 * Principal variation search (sort of). If the previous PV
+			 * ended with a series of captures, we want to search
+			 * those first (i.e. the left-most branch). However, do not
+			 * search with zero-window
+			 */
+			pv_move = _prev_pv[depth];
+			if (pv_move != 0)
+			{
+				if (_movegen.validateMove(pos, pv_move, in_check))
+				{
+					pos.makeMove(pv_move);
+
+					_node_count ++;
+					_qnode_count++;
+
+					const int score =
+							-quiesce( pos, depth+1, -beta, -alpha );
+
+					pos.unMakeMove(pv_move);
+
+					if (beta <= score)
+						// Will need to re-search
+						return beta;
+				}
+			}
+			else
+				_doing_pv = false;
+		}
+#else
+		/*
+		 * The left-most branch is searched
+		 */
+		_doing_pv = false;
+#endif
+
 		if (in_check)
 		{
 			end =
@@ -1349,6 +1483,10 @@ private:
 
 		for (register int i = 0; i < nMoves; i++)
 		{
+			if (moves[i] == pv_move)
+				// Don't re-search the PV move we tried earlier
+				continue;
+
 			if (!in_check)
 			{
 				/*
@@ -1439,13 +1577,15 @@ private:
 	 * @param[in]     beta      The current upper bound
 	 * @param[in]     depth     The current search depth
 	 * @param[out]    best_move The best move if alpha was raised
+	 * @param[in]     alpha_in  The original lower bound
 	 * @param[in]     do_null   If true, attempt a null move
 	 *
 	 * @return The score of this position
 	 */
 	inline int search_history(Position& pos, uint32* moves, int nMoves,
-							  int& alpha, int beta, int depth,
-							  	int& best_move, bool do_null = true)
+							  int& alpha, int beta,
+							  int depth, int & best_move, int alpha_in,
+							  bool do_null=true)
 	{
 		const int to_move = pos.toMove;
 		int n_searched = 0;
@@ -1509,20 +1649,36 @@ private:
 
 				const int new_depth = _min(depth+1+R, _depth);
 
-				score = -_search(pos,new_depth,-beta, -alpha, do_null);
+				if (alpha > alpha_in)
+				{
+					/*
+					 * Attempt a null-window search first:
+					 */
+					score = -_search(pos, new_depth, -alpha-1, -alpha,
+						do_null);
+					re_search =
+						score > alpha;
+				}
 
-				re_search =
-					score > alpha;
+				if (re_search)
+					score =
+						-_search(pos, new_depth,-beta,-alpha, do_null);
 			}
-
-			if (re_search)
+			else
 			{
-				/*
-				 * Re-search this move if it raised alpha, which means
-				 * we're in a PV node
-				 */
-				score =
-					-_search(pos,depth+1,-beta,-alpha,do_null);
+				if (alpha > alpha_in)
+				{
+					/*
+					 * Attempt a null-window search first:
+					 */
+					score = -_search(pos, depth + 1, -alpha-1, -alpha,
+						do_null);
+					re_search =
+						score > alpha;
+				}
+
+				if (re_search)
+					score = -_search(pos,depth+1,-beta,-alpha,do_null);
 			}
 
 			pos.unMakeMove(move);
@@ -1587,27 +1743,43 @@ private:
 	 * Search the given move and add it to a black list, i.e. a list of
 	 * moves not to try again
 	 *
-	 * @param[in]     pos        The current position
-	 * @param[in,out] alpha      Lower bound
-	 * @param[in]     beta       Upper bound
-	 * @param[in]     depth      Current search depth
-	 * @param[in,out] best_move  The new best move
-	 * @param[in]     move       The move to search
-	 * @param[out]    black_list The black list
-	 * @param[out]    n_listed   Size of the black list
+	 * @param[in]     pos         The current position
+	 * @param[in,out] alpha       Lower bound
+	 * @param[in]     beta        Upper bound
+	 * @param[in]     depth       Current search depth
+	 * @param[in,out] best_move   The new best move
+	 * @param[in]     move        The move to search
+	 * @param[out]    black_list  The black list
+	 * @param[out]    n_listed    Size of the black list
+	 * @param[in]     null_window Try a null-window search first
 	 *
 	 * @return The score returned after searching
 	 */
 	inline int searchMove(Position& pos, int& alpha, int beta, int depth,
 						int& best_move, int move, uint32* black_list,
-						  int& n_listed)
+						  int& n_listed, bool null_window=false)
 	{
 		pos.makeMove(move);
 		_node_count++;
 
 		_currentMove[depth] = move;
 
-		const int score = -_search(pos, depth+1,-beta, -alpha, true);
+		int score;
+		do
+		{
+			if (null_window)
+			{
+				score = -_search(pos, depth+1, -alpha-1, -alpha, true);
+				if (score <= alpha)
+					break;
+			}
+
+			/*
+			 * If we get here, either the null-window search raised alpha
+			 * or we aren't doing a NWS
+			 */
+			score = -_search(pos, depth+1,-beta, -alpha, true);
+		} while (0);
 
 		pos.unMakeMove(move);
 
