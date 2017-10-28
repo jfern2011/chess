@@ -7,18 +7,70 @@
 /**
  **********************************************************************
  *
+ * A wrapper for a C++ multi-dimensional array. This implements bounds
+ * checking to make it easier to catch buffer overflows at runtime.
+ * This class is kept as simple as possible since it's used many times
+ * during searches
+ *
+ * @tparam T  The type of each element
+ * @tparam N1 Number of elements along the 1st dimension
+ * @tparam N2 Number of elements along higher dimensions
+ *
+ **********************************************************************
+ */
+template <typename T, int N1, int... N2>
+class Buffer
+{
+	static_assert(N1 > 0, "Dimensions must be greater than zero.");
+
+public:
+
+	Buffer()
+	{
+	}
+
+	~Buffer()
+	{
+	}
+
+	/**
+	 * Indexing operator. This call produces a Buffer whose number of
+	 * dimensions is reduced by 1
+	 *
+	 * For example, if we have a Buffer<int,2,3>, then we'll get
+	 * back a Buffer<int,3>
+	 *
+	 * @param[in] index The index to look up
+	 *
+	 * @return The element at \a index, or the first element on error
+	 */
+	inline Buffer<T,N2...>& operator[](uint32 index)
+	{
+		AbortIf(N1 <= index, data[0]);
+
+		return data[index];
+	}
+
+private:
+
+	Buffer<T,N2...> data[N1];
+};
+
+/**
+ **********************************************************************
+ *
  * A wrapper for a simple C++ array. Aside from behaving like a normal
  * array, this performs bounds checking to make it easier to catch
- * buffer overflows at runtime. This is used during many time-critical
- * computations and is therefore kept as simple as possible
+ * buffer overflows at runtime. Because this is used many times during
+ * searches, it is kept as simple as possible
  *
  * @tparam T The type of each buffer element
- * @tparam N The size of the buffer
+ * @tparam N The number of elements
  *
  **********************************************************************
  */
 template <typename T, int N>
-class Buffer
+class Buffer<T,N>
 {
 	static_assert(N > 0, "Buffer must contain at least 1 item.");
 

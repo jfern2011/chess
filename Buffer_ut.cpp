@@ -27,5 +27,15 @@ int main()
 	std::cout << "*ptr   = " << *ptr
 		<< std::endl;
 
+	Buffer<int,2,3,4> buf2;
+	buf2[0][1][2] = 500;
+
+	buf2[2][0][0]; // should given an error
+	buf2[0][3][0]; // should given an error
+	buf2[0][0][5]; // should given an error
+
+	std::cout << "value = "
+		<< buf2[0][1][2] << std::endl;
+
 	return 0;
 }
