@@ -1,4 +1,4 @@
-#include "cmd3.h"
+#include "cmd.h"
 
 int main()
 {

@@ -3,314 +3,175 @@
 
 #include <iostream>
 #include <map>
-#include <stdexcept>
-#include <string>
-#include <utility>
-#include <vector>
 
-#include <unistd.h>
-
-#include "Signal.h"
 #include "WriteEventSink.h"
 
 /**
- **********************************************************************
- *
  * @class CommandInterface
  *
  * Facilitates the installation and forwarding of commands to their
  * respective handlers
- *
- **********************************************************************
  */
 class CommandInterface
 {
+	typedef Signal::generic signal_t;
 
-	typedef Signal::Signal<bool,const std::string&> read_sig_t;
-
-	struct Command
+	struct cmd_info
 	{
-		Command(int _id, const std::string& _name,
-				read_sig_t* _sig)
-				: id(_id), name(_name), sig(_sig)
+		cmd_info()
+			: handler(nullptr), id(-1), name("")
 		{
 		}
 
-		Command(Command&& copy)
-			: sig(NULL)
+		cmd_info(signal_t* _handler, int _id, const std::string& _name)
+			: handler(_handler),
+			  id(_id),
+			  name(_name)
 		{
-			*this = std::move(copy);
 		}
 
-		~Command()
+		cmd_info(cmd_info&& other)
 		{
-			if (sig) delete sig;
+			*this =
+				std::move(other);
 		}
 
-		Command& operator=(Command&& rhs)
+		~cmd_info()
+		{
+			if (handler) delete handler;
+		}
+
+		cmd_info& operator=(cmd_info&& rhs)
 		{
 			if (this != &rhs)
 			{
-				if (sig) delete sig;
+				handler = rhs.handler;
+				id = rhs.id;
+				name = std::move(rhs.name);
 
-				id   = rhs.id;
-				name = std::move( rhs.name );
-				sig  = rhs.sig;
-
-				rhs.sig = NULL;
+				rhs.handler = nullptr;
+				rhs.id = -1;
 			}
 
 			return *this;
 		}
 
-		int         id;   // The command ID
-		std::string name; // command name
-		read_sig_t* sig;  // command handler
-	};
+		cmd_info(const cmd_info& rhs)      = delete;
+		cmd_info&
+			operator=(const cmd_info& rhs) = delete;
 
-	typedef std::vector<Command> cmd_v;
+		/*
+		 * A handler to be dispatched whenever this command is issued
+		 */
+		Signal::generic* handler;
+
+		/*
+		 * A unique command ID
+		 */
+		int id;
+
+		/*
+		 * The name of this command
+		 */
+		std::string name;
+	};
 
 public:
 
-	/**
-	 * Constructor
-	 */
-	CommandInterface()
-		: _cmd2id(), _commands(), _evt_sink(STDIN_FILENO)
-	{
-		if (!_evt_sink.attach_reader(*this,
-				&CommandInterface::handle_command))
-		{
-			throw std::runtime_error(__PRETTY_FUNCTION__);
-		}
-	}
+	CommandInterface();
+
+	~CommandInterface();
 
 	/**
-	 * Destructor
-	 */
-	~CommandInterface()
-	{
-	}
-
-	/**
-	 * Install a new command, where the command handler is a C-style
-	 * function pointer
+	 * Register a new command whose handler is a static function
 	 *
-	 * @param[in] name The command name. Note that this is not case-
-	 *                 sensitive
-	 * @param[in] func A pointer to the command handler
+	 * @tparam R The command handler's return type
+	 * @tparam T Input argument types required by the handler
 	 *
-	 * @return  A unique ID to associate with this command or, if \a
-	 *          func and/or \a name is invalid, -1
-	 */
-	int install(const std::string& name, bool(*func)(const std::string&))
-	{
-		std::string _name =
-			std::move(Util::to_lower(Util::trim(name)));
-		AbortIf(_name.empty(), -1);
-
-		if (isInstalled(_name))
-			return _cmd2id[_name];
-
-		int id = _commands.size();
-
-		read_sig_t* sig = new read_sig_t(func);
-		if (!sig->is_connected())
-		{
-			delete sig; return -1;
-		}
-
-		_commands.push_back(std::move(Command(id,_name,sig)));
-			_cmd2id[_name] = id;
-
-		return id;
-	}
-
-	/**
-	 * Install a new command, where the command handler is a pointer
-	 * to a class method
-	 *
-	 * @tparam C Class the implements the handler
-	 *
-	 * @param[in] name The command name. Note that this is not case-
-	 *                 sensitive
-	 * @param[in] obj  An instance of class C through which to
-	 *                 invoke the handler
-	 * @param[in] func A pointer to the command handler
-	 *
-	 * @return  A unique ID to associate with this command or, if \a
-	 *          func and/or \a name is invalid, -1
-	 */
-	template <typename C>
-	int install(const std::string& name,
-				C& obj, bool(C::*func)(const std::string& args))
-	{
-		std::string _name =
-			std::move(Util::to_lower(Util::trim(name)));
-		AbortIf(_name.empty(), -1);
-
-		if (isInstalled(_name))
-			return _cmd2id[_name];
-
-		int id = _commands.size();
-
-		read_sig_t* sig = new read_sig_t(obj, func);
-		if (!sig->is_connected())
-		{
-			delete sig; return -1;
-		}
-
-		_commands.push_back(std::move(Command(id,_name,sig)));
-			_cmd2id[_name] = id;
-
-		return id;
-	}
-
-	/**
-	 * Install a new command, where the command handler is a pointer
-	 * to a class method
-	 *
-	 * @tparam C Class the implements the handler
-	 *
-	 * @param[in] name The command name. Note that this is not case-
-	 *                 sensitive
-	 * @param[in] obj  An instance of class C through which to
-	 *                 invoke the handler
-	 * @param[in] func A pointer to the command handler
-	 *
-	 * @return  A unique ID to associate with this command or, if \a
-	 *          func and/or \a name is invalid, -1
-	 */
-	template <typename C>
-	int install(const std::string& name,
-				C& obj, bool(C::*func)(const std::string& args) const)
-	{
-		std::string _name =
-			std::move(Util::to_lower(Util::trim(name)));
-		AbortIf(_name.empty(), -1);
-
-		if (isInstalled(_name))
-			return _cmd2id[_name];
-
-		int id = _commands.size();
-
-		read_sig_t* sig = new read_sig_t(obj, func);
-		if (!sig->is_connected())
-		{
-			delete sig; return -1;
-		}
-
-		_commands.push_back(std::move(Command(id,_name,sig)));
-			_cmd2id[_name] = id;
-
-		return id;
-	}
-
-	/**
-	 * Determine if a command has been installed by name. Note this is
-	 * case-insensitive
-	 *
-	 * @param [in] _cmd The name of the command
-	 *
-	 * @return True if the command is installed
-	 */
-	bool isInstalled(const std::string& _cmd)
-	{
-		std::string cmd = Util::trim(Util::to_lower( _cmd ));
-
-		return _cmd2id.find(cmd)
-					!= _cmd2id.end();
-	}
-
-	/**
-	 * Determine if a command has been installed by ID. This is the ID
-	 * returned by install()
-	 *
-	 * @param[in] id The command ID
-	 *
-	 * @return True if the command is installed
-	 */
-	bool isInstalled(int id)
-	{
-		for (size_t i = 0; i < _cmd2id.size(); i++)
-		{
-			if (_commands[i].id == id) return true;
-		}
-
-		return false;
-	}
-
-	/**
-	 * Poll the standard input file descriptor for inputs, dispatching
-	 * command handlers as needed
+	 * @param[in] name The name of this command
+	 * @param[in] func A function pointer to the command handler
 	 *
 	 * @return True on success
 	 */
-	bool poll() //const
-	{
-		AbortIfNot(pollFd(), false);
-		return true;
-	}
+	template <typename R, typename... T>
+	bool create(const std::string& name, R(*func)(T...))
+    {
+    	signal_t* sig =
+    		new Signal::fcn_ptr<R,T...>(func);
+
+    	AbortIfNot(_create(name, sig), false);
+
+        return true;
+    }
+
+    /**
+	 * Register a new command whose handler is a non-const class
+	 * member function
+	 *
+	 * @tparam R The command handler's return type
+	 * @tparam C Class that implements the handler
+	 * @tparam T Input argument types required by the handler
+	 *
+	 * @param[in] name The name of this command
+	 * @param[in] obj  The object on which to invoke the handler
+	 * @param[in] func A pointer to the handler
+	 *
+	 * @return True on success
+	 */
+    template <typename R, typename C, typename... T>
+	bool create(const std::string& name, C& obj, R(C::*func)(T...))
+    {
+    	signal_t* sig =
+    		new Signal::mem_ptr<R,C,T...>(obj,func);
+
+    	AbortIfNot(_create(name, sig), false);
+
+        return true;
+    }
+
+    /**
+	 * Registers a new command whose handler is a const class member
+	 * function
+	 *
+	 * @tparam R The command handler's return type
+	 * @tparam C Class that implements the handler
+	 * @tparam T Input argument types required by the handler
+	 *
+	 * @param[in] name The name of this command
+	 * @param[in] obj  object on which to invoke the command handler
+	 * @param[in] func A pointer to the handler
+	 *
+	 * @return True on success
+	 */
+    template <typename R, typename C, typename... T>
+	bool create(const std::string& name,
+				C& obj, R(C::*func)(T...) const)
+    {
+    	signal_t* sig =
+    		new Signal::mem_ptr<R,C,T...>(obj,func);
+
+    	AbortIfNot(_create(name, sig), false);
+
+        return true;
+    }
+
+    bool exists(const std::string& name) const;
 
 private:
 
-	/*
-	 * Polls the standard input file descriptor for user commands
+	bool _create(const std::string& _name, signal_t* sig);
+
+	/**
+	 * A record of registered commands
 	 */
-	bool pollFd()
-	{
-		WriteEventSink::err_code code =
-					  _evt_sink.read(std::string("\n"));
+	std::map<std::string,cmd_info>
+		_cmds;
 
-		AbortIf(code != WriteEventSink::SUCCESS &&
-			    code != WriteEventSink::NO_DATA, false);
-
-		return true;
-	}
-
-	/*
-	 * The callback routine dispatched by the event sink. Handles
-	 * a single command
+	/**
+	 * The file descriptor on which to listen for
+	 * commands
 	 */
-	bool handle_command(const char* _input, size_t size)
-	{
-		AbortIf(size == 0, false);
-
-		std::string temp  = std::string(_input, size);
-		std::string input =
-			std::move(Util::trim(temp));
-
-		Util::str_v tokens;
-			Util::split( input,tokens );
-
-		AbortIf(tokens.size() < 1, false);
-
-		auto iter =
-			_cmd2id.find(Util::to_lower(tokens[0]));
-
-		if (iter == _cmd2id.end())
-		{
-			std::cout << "Error (unknown command): " << tokens[0]
-				<< std::endl;
-			return true;
-		}
-
-		const Command& cmd = _commands[iter->second];
-
-		if (tokens.size() == 1)
-			return cmd.sig->raise("");
-		else
-		{
-			tokens.erase(tokens.begin());
-			return
-				cmd.sig->raise(Util::build_string(tokens,
-								" "));
-		}
-	}
-
-	std::map<std::string,int> _cmd2id;
-	cmd_v _commands;
-	WriteEventSink _evt_sink;
+	int _fd;
 };
 
 #endif
