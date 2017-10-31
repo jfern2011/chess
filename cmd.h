@@ -3,18 +3,19 @@
 
 #include <iostream>
 #include <map>
+#include <string>
 
 #include "WriteEventSink.h"
 
 /**
  * @class CommandInterface
  *
- * Facilitates the installation and forwarding of commands to their
+ * Facilitates the installation and forwarding of user commands to their
  * respective handlers
  */
 class CommandInterface
 {
-	typedef Signal::generic signal_t;
+	typedef Signal::signal_t<bool,const std::string&> signal_t;
 
 	struct cmd_info
 	{
@@ -63,7 +64,7 @@ class CommandInterface
 		/*
 		 * A handler to be dispatched whenever this command is issued
 		 */
-		Signal::generic* handler;
+		signal_t* handler;
 
 		/*
 		 * A unique command ID
@@ -82,35 +83,13 @@ public:
 
 	~CommandInterface();
 
-	/**
-	 * Register a new command whose handler is a static function
-	 *
-	 * @tparam R The command handler's return type
-	 * @tparam T Input argument types required by the handler
-	 *
-	 * @param[in] name The name of this command
-	 * @param[in] func A function pointer to the command handler
-	 *
-	 * @return True on success
-	 */
-	template <typename R, typename... T>
-	bool create(const std::string& name, R(*func)(T...))
-    {
-    	signal_t* sig =
-    		new Signal::fcn_ptr<R,T...>(func);
-
-    	AbortIfNot(_create(name, sig), false);
-
-        return true;
-    }
+	bool init(int fd);
 
     /**
 	 * Register a new command whose handler is a non-const class
 	 * member function
 	 *
-	 * @tparam R The command handler's return type
 	 * @tparam C Class that implements the handler
-	 * @tparam T Input argument types required by the handler
 	 *
 	 * @param[in] name The name of this command
 	 * @param[in] obj  The object on which to invoke the handler
@@ -118,13 +97,14 @@ public:
 	 *
 	 * @return True on success
 	 */
-    template <typename R, typename C, typename... T>
-	bool create(const std::string& name, C& obj, R(C::*func)(T...))
+    template <typename C>
+	bool install(const std::string& name, C& obj,
+				 bool(C::*func)(const std::string&))
     {
     	signal_t* sig =
-    		new Signal::mem_ptr<R,C,T...>(obj,func);
+    		new Signal::mem_ptr<bool,C,const std::string&>(obj,func);
 
-    	AbortIfNot(_create(name, sig), false);
+    	AbortIfNot(_install(name, sig), false);
 
         return true;
     }
@@ -133,33 +113,38 @@ public:
 	 * Registers a new command whose handler is a const class member
 	 * function
 	 *
-	 * @tparam R The command handler's return type
 	 * @tparam C Class that implements the handler
-	 * @tparam T Input argument types required by the handler
 	 *
 	 * @param[in] name The name of this command
-	 * @param[in] obj  object on which to invoke the command handler
+	 * @param[in] obj  Object on which to invoke the command handler
 	 * @param[in] func A pointer to the handler
 	 *
 	 * @return True on success
 	 */
-    template <typename R, typename C, typename... T>
-	bool create(const std::string& name,
-				C& obj, R(C::*func)(T...) const)
+    template <typename C>
+	bool install(const std::string& name, C& obj,
+				 bool(C::*func)(const std::string&) const)
     {
     	signal_t* sig =
-    		new Signal::mem_ptr<R,C,T...>(obj,func);
+    		new Signal::mem_ptr<bool,C,const std::string&>(obj,func);
 
-    	AbortIfNot(_create(name, sig), false);
+    	AbortIfNot(_install(name, sig), false);
 
         return true;
     }
 
-    bool exists(const std::string& name) const;
+    bool install(const std::string& name,
+    			 bool(*func)(const std::string&));
+
+    bool is_installed(const std::string& name) const;
+
+    bool poll();
 
 private:
 
-	bool _create(const std::string& _name, signal_t* sig);
+	bool _install(const std::string& _name, signal_t* sig);
+
+	bool handle_command( const char* _input, size_t size );
 
 	/**
 	 * A record of registered commands
@@ -168,10 +153,14 @@ private:
 		_cmds;
 
 	/**
-	 * The file descriptor on which to listen for
-	 * commands
+	 * Initialized flag
 	 */
-	int _fd;
+	bool _is_init;
+
+	/**
+	 * Listens for incomming commands
+	 */
+	WriteEventSink _wes;
 };
 
 #endif
