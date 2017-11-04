@@ -55,10 +55,21 @@ StateMachine::~StateMachine()
 {
 }
 
+/**
+ * Build the state machine.
+ *
+ * @param[in] fd The file descriptor to read for transition commands
+ *
+ * @return True on success
+ */
 bool StateMachine::build(int fd)
 {
 	_states.resize(num_states);
 
+	/*
+	 * Create the individual states but don't add tasks
+	 * yet
+	 */
 	_states[search] = State("search");
 	_states[init] = State("init");
 	_states[idle] = State("idle");
@@ -66,14 +77,11 @@ bool StateMachine::build(int fd)
 
 	_transitions.resize(_states.size());
 
-	AbortIfNot(get_transitions(search, _transitions[search]),
-		false);
-	AbortIfNot(get_transitions(init, _transitions[init]),
-		false);
-	AbortIfNot(get_transitions(idle, _transitions[idle]),
-		false);
-	AbortIfNot(get_transitions(ponder, _transitions[ponder]),
-		false);
+	for (size_t i = 0; i < _states.size(); i++)
+	{
+		AbortIfNot(get_transitions(i, _transitions[i]),
+			false);
+	}
 
 	for (size_t i = 0; i < _states.size(); i++)
 	{

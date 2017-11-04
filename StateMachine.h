@@ -116,7 +116,21 @@ private:
 };
 
 /**
- * Implements a finite state machine
+ * Implements a finite state machine. The chess engine itself can be
+ * in any of four states:
+ *
+ * 1. init
+ *    This is the initialization state, which only occurs once upon
+ *    program startup
+ * 2. search
+ *    In this state the engine runs the negamax search algorithm to
+ *    compute a best move
+ * 3. ponder
+ *    This state is similar to the search state, except that it runs
+ *    while the user is on move
+ * 4. idle
+ *    In this state the engine is initialized but isn't doing any
+ *    computation; it simply waits for input
  */
 class StateMachine
 {
@@ -138,6 +152,30 @@ public:
 	StateMachine();
 
 	~StateMachine();
+
+	/**
+	 * Create a new task that will run while in a particular
+	 * state
+	 *
+	 * @tparam R The task's return type
+	 * @tparam T Types of input arguments to the task
+	 *
+	 * @param[in] state Add a Task to this state
+	 * @param[in] task  The Task that will execute while in
+	 *                  state \a state
+	 *
+	 * @return True on success
+	 */
+	template <typename R, typename... T>
+	bool add_task(state_t state, Task<R,T...>* task)
+	{
+		AbortIfNot(state < num_states, false);
+
+		AbortIfNot(_states[ state ].add_task( task ),
+			false);
+
+		return true;
+	}
 
 	bool build(int fd);
 
