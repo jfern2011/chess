@@ -33,7 +33,7 @@ DEPS = $(join $(addsuffix /, $(IDIRS)), $(_DEPS))
 #----------------------------------------------------------------------
 # Object files:
 #----------------------------------------------------------------------
-_OBJ = cmd.o cmd_ut.o
+_OBJ = StateMachine.o cmd.o cmd_ut.o
 OBJ  = $(patsubst %, $(ODIR)/%, $(_OBJ))
 
 # Compile WriteEventSink

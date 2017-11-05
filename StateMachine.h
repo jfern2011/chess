@@ -19,7 +19,7 @@ public:
 	 * @param[in] name The name of this task
 	 */
 	Task(const std::string& name)
-		: _name(name)
+		: Signal::Signal<R,T...>(), _name(name)
 	{
 	}
 
@@ -46,7 +46,7 @@ public:
 	 */
 	inline void run()
 	{
-		raise();
+		this->raise();
 	}
 
 private:
@@ -99,7 +99,7 @@ public:
 
 	std::string get_name() const;
 
-	bool run();
+	void run();
 
 private:
 
@@ -134,7 +134,6 @@ private:
  */
 class StateMachine
 {
-	typedef std::vector<state_t> state_v;
 
 public:
 
@@ -148,6 +147,8 @@ public:
 		undef
 
 	} state_t;
+
+	typedef std::vector<state_t> state_v;
 
 	StateMachine();
 
@@ -169,6 +170,7 @@ public:
 	template <typename R, typename... T>
 	bool add_task(state_t state, Task<R,T...>* task)
 	{
+		AbortIf(_ready, false);
 		AbortIfNot(state < num_states, false);
 
 		AbortIfNot(_states[ state ].add_task( task ),
@@ -182,8 +184,14 @@ public:
 	static bool get_transitions(state_t state,
 		state_v& transitions);
 
+	inline bool quit(const std::string& str);
+
 	bool request_transition(
 		const std::string& state);
+
+	inline bool run();
+
+	void seal();
 
 private:
 
@@ -203,6 +211,18 @@ private:
 	 */
 	std::map<std::string,state_t>
 		_name_to_id;
+
+	/**
+	 * Flag indicating a command was sent to exit the state
+	 * machine
+	 */
+	bool _exit;
+
+	/**
+	 * If true, this indicates all tasks have been added to
+	 * all states
+	 */
+	bool _ready;
 
 	/**
 	 * All states in this state machine

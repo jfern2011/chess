@@ -1,6 +1,14 @@
 #include "StateMachine.h"
 
 /**
+ * Default constructor
+ */
+State::State()
+	: _name(""), _tasks()
+{
+}
+
+/**
  * Constructor
  *
  * @param[in] name The name to give to this state
@@ -28,12 +36,13 @@ std::string State::get_name() const
 }
 
 /**
- * Iterate through all tasks in this state until the next transition
- *
- * @return True on success
+ * Step through and invoke all tasks in this
+ * state
  */
-bool State::run()
+void State::run()
 {
+	for (size_t i = 0; i < _tasks.size(); i++)
+		_tasks[i]->v_raise();
 }
 
 /**
@@ -43,6 +52,8 @@ StateMachine::StateMachine()
 	: _cmd(),
 	  _current_state(init),
 	  _name_to_id(),
+	  _exit(false),
+	  _ready(false),
 	  _states(),
 	  _transitions()
 {
@@ -79,19 +90,20 @@ bool StateMachine::build(int fd)
 
 	for (size_t i = 0; i < _states.size(); i++)
 	{
-		AbortIfNot(get_transitions(i, _transitions[i]),
+		state_t i_ = static_cast<state_t>(i);
+		AbortIfNot(get_transitions(i_, _transitions[i]),
 			false);
-	}
 
-	for (size_t i = 0; i < _states.size(); i++)
-	{
-		_name_to_id[_states[i].get_name()] = i;
+		_name_to_id[_states[i].get_name()] = i_;
 	}
 
 	AbortIfNot(_cmd.init(fd), false);
 
 	AbortIfNot(_cmd.install<StateMachine>("goto", *this,
 		&StateMachine::request_transition), false);
+
+	AbortIfNot(_cmd.install<StateMachine>("quit", *this,
+		&StateMachine::quit), false);
 
 	return true;
 }
@@ -106,7 +118,7 @@ bool StateMachine::build(int fd)
  * @return True on success
  */
 bool StateMachine::get_transitions(state_t state,
-	state_v& transitions) const
+	state_v& transitions)
 {
 	transitions.clear();
 
@@ -135,6 +147,19 @@ bool StateMachine::get_transitions(state_t state,
 }
 
 /**
+ * A handler for the "quit" command.
+ *
+ * @param[in] str Unused, but required to match the signature that
+ *                CommandInterface expects
+ *
+ * @return True on success
+ */
+bool StateMachine::quit(const std::string& str)
+{
+	return _exit = true;
+}
+
+/**
  * Request a state transition
  *
  * @param[in] state The name of the state to transition to
@@ -155,6 +180,10 @@ bool StateMachine::request_transition(
 
 	for (size_t i = 0; i < reachables.size(); i++)
 	{
+		/*
+		 * Check if the desired state is reachable from our
+		 * current state:
+		 */
 		if (reachables[i] == iter->second)
 		{
 			_current_state = reachables[i];
@@ -163,4 +192,33 @@ bool StateMachine::request_transition(
 	}
 
 	return false;
+}
+
+/**
+ * Run the state machine. This calls run() on the current state to
+ * perform a predetermined set of tasks while in that state. Once
+ * this has started, the only way to exit is by issuing the "quit"
+ * command
+ *
+ * @return True on success
+ */
+bool StateMachine::run()
+{
+	AbortIfNot(_ready, false);
+
+	while (!_exit)
+	{
+		_states[_current_state].run();
+	}
+	
+	return true;
+}
+
+/**
+ * Once this has been called, no additional tasks can be added to
+ * States
+ */
+void StateMachine::seal()
+{
+	_ready = true;
 }
