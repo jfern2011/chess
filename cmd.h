@@ -136,6 +136,8 @@ public:
     bool install(const std::string& name,
     			 bool(*func)(const std::string&));
 
+    bool is_init() const;
+
     bool is_installed(const std::string& name) const;
 
     bool poll();
@@ -161,6 +163,12 @@ private:
 	 * Listens for incomming commands
 	 */
 	WriteEventSink _wes;
+};
+
+class CommandSlave
+{
+
+public:
 };
 
 #endif

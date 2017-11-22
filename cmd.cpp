@@ -38,6 +38,17 @@ bool CommandInterface::init(int fd)
 }
 
 /**
+ * Return the flag indicating whether or not \ref init()
+ * has been called
+ *
+ * @return True if initialized
+ */
+bool CommandInterface::is_init() const
+{
+	return _is_init;
+}
+
+/**
  * Register a new command whose handler is a static function
  *
  * @param[in] name The name of this command
@@ -66,7 +77,8 @@ bool CommandInterface::install(const std::string& name,
  */
 bool CommandInterface::is_installed(const std::string& name) const
 {
-	return _cmds.find(Util::trim(name)) != _cmds.end();
+	std::string _name = Util::to_lower(Util::trim(name));
+	return _cmds.find(_name) != _cmds.end();
 }
 
 /**
@@ -98,7 +110,7 @@ bool CommandInterface::_install(const std::string& _name,
 								signal_t* sig)
 {
 	AbortIfNot(_is_init, false);
-	const std::string name = Util::trim(_name);
+	const std::string name = Util::to_lower(Util::trim(_name));
 
 	AbortIf(sig == nullptr || !sig->is_connected(),
 		false);
