@@ -75,7 +75,8 @@
  * If compiling with SAFE_BUFFER, buffers declared with these macros
  * will use the \ref Buffer class, which protects against buffer
  * overflow errors. Otherwise, buffers will be declared in the usual
- * way, e.g. int buf[10];
+ * way, e.g. int buf[10]. Note that you do not need to explicitly
+ * use these; see \ref BUFFER
  */
 #ifdef SAFE_BUFFER
 	#define BUFFER_1(type, name, size1)               \
@@ -92,6 +93,18 @@
 	#define BUFFER_3(type, name, size1, size2, size3) \
 	 	type name[size1][size2][size3]
 #endif
+
+#define num_args(_0, _1, _2, nargin, ...) nargin
+#define get_buf_dim(...) \
+				  num_args(__VA_ARGS__, 3, 2, 1)
+
+/**
+ * Generic buffer selection. Use this to declare a buffer of 1, 2, or
+ * 3 dimensions
+ */
+#define BUFFER(type, name, ...) \
+	_select(BUFFER, \
+		get_buf_dim(__VA_ARGS__))(type, name, __VA_ARGS__)
 
 //=====================================================================
 // Externs
