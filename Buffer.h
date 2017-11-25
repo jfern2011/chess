@@ -51,6 +51,25 @@ public:
 		return data[index];
 	}
 
+	/**
+	 * Indexing operator. This call produces a Buffer whose number of
+	 * dimensions is reduced by 1
+	 *
+	 * For example, if we have a Buffer<int,2,3>, then we'll get
+	 * back a Buffer<int,3>
+	 *
+	 * @param[in] index The index to look up
+	 *
+	 * @return A *const* reference to the element at \a index, or the
+	 *         first element on error
+	 */
+	inline const Buffer<T,N2...>& operator[](uint32 index) const
+	{
+		AbortIf(N1 <= index, data[0]);
+
+		return data[index];
+	}
+
 private:
 
 	Buffer<T,N2...> data[N1];
@@ -99,6 +118,21 @@ public:
 	 * @return The element at \a index, or the first element on error
 	 */
 	inline T& operator[](uint32 index)
+	{
+		AbortIf(N <= index, data[0]);
+
+		return data[index];
+	}
+
+	/**
+	 * Indexing operator. This will return a *const* reference to the
+	 * element at the specified index
+	 *
+	 * @param[in] index The index to look up
+	 *
+	 * @return The element at \a index, or the first element on error
+	 */
+	inline const T& operator[](uint32 index) const
 	{
 		AbortIf(N <= index, data[0]);
 

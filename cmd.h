@@ -165,10 +165,4 @@ private:
 	WriteEventSink _wes;
 };
 
-class CommandSlave
-{
-
-public:
-};
-
 #endif

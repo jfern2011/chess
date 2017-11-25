@@ -3,6 +3,7 @@
 
 #include <iostream>
 
+#include "Buffer.h"
 #include "util.h"
 
 //=====================================================================
@@ -69,6 +70,28 @@
 	  ((to) << 6))
 
 #define MATE_SCORE 1000000
+
+/**
+ * If compiling with SAFE_BUFFER, buffers declared with these macros
+ * will use the \ref Buffer class, which protects against buffer
+ * overflow errors. Otherwise, buffers will be declared in the usual
+ * way, e.g. int buf[10];
+ */
+#ifdef SAFE_BUFFER
+	#define BUFFER_1(type, name, size1)               \
+	 	Buffer<type,size1> name
+	#define BUFFER_2(type, name, size1, size2)        \
+	 	Buffer<type,size1,size2> name
+	#define BUFFER_3(type, name, size1, size2, size3) \
+	 	Buffer<type,size1,size2,size3> name
+#else
+	#define BUFFER_1(type, name, size1)               \
+	 	type name[size1]
+	#define BUFFER_2(type, name, size1, size2)        \
+	 	type name[size1][size2]
+	#define BUFFER_3(type, name, size1, size2, size3) \
+	 	type name[size1][size2][size3]
+#endif
 
 //=====================================================================
 // Externs
@@ -165,7 +188,7 @@ namespace Util
 	 *
 	 ******************************************************************
 	 */
-	uint64 createBitboard()
+	inline uint64 createBitboard()
 	{
 		return 0;
 	}
@@ -208,7 +231,7 @@ namespace Util
 	 *
 	 ******************************************************************
 	 */
-	char enum2piece(piece_t piece)
+	inline char enum2piece(piece_t piece)
 	{
 		switch (piece)
 		{
@@ -248,7 +271,7 @@ namespace Util
 	 *
 	 ******************************************************************
 	 */
-	static int32 parseCoordinate(const std::string& _move)
+	inline int32 parseCoordinate(const std::string& _move)
 	{
 		std::string from, to, move = to_lower(_move);
 		piece_t promote;
@@ -328,7 +351,7 @@ namespace Util
 	 *
 	 ******************************************************************
 	 */
-	static void printBitboard(uint64 board)
+	inline void printBitboard(uint64 board)
 	{
 		int prev_rank = 8;
 		uint64 one = 1;
@@ -366,7 +389,7 @@ namespace Util
 	 *
 	 ******************************************************************
 	 */
-	static bool isPiece(char c)
+	inline bool isPiece(char c)
 	{
 		return (c == 'p' || c == 'P' ||
 			    c == 'r' || c == 'R' ||
@@ -387,7 +410,7 @@ namespace Util
 	 *
 	 ******************************************************************
 	 */
-	static piece_t piece2enum(char c)
+	inline piece_t piece2enum(char c)
 	{
 		switch (c)
 		{
@@ -425,7 +448,7 @@ namespace Util
 	 *
 	 ******************************************************************
 	 */
-	static std::string piece2str(piece_t piece)
+	inline std::string piece2str(piece_t piece)
 	{
 		switch (piece)
 		{
@@ -456,7 +479,7 @@ namespace Util
 	 *
 	 ******************************************************************
 	 */
-	static void printMove(int move)
+	inline void printMove(int move)
 	{
 		const piece_t captured = static_cast<piece_t>(CAPTURED(move));
 		const int from         = FROM(move);
@@ -487,7 +510,7 @@ namespace Util
 	 *
 	 ******************************************************************
 	 */
-	static std::string printCoordinate(int move)
+	inline std::string printCoordinate(int move)
 	{
 		const SQUARE from     = static_cast<SQUARE>(FROM(move));
 		const SQUARE to       = static_cast<SQUARE>(TO(move));
@@ -511,7 +534,7 @@ namespace Util
 	 *
 	 ******************************************************************
 	 */
-	static void showPosition(const char* pieces)
+	inline void showPosition(const char* pieces)
 	{
 		int prev_rank = 8;
 		for (int sq = 63; sq >= -1; sq--)

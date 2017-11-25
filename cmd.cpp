@@ -5,7 +5,8 @@
  */
 CommandInterface::CommandInterface()
 	: _cmds(),
-	  _is_init(false), _wes()
+	  _is_init(false),
+	  _wes()
 {
 }
 
@@ -19,8 +20,8 @@ CommandInterface::~CommandInterface()
 /**
  * Initialize.
  *
- * @param [in] fd The file descriptor on which to listen for
- *                commands
+ * @param[in] fd The file descriptor on which to listen for
+ *               commands
  *
  * @return True on success
  */
@@ -30,8 +31,8 @@ bool CommandInterface::init(int fd)
 
 	AbortIfNot(_wes.assign_fd(fd), false);
 
-	AbortIfNot(_wes.attach_reader(*this,
-		&CommandInterface::handle_command), false);
+	AbortIfNot(_wes.attach_reader(
+		*this, &CommandInterface::handle_command), false );
 
 	_is_init = true;
 	return true;
