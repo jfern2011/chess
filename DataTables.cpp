@@ -1046,7 +1046,7 @@ void DataTables::genRookMasks()
  *
  * @return The diagonal containing this square
  */
-uint64 DataTables::getDiagA1H8(int square)
+uint64 DataTables::getDiagA1H8(int square) const
 {
 	uint64 one = 1, diag = 0;
 
@@ -1073,7 +1073,7 @@ uint64 DataTables::getDiagA1H8(int square)
  *
  * @return The diagonal containing this square
  */
-uint64 DataTables::getDiagH1A8(int square)
+uint64 DataTables::getDiagH1A8(int square) const
 {
 	uint64 one = 1, diag = 0;
 
@@ -1099,7 +1099,7 @@ uint64 DataTables::getDiagH1A8(int square)
  *
  * @return The file containing this square
  */
-uint64 DataTables::getFile(int square)
+uint64 DataTables::getFile(int square) const
 {
 	uint64 mask = FILE_H;
 
@@ -1113,7 +1113,7 @@ uint64 DataTables::getFile(int square)
  *
  * @return The rank containing this square
  */
-uint64 DataTables::getRank(int square)
+uint64 DataTables::getRank(int square) const
 {
 	uint64 mask = 0xFF;
 

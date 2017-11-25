@@ -43,13 +43,13 @@ private:
 
 	void genRookMasks();
 
-	uint64 getDiagA1H8(int square);
+	uint64 getDiagA1H8(int square) const;
 
-	uint64 getDiagH1A8(int square);
+	uint64 getDiagH1A8(int square) const;
 
-	uint64 getFile(int square);
+	uint64 getFile(int square) const;
 
-	uint64 getRank(int square);
+	uint64 getRank(int square) const;
 
 	void initEpTargets();
 
