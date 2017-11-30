@@ -150,6 +150,28 @@ public:
 	}
 
 	/**
+	 * Type conversion to a void pointer. This allows passing a Buffer
+	 * to stuff like std::memcpy()
+	 *
+	 * @return A pointer to the data
+	 */
+	inline operator void*()
+	{
+		return data;
+	}
+
+	/**
+	 * Type conversion to a void pointer. This allows passing a Buffer
+	 * to stuff like std::memcpy()
+	 *
+	 * @return A const pointer to the data
+	 */
+	inline operator const void*() const
+	{
+		return data;
+	}
+
+	/**
 	 * Pointer arithmetic (addition)
 	 *
 	 * @param[in] offset The offset to add to the start of the buffer

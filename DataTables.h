@@ -65,6 +65,8 @@ private:
 
 	void init_misc_masks();
 
+public:
+
 	static const uint64 diag_magics[64];
 	static const uint64 rook_magics[64];
 

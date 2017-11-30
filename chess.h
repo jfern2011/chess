@@ -25,7 +25,7 @@
 #define RANK_8 (RANK_1 << 56)
 
 #define MAX_MOVES 256
-#define MAX_PLY   64
+#define MAX_PLY   (MAX_MOVES * 2)
 
 #define RANK(a) ((a) >> 3)
 #define FILE(a) ((a) &  7)
@@ -70,6 +70,20 @@
 	  ((to) << 6))
 
 #define MATE_SCORE 1000000
+
+/*
+ * Bit masks for determining castling rights:
+ */
+#define castle_K 1
+#define castle_Q 2
+
+#define _OO_INDEX 0
+#define OOO_INDEX 1
+
+#define clear_set64(c,s,board)     \
+	board |= _tables.set_mask[s];  \
+	board &=                       \
+		   _tables.clear_mask[c];  \
 
 /**
  * If compiling with SAFE_BUFFER, buffers declared with these macros
@@ -116,18 +130,22 @@ extern const char* SQUARE_STR[65];
 // Types
 //=====================================================================
 
-// DO NOT CHANGE THE ORDER OF THESE!
+/**
+ * DO NOT CHANGE THE ORDER OF THESE!
+ */
 typedef enum
 {
-	INVALID = 0,
-	PAWN    = 1,
-	ROOK    = 2,
-	KNIGHT  = 3,
-	BISHOP  = 4,
-	QUEEN   = 5,
-	KING    = 6
+	PAWN    = 0,
+	ROOK    = 1,
+	KNIGHT  = 2,
+	BISHOP  = 3,
+	QUEEN   = 4,
+	KING    = 5,
+	INVALID = 6
+
 } piece_t;
 
+#if defined(REMOVE)
 enum
 {
 	PAWN_INDEX   = 0,
@@ -137,6 +155,7 @@ enum
 	QUEEN_INDEX  = 4,
 	KING_INDEX   = 5
 };
+#endif
 
 typedef enum
 {
@@ -163,7 +182,6 @@ typedef enum
  */
 const int piece_value[7] = 
 {
-	0            ,
 	PAWN_VALUE   ,
 	ROOK_VALUE   ,
 	KNIGHT_VALUE ,
@@ -174,6 +192,9 @@ const int piece_value[7] =
 	// captures, this ensures that capturing 
 	// with the king always wins material as long
 	// as it is legal
+	0            ,
+
+	// INVALID
 	0
 };
 

@@ -1,3 +1,4 @@
+#include <cstring>
 #include <iostream>
 
 #include "Buffer.h"
@@ -36,6 +37,33 @@ int main()
 
 	std::cout << "value = "
 		<< buf2[0][1][2] << std::endl;
+
+	/*
+	 * Testing out type conversions
+	 */
+	Buffer<uint64,3> dest;
+	Buffer<uint64,3> orig;
+
+	dest[0] = 1;
+	dest[1] = 2;
+	dest[2] = 3;
+
+	orig[0] = 4;
+	orig[1] = 5;
+	orig[2] = 6;
+
+	std::printf("dest[0] = %llu\n", dest[0]);
+	std::printf("dest[1] = %llu\n", dest[1]);
+	std::printf("dest[2] = %llu\n", dest[2]);
+	std::printf("\n");
+
+	std::memcpy(dest,
+		orig, sizeof(uint64) * 3);
+
+	std::printf("dest[0] = %llu\n", dest[0]);
+	std::printf("dest[1] = %llu\n", dest[1]);
+	std::printf("dest[2] = %llu\n", dest[2]);
+	std::fflush(stdout);
 
 	return 0;
 }
