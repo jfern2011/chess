@@ -5,7 +5,7 @@
 #include <cstring>
 #include <string>
 
-#include "DataTables.h"
+#include "chess_util.h"
 
 /**
  **********************************************************************
@@ -171,7 +171,6 @@ class Position
 
 			return same;
 		}
-
 	};
 
 public:
@@ -204,11 +203,15 @@ public:
 
 	int get_bishop_mobility(int square, uint64 occupied) const;
 
+	uint64 get_discover_ready(int to_move) const;
+
 	std::string get_fen() const;
 
 	uint64 get_hash_key() const;
 
 	uint64 get_hash_key(int ply) const;
+
+	uint64 get_pinned_pieces(int to_move) const;
 
 	int get_queen_mobility( int square, uint64 occupied) const;
 
@@ -217,6 +220,8 @@ public:
 	int32 get_turn() const;
 
 	bool in_check(int to_move) const;
+
+	direction_t is_pinned(int square, int to_move) const;
 
 	bool make_move(int move);
 
@@ -497,6 +502,65 @@ inline int Position::get_bishop_mobility(int square,
 }
 
 /**
+ * Get a bitboard containing all pieces that, if moved, would uncover
+ * check on \a to_move
+ *
+ * @param[in] to_move The side whose king is vulnerable
+ *
+ * @return A bitboard with bits set for each square whose occupant is
+ *         ready to uncover check
+ */
+inline uint64 Position::get_discover_ready(int to_move) const
+{
+	const uint64 occupied =
+		_occupied[0] | _occupied[1];
+
+	uint64 pinned =
+		attacks_from_queen(_king_sq[to_move], occupied)
+			& _occupied[flip(to_move)];
+
+	for (uint64 temp = pinned; temp; )
+	{
+		const int sq = Util::msb64(temp);
+
+		switch (data_tables.directions[sq][_king_sq[to_move]])
+		{
+		case ALONG_RANK:
+			if (!(attacks_from_rook( sq, occupied)
+					& data_tables.ranks64[sq]
+					& (_rooks[flip(to_move)] |
+						_queens[flip(to_move)])))
+				Util::clear_bit64(sq, pinned);
+			break;
+		case ALONG_FILE:
+			if (!(attacks_from_rook( sq, occupied)
+					& data_tables.files64[sq]
+					& (_rooks[flip(to_move)] |
+						_queens[flip(to_move)])))
+				Util::clear_bit64(sq, pinned);
+			break;
+		case ALONG_A1H8:
+			if (!(attacks_from_bishop(sq, occupied)
+				  & data_tables.a1h8_64[sq]
+				  & (_bishops[flip(to_move)] |
+				  		 _queens[flip(to_move)])))
+				Util::clear_bit64(sq, pinned);
+			break;
+		case ALONG_H1A8:
+			if (!(attacks_from_bishop(sq, occupied)
+				  & data_tables.h1a8_64[sq]
+				  & (_bishops[flip(to_move)] |
+				  		 _queens[flip(to_move)])))
+				Util::clear_bit64(sq, pinned);
+		}
+
+		Util::clear_bit64(sq, temp);
+	}
+
+	return pinned;
+}
+
+/**
  * Get the 64-bit Zobrist key associated with this position
  *
  * @return The hash key
@@ -525,6 +589,64 @@ inline uint64 Position::get_hash_key(int ply) const
 #endif
 
 	return _save_hash[_ply];
+}
+
+/**
+ * Get a bitboard containing all pieces that are pinned on the king
+ * for the specified side
+ *
+ * @param[in] to_move Get pinned pieces for this side
+ *
+ * @return A bitboard with a bit set for each of the pinned squares
+ */
+inline uint64 Position::get_pinned_pieces( int to_move ) const
+{
+	const uint64 occupied =
+		_occupied[0] | _occupied[1];
+
+	uint64 pinned =
+		attacks_from_queen(_king_sq[to_move], occupied)
+			& _occupied[to_move];
+
+	for (uint64 temp = pinned; temp; )
+	{
+		const int sq = Util::msb64(temp);
+
+		switch (data_tables.directions[sq][_king_sq[to_move]])
+		{
+		case ALONG_RANK:
+			if (!(attacks_from_rook(sq, occupied)
+					& data_tables.ranks64[sq]
+					& (_rooks[flip(to_move)] |
+						_queens[flip(to_move)])))
+				Util::clear_bit64(sq, pinned);
+			break;
+		case ALONG_FILE:
+			if (!(attacks_from_rook( sq, occupied)
+					& data_tables.files64[sq]
+					& (_rooks[flip(to_move)] |
+						_queens[flip(to_move)])))
+				Util::clear_bit64(sq, pinned);
+			break;
+		case ALONG_A1H8:
+			if (!(attacks_from_bishop(sq, occupied)
+				  & data_tables.a1h8_64[sq]
+				  & (_bishops[flip(to_move)] |
+				  		 _queens[flip(to_move)])))
+				Util::clear_bit64(sq, pinned);
+			break;
+		case ALONG_H1A8:
+			if (!(attacks_from_bishop(sq, occupied)
+				  & data_tables.h1a8_64[sq]
+				  & (_bishops[flip(to_move)] |
+				  		 _queens[flip(to_move)])))
+				Util::clear_bit64(sq, pinned);
+		}
+
+		Util::clear_bit64(sq, temp);
+	}
+
+	return pinned;
 }
 
 /**
@@ -590,6 +712,57 @@ inline bool Position::in_check(int to_move) const
 
 	return under_attack(_king_sq[to_move],
 		flip(to_move));
+}
+
+/**
+ * Determine whether a piece on a particular square would be pinned
+ * on the king
+ *
+ * @param[in] square  The square of interest
+ * @param[in] to_move The player whose piece would be pinned
+ *
+ * @return The direction of the pin
+ */
+inline direction_t Position::is_pinned(int square, int to_move) const
+{
+	const uint64 occupied =
+		_occupied[0] | _occupied[1];
+
+	if (attacks_from_queen(square,occupied) & _kings[to_move])
+	{
+		switch(data_tables.directions[ square ][_king_sq[ to_move ]])
+		{
+		case ALONG_RANK:
+			if (attacks_from_rook( square, occupied)
+					& data_tables.ranks64[square]
+					& (_rooks[flip(to_move)] |
+						_queens[flip(to_move)]))
+				return ALONG_RANK;
+			break;
+		case ALONG_FILE:
+			if (attacks_from_rook( square, occupied)
+					& data_tables.files64[square]
+					& (_rooks[flip(to_move)] |
+						_queens[flip(to_move)]))
+				return ALONG_FILE;
+			break;
+		case ALONG_A1H8:
+			if (attacks_from_bishop(square, occupied)
+				  & data_tables.a1h8_64[square]
+				  & (_bishops[flip(to_move)] |
+				  			 _queens[flip(to_move)]))
+				return ALONG_A1H8;
+			break;
+		case ALONG_H1A8:
+			if (attacks_from_bishop(square, occupied)
+				  & data_tables.h1a8_64[square]
+				  & (_bishops[flip(to_move)] |
+				  			 _queens[flip(to_move)]))
+				return ALONG_H1A8;
+		}
+	}
+
+	return NONE;
 }
 
 /**

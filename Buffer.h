@@ -150,23 +150,23 @@ public:
 	}
 
 	/**
-	 * Type conversion to a void pointer. This allows passing a Buffer
-	 * to stuff like std::memcpy()
+	 * Type conversion to a pointer. Allows passing a Buffer to stuff
+	 * like std::memcpy()
 	 *
 	 * @return A pointer to the data
 	 */
-	inline operator void*()
+	inline operator T*()
 	{
 		return data;
 	}
 
 	/**
-	 * Type conversion to a void pointer. This allows passing a Buffer
-	 * to stuff like std::memcpy()
+	 * Type conversion to a pointer. Allows passing a Buffer to stuff
+	 * like std::memcpy()
 	 *
 	 * @return A const pointer to the data
 	 */
-	inline operator const void*() const
+	inline operator const T*() const
 	{
 		return data;
 	}

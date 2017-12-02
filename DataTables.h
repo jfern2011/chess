@@ -23,8 +23,6 @@ public:
 
 	~DataTables();
 
-	bool run_test() const;
-
 private:
 	
 	uint64 computeDiagAttacks(int square, uint64 occupied) const;
@@ -309,5 +307,7 @@ public:
 	 */
 	BUFFER(uint64, west_mask, 64);
 };
+
+extern DataTables data_tables;
 
 #endif

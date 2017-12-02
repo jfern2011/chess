@@ -160,7 +160,7 @@ private:
 	bool _is_init;
 
 	/**
-	 * Listens for incomming commands
+	 * Listens for incoming commands
 	 */
 	WriteEventSink _wes;
 };
