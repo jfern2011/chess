@@ -783,6 +783,8 @@ void DataTables::initXSB()
  * \ref rank_adjacent
  * \ref back_rank
  * \ref exchange
+ * \ref kingside
+ * \ref queenside
  */
 void DataTables::init_misc_masks()
 {
@@ -869,6 +871,16 @@ void DataTables::init_misc_masks()
 		for (int j = 0; j < 7; j++)
 			exchange[i][j] =
 				piece_value[i] - piece_value[j];
+
+	kingside[WHITE] =
+		set_mask[F1] | set_mask[G1];
+	kingside[BLACK] =
+		set_mask[F8] | set_mask[G8];
+
+	queenside[WHITE] =
+		set_mask[B1] | set_mask[C1] | set_mask[D1];
+	queenside[BLACK] =
+		set_mask[B8] | set_mask[C8] | set_mask[D8];
 }
 
 /**

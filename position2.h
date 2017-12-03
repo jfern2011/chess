@@ -199,6 +199,10 @@ public:
 
 	uint64 attacks_to(int square, int to_move) const;
 
+	bool can_castle_long( int to_move) const;
+
+	bool can_castle_short(int to_move) const;
+
 	void generate_hash();
 
 	int get_bishop_mobility(int square, uint64 occupied) const;
@@ -482,6 +486,32 @@ inline uint64 Position::attacks_to(int square, int to_move) const
 			& _kings[to_move];
 
 	return out;
+}
+
+/**
+ * Determine whether or not the given player has forfeited his ability
+ * to castle long
+ *
+ * @param[in] to_move The player of interest
+ *
+ * @return True if he may castle
+ */
+inline bool Position::can_castle_long(int to_move) const
+{
+	return _castle_rights[_ply][to_move] & castle_Q;
+}
+
+/**
+ * Determine whether or not the given player has forfeited his ability
+ * to castle short
+ *
+ * @param[in] to_move The player of interest
+ *
+ * @return True if he may castle
+ */
+inline bool Position::can_castle_short(int to_move) const
+{
+	return _castle_rights[_ply][to_move] & castle_K;
 }
 
 /**

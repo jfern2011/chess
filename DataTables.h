@@ -165,6 +165,12 @@ public:
 	BUFFER(uint64, king_attacks, 64);
 
 	/**
+	 * Bits representing the kingside, i.e. for white this would
+	 * be F1 and G1
+	 */
+	BUFFER(uint64, kingside, 2);
+
+	/**
 	 * Database of "attacks from" bitboards for a knight
 	 */
 	BUFFER(uint64, knight_attacks, 64);
@@ -276,6 +282,12 @@ public:
 	 * the square itself
 	 */
 	BUFFER(uint64, rook_range_mask, 64);
+
+	/**
+	 * Bits representing the queenside, i.e. for white this would be
+	 * B1, C1, and D1
+	 */
+	BUFFER(uint64, queenside, 2);
 
 	/**
 	 * Bitmasks used to set single bits. All bits are clear except at

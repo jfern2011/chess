@@ -16,4 +16,3 @@ MoveGen::MoveGen(const DataTables& tables)
 MoveGen::~MoveGen()
 {
 }
-
