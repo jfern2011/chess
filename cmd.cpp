@@ -6,7 +6,7 @@
 CommandInterface::CommandInterface()
 	: _cmds(),
 	  _is_init(false),
-	  _wes()
+	  _res()
 {
 }
 
@@ -29,9 +29,9 @@ bool CommandInterface::init(int fd)
 {
 	AbortIf(_is_init, false);
 
-	AbortIfNot(_wes.assign_fd(fd), false);
+	AbortIfNot(_res.assign_fd(fd), false);
 
-	AbortIfNot(_wes.attach_reader(
+	AbortIfNot(_res.attach_reader(
 		*this, &CommandInterface::handle_command), false );
 
 	_is_init = true;
@@ -90,11 +90,11 @@ bool CommandInterface::is_installed(const std::string& name) const
  */
 bool CommandInterface::poll()
 {
-	WriteEventSink::err_code code =
-					_wes.read( std::string("\n") );
+	ReadEventSink::err_code code =
+					_res.read( std::string("\n") );
 
-	AbortIf(code != WriteEventSink::SUCCESS &&
-			code != WriteEventSink::NO_DATA,false);
+	AbortIf(code != ReadEventSink::SUCCESS &&
+			code != ReadEventSink::NO_DATA, false);
 
 	return true;
 }

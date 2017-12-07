@@ -484,7 +484,7 @@ inline uint32 MoveGen::generate_captures(const Position& pos,
 		const int from = Util::msb64(pieces);
 
 		/*
-		 * If this queen is pinned, then restrict its motion to along
+		 * If the queen is pinned, then restrict its motion to along
 		 * the direction of the pin:
 		 */
 		uint64 restrictAttacks = ~0;
@@ -2809,25 +2809,25 @@ inline bool MoveGen::validate_move(const Position& pos, int move,
 		if (_abs(from-to) == 2 && !check)
 		{
 			if (FILE(to) == FILE(G1)
-					&& pos.can_castle_short( to_move ))
+					 && pos.can_castle_short( to_move ))
 			{
 				if (to_move == WHITE &&
-					((occupied & _tables.kingside[WHITE])
-						|| pos.under_attack(F1, BLACK)
-						|| pos.under_attack(G1, BLACK) ))
+					((occupied &  _tables.kingside[WHITE])
+						|| pos.under_attack( F1, BLACK )
+						|| pos.under_attack( G1, BLACK )))
 				{
 					return false;
 				}
 				else if (to_move == BLACK &&
-					((occupied & _tables.kingside[BLACK])
-						|| pos.under_attack(F8, WHITE)
-						|| pos.under_attack(G8, WHITE) ))
+					((occupied &  _tables.kingside[BLACK])
+						|| pos.under_attack( F8, WHITE )
+						|| pos.under_attack( G8, WHITE )))
 				{
 					return false;
 				}
 			}
 			else if (FILE(to) == FILE(C1)
-						&&pos.can_castle_long(to_move))
+						&& pos.can_castle_long(to_move))
 			{
 				if (to_move == WHITE &&
 					((occupied & _tables.queenside[WHITE])
@@ -2836,7 +2836,7 @@ inline bool MoveGen::validate_move(const Position& pos, int move,
 				{
 					return false;
 				}
-				if (to_move == BLACK &&
+				else if (to_move == BLACK &&
 					((occupied & _tables.queenside[BLACK])
 						|| pos.under_attack( C8, BLACK )
 						|| pos.under_attack( D8, BLACK )))

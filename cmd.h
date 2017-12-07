@@ -5,7 +5,7 @@
 #include <map>
 #include <string>
 
-#include "WriteEventSink.h"
+#include "ReadEventSink.h"
 
 /**
  * @class CommandInterface
@@ -134,7 +134,7 @@ public:
     }
 
     bool install(const std::string& name,
-    			 bool(*func)(const std::string&));
+    			 bool(*func )( const std::string& ));
 
     bool is_init() const;
 
@@ -162,7 +162,7 @@ private:
 	/**
 	 * Listens for incoming commands
 	 */
-	WriteEventSink _wes;
+	ReadEventSink _res;
 };
 
 #endif

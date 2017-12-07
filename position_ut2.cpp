@@ -53,12 +53,12 @@ int main(int argc, char** argv)
 {
 	DataTables tables;
 	Position pos(tables,
-		         //"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",
+		         "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",
 		         false);
 
 	int64 start = Clock::get_monotonic_time();
 
-	int nodes = perft2(pos, 6);
+	int nodes = perft2(pos, 5);
 
 	int64 dt = Clock::get_monotonic_time() - start;
 
