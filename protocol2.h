@@ -2,6 +2,8 @@
 #define __PROTOCOL_H__
 
 #include "cmd.h"
+#include "log.h"
+#include "settings.h"
 
 /**
  **********************************************************************
@@ -18,7 +20,7 @@ class Protocol
 
 public:
 
-	Protocol();
+	Protocol(Logger& logger);
 
 	virtual ~Protocol();
 
@@ -26,10 +28,29 @@ public:
 
 	virtual bool sniff() = 0;
 
+	/*
+	 * The engine settings which can be adjusted
+	 * via this protocol
+	 */
+	EngineSettings settings;
+
 protected:
 
+	/**
+	 * The commanding interface which dispatches
+	 * command handlers
+	 */
 	CommandInterface _cmd;
+
+	/**
+	 * True if \ref init() was called
+	 */
 	bool _is_init;
+
+	/**
+	 * Write to the chess engine log file
+	 */
+	Logger& _logger;
 };
 
 /**
@@ -242,9 +263,11 @@ class UCI : public Protocol
 
 public:
 
-	UCI();
+	UCI(Logger& logger);
 
 	~UCI();
+
+	bool debug(const std::string& state);
 
 	bool init(int fd);
 
@@ -257,6 +280,11 @@ private:
 	bool _init_options();
 
 	bool _init_commands();
+
+	/**
+	 * The name of this class for logging purposes
+	 */
+	const std::string _name;
 
 	/**
 	 * Options settable by the GUI

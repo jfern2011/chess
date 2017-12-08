@@ -4,8 +4,11 @@
 /**
  * Constructor
  */
-Protocol::Protocol()
-	: _cmd(), _is_init(false)
+Protocol::Protocol(Logger& logger)
+	: _cmd(),
+	  _is_init(false),
+	  _logger(logger),
+	  settings(_logger)
 {
 }
 
@@ -19,8 +22,8 @@ Protocol::~Protocol()
 /**
  * Construct a Universal Chess Interface
  */
-UCI::UCI()
-	: Protocol()
+UCI::UCI(Logger& logger)
+	: Protocol(logger), _name("UCI")
 {
 }
 
@@ -41,6 +44,9 @@ UCI::~UCI()
 bool UCI::_init_commands()
 {
 	AbortIf(_is_init, false);
+
+	AbortIfNot(_cmd.install<UCI>("debug", *this, &UCI::debug),
+		false);
 
 	AbortIfNot(_cmd.install<UCI>("uci", *this, &UCI::uci),
 		false);
@@ -81,6 +87,24 @@ bool UCI::_init_options()
 		AbortIfNot(_options[i],
 			false);
 	}
+
+	return true;
+}
+
+bool UCI::debug(const std::string& state)
+{
+	if (state != "on" && state != "off")
+	{
+		_logger.write(_name,
+					  "unable to set debug state to '%s'",
+					  state.c_str());
+		return true;
+	}
+
+	if (state == "on")
+		settings.set_debug(true );
+	else
+		settings.set_debug(false);
 
 	return true;
 }

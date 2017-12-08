@@ -2,8 +2,10 @@
 
 int main(int argc, char** argv)
 {
+	Logger logger;
+
 	std::string dummy;
-	UCI uci;
+	UCI uci(logger);
 
 	uci.init(STDIN_FILENO);
 	uci.uci(dummy);
