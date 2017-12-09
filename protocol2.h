@@ -48,7 +48,7 @@ protected:
 	bool _is_init;
 
 	/**
-	 * Write to the chess engine log file
+	 * Writes to the chess engine log file
 	 */
 	Logger& _logger;
 };
@@ -169,7 +169,7 @@ class UCI : public Protocol
 		 *
 		 * @param[in] name     The name of this option
 		 * @param[in] type     One of the five types defined by the UCI
-		 *                     protocol
+		 *                     communication protocol
 		 */
 		option(const std::string& name,
 			   const std::string& type)
@@ -186,6 +186,8 @@ class UCI : public Protocol
 
 		/**
 		 * Get the default value for this option as a string
+		 *
+		 * @return The default for this option
 		 */
 		std::string default_to_string() const
 		{
@@ -198,6 +200,8 @@ class UCI : public Protocol
 
 		/**
 		 * Get the minimum value for this option as a string
+		 *
+		 * @return The minimum for this option
 		 */
 		std::string min_to_string() const
 		{
@@ -210,6 +214,8 @@ class UCI : public Protocol
 
 		/**
 		 * Get the maximum value for this option as a string
+		 *
+		 * @return The maximum for this option
 		 */
 		std::string max_to_string() const
 		{
@@ -222,6 +228,10 @@ class UCI : public Protocol
 
 		/**
 		 * Get the set of predefined values for this option
+		 *
+		 * @param[in] strs The predefined values
+		 *
+		 * @return True on success
 		 */
 		bool predefs_to_string(Util::str_v& strs) const
 		{
@@ -246,12 +256,12 @@ class UCI : public Protocol
 		const T default_value;
 
 		/**
-		 * The minimum value for the option
+		 * The minimum value for this option
 		 */
 		const T min;
 
 		/**
-		 * The maximum value for the option
+		 * The maximum value for this option
 		 */
 		const T max;
 
@@ -267,7 +277,7 @@ public:
 
 	~UCI();
 
-	bool debug(const std::string& state);
+	bool debug(const std::string& _state);
 
 	bool init(int fd);
 

@@ -3,6 +3,10 @@
 
 #include "log.h"
 
+/**
+ * A class that maintains the engine configuration parameters,
+ * settable by the UCI or xBoard interfaces
+ */
 class EngineSettings
 {
 
@@ -20,6 +24,9 @@ public:
 
 private:
 
+	/**
+	 * The value of the UCI "debug" option
+	 */
 	bool _debug;
 
 	/**

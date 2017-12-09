@@ -3,6 +3,11 @@
 
 #include "util.h"
 
+/**
+ * A simple class used for logging activity. Any modules
+ * that wish to write to the log must register with
+ * \ref register_source
+ */
 class Logger
 {
 
@@ -12,7 +17,7 @@ public:
 
 	~Logger();
 
-	bool assign_fd(int fd);
+	bool assign_fd(int fd, bool nonblock=false);
 
 	bool is_registered(const std::string& name) const;
 
@@ -23,8 +28,14 @@ public:
 
 private:
 
+	/**
+	 * The file descriptor to write to
+	 */
 	int _fd;
 
+	/**
+	 * A set of registered log sources
+	 */
 	Util::str_v _sources;
 };
 

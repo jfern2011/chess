@@ -3,12 +3,15 @@
 
 /**
  * Constructor
+ *
+ * @param[in] logger The Logger that this component can write
+ *                   diagnostics to
  */
 Protocol::Protocol(Logger& logger)
-	: _cmd(),
-	  _is_init(false),
-	  _logger(logger),
-	  settings(_logger)
+	: settings(logger),
+	  _cmd(),
+	  _is_init( false ),
+	  _logger(logger)
 {
 }
 
@@ -23,7 +26,8 @@ Protocol::~Protocol()
  * Construct a Universal Chess Interface
  */
 UCI::UCI(Logger& logger)
-	: Protocol(logger), _name("UCI")
+	: Protocol(logger),
+	  _name("UCI"), _options()
 {
 }
 
@@ -91,13 +95,23 @@ bool UCI::_init_options()
 	return true;
 }
 
-bool UCI::debug(const std::string& state)
+/**
+ * The handler for the "debug" command
+ *
+ * @param[in] _state Set the debug option to this. Should either
+ *                   be "on" or "off"
+ *
+ * @return True on success
+ */
+bool UCI::debug(const std::string& _state)
 {
+	const std::string state =
+		Util::to_lower(Util::trim(_state));
+
 	if (state != "on" && state != "off")
 	{
 		_logger.write(_name,
-					  "unable to set debug state to '%s'",
-					  state.c_str());
+			"unable to set debug state to '%s'", state.c_str());
 		return true;
 	}
 
@@ -109,6 +123,13 @@ bool UCI::debug(const std::string& state)
 	return true;
 }
 
+/**
+ * Initialize this interface
+ *
+ * @param[in] fd The file descriptor on which to read user commands
+ *
+ * @return True on success
+ */
 bool UCI::init(int fd)
 {
 	AbortIfNot(_cmd.init(fd),
@@ -121,6 +142,12 @@ bool UCI::init(int fd)
 	return true;
 }
 
+/**
+ * Sniff the file descriptor for user commands, dispatching
+ * handlers as needed
+ *
+ * @return True on success
+ */
 bool UCI::sniff()
 {
 	AbortIfNot(_is_init, false);
