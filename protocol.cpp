@@ -132,6 +132,12 @@ bool UCI::debug(const std::string& _state)
  */
 bool UCI::init(int fd)
 {
+	/*
+	 * Register the engine settings component with
+	 * the Logger
+	 */
+	AbortIfNot(settings.init(), false);
+	
 	AbortIfNot(_cmd.init(fd),
 		false);
 

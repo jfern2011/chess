@@ -34,6 +34,11 @@ private:
 	int _fd;
 
 	/**
+	 * The name of this module
+	 */
+	const std::string _name;
+
+	/**
 	 * A set of registered log sources
 	 */
 	Util::str_v _sources;

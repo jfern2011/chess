@@ -11,7 +11,7 @@
  * Constructor
  */
 Logger::Logger()
-	: _fd(-1), _sources()
+	: _fd(-1), _name("Logger"), _sources()
 {
 }
 
@@ -78,8 +78,7 @@ bool Logger::is_registered(const std::string& name) const
  */
 bool Logger::register_source(const std::string& name)
 {
-	std::string source =
-		Util::to_lower(Util::trim(name));
+	std::string source = Util::trim(name);
 
 	AbortIf(source.empty(), false);
 
@@ -109,8 +108,7 @@ bool Logger::write(const std::string& _source,
 {
 	AbortIf(_fd == -1, false);
 
-	const std::string source =
-		Util::to_lower(Util::trim(_source));
+	const std::string source = Util::trim(_source);
 
 	static const int buf_size = 1024;
 	static Buffer<char,buf_size> buf;
@@ -122,16 +120,19 @@ bool Logger::write(const std::string& _source,
 		 * Deny this stranger access:
 		 */
 		nchars = std::snprintf(buf, buf_size,
-			"unknown source '%s' attempted to access the log!\n",
-			_source.c_str());
+			"%s: unknown source '%s' attempted to access the log!\n",
+			_name.c_str(), _source.c_str());
 	}
 	else
 	{
+		const std::string format_s = source + ": " + format;
+
 		va_list args;
 
 		va_start(args, format);
 
-		int nchars = std::snprintf(buf, buf_size, format, args );
+		nchars =
+			std::vsnprintf( buf , buf_size, format_s.c_str(), args );
 
 		va_end(args);
 	}
@@ -139,7 +140,7 @@ bool Logger::write(const std::string& _source,
 	/*
 	 * Nothing we can do if this fails:
 	 */
-	if (n > 0)
+	if (nchars > 0)
 		::write(_fd, buf, nchars);
 	
 	return true;
