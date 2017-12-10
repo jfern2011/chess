@@ -55,6 +55,9 @@ bool UCI::_init_commands()
 	AbortIfNot(_cmd.install<UCI>("uci", *this, &UCI::uci),
 		false);
 
+	AbortIfNot(_cmd.install<UCI>("isready", *this, &UCI::isready),
+		false);
+
 	return true;
 }
 
@@ -68,28 +71,41 @@ bool UCI::_init_options()
 	AbortIf(_is_init, false);
 
 	/*
-	 * Hash table size
-	 */
-	_options.push_back(new option<int>("Hash",  // Name
-									   "spin",  // Type
-									   16,      // Default (MB)
-									   0,       // Min
-									   65536)); // Max
+	 * Note: Assign an engine updater to every option that
+ 	 * needs one. This allows the value field of the
+ 	 * "setoption" command to make its way to the engine's
+ 	 * internal settings
+ 	 */
 
-	/*
-	 * Pondering
-	 */
-	_options.push_back(new option<bool>("Ponder",
-										"check",
-										false));
-
-	/*
-	 * Make sure we have valid pointers:
-	 */
-	for (size_t i = 0; i < _options.size(); i++)
 	{
-		AbortIfNot(_options[i],
-			false);
+		/*
+	 	 * Hash table size
+	 	 */
+		auto opt = new option<int>("Hash", // Name
+								   "spin", // Type
+								   16,     // Default (MB)
+								   0,      // Min
+								   65536); // Max
+		AbortIfNot(opt, false);
+		AbortIfNot(opt->assign_updater(
+			settings, &EngineSettings::set_hash_size), false);
+
+		_options.push_back(opt);
+	}
+
+	{
+		/*
+	 	 * Pondering
+	 	 */
+		auto opt = new option<bool>("Ponder",
+									"check",
+									false);
+
+		AbortIfNot(opt, false);
+		AbortIfNot(opt->assign_updater(
+			   settings, &EngineSettings::set_ponder), false);
+
+		_options.push_back(opt);
 	}
 
 	return true;
@@ -124,6 +140,29 @@ bool UCI::debug(const std::string& _state)
 }
 
 /**
+ * Get an iterator to the option with the specified name
+ *
+ * @param[in] name The name of the option
+ *
+ * @return An iterator to the option give by \a name, or
+ *         vector::end if not found
+ */
+std::vector<UCI::option_base*>::iterator
+	UCI::find_option(const std::string& name)
+{
+	for (auto iter = _options.begin(), end = _options.end();
+		 iter != end; ++iter)
+	{
+		const std::string _name = (*iter)->name;
+
+		if ( Util::to_lower(_name) == Util::to_lower(name) )
+			return iter;
+	}
+
+	return _options.end();
+}
+
+/**
  * Initialize this interface
  *
  * @param[in] fd The file descriptor on which to read user commands
@@ -137,14 +176,90 @@ bool UCI::init(int fd)
 	 * the Logger
 	 */
 	AbortIfNot(settings.init(), false);
-	
+
 	AbortIfNot(_cmd.init(fd),
 		false);
 
 	AbortIfNot(_init_commands(), false);
 	AbortIfNot(_init_options(),  false);
 
+	AbortIfNot(_logger.register_source(_name),
+		false);
+
 	_is_init = true;
+	return true;
+}
+
+/**
+ * The handler for the "isready" UCI command
+ *
+ * @return True on success
+ */
+bool UCI::isready(const std::string&) const
+{
+	AbortIfNot(Output::to_stdout("readyok\n"),
+		false);
+
+	return true;
+}
+
+/**
+ * The command handler for the UCI "setoption" user command
+ *
+ * @return True on success
+ */
+bool UCI::setoption(const std::string& _args)
+{
+	Util::str_v args;
+	Util::split(_args, args);
+
+	if (args.size() < 2)
+	{
+		_logger.write(_name, "too few inputs '%s'\n",  _args.c_str() );
+
+		return false;
+	}
+
+	auto iter = find_option(Util::trim(args[1]));
+
+	if (iter == _options.end())
+	{
+		_logger.write(_name, "unknown option '%s'\n", args[1].c_str());
+
+		return false;
+	}
+
+	const option_base* option = *iter;
+
+	if (option->type == "button")
+	{
+		// code for button options
+		return true;
+	}
+
+	/*
+	 * If we got here, there should also be a value specified
+	 * for this option:
+	 */
+	if (args.size() != 4
+		|| Util::to_lower(Util::trim(args[0])) != "name"
+		|| Util::to_lower(Util::trim(args[2])) != "value")
+	{
+		_logger.write(_name, "invalid command syntax '%s'\n",
+					  _args.c_str());
+		return false;
+	}
+
+	if (!option->update(args[3]))
+	{
+		_logger.write(
+				_name, "failed to set option '%s' to '%s'\n",
+				option->name.c_str(),
+				args[3].c_str());
+
+		return false;
+	}
+
 	return true;
 }
 

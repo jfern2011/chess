@@ -72,8 +72,8 @@ class UCI : public Protocol
 		/**
 		 * Constructor
 		 *
-		 * @param [in] _name The name of this option
-		 * @param [in] _type One of the five types described in the UCI
+		 * @param[in] _name  The name of this option
+		 * @param[in] _type  One of the five types described in the UCI
 		 *                   protocol
 		 */
 		option_base(const std::string& _name, const std::string& _type)
@@ -82,10 +82,14 @@ class UCI : public Protocol
 		{
 		}
 
+		virtual ~option_base() {}
+
 		virtual std::string default_to_string() const = 0;
 		virtual std::string min_to_string() const = 0;
 		virtual std::string max_to_string() const = 0;
-		virtual bool predefs_to_string(Util::str_v& strs )
+		virtual bool predefs_to_string (Util::str_v& strs)
+			const = 0;
+		virtual bool update(const std::string& value)
 			const = 0;
 
 		/**
@@ -94,7 +98,7 @@ class UCI : public Protocol
 		std::string name;
 
 		/**
-		 * The UCI option type
+		 * One of the UCI option types
 		 */
 		std::string type;
 
@@ -116,6 +120,8 @@ class UCI : public Protocol
 	template <typename T>
 	struct option : public option_base
 	{
+		typedef Signal::signal_t<void,T> signal_t;
+
 		/**
 		 * Constructor (1)
 		 *
@@ -169,7 +175,7 @@ class UCI : public Protocol
 		 *
 		 * @param[in] name     The name of this option
 		 * @param[in] type     One of the five types defined by the UCI
-		 *                     communication protocol
+		 *                     protocol
 		 */
 		option(const std::string& name,
 			   const std::string& type)
@@ -182,6 +188,43 @@ class UCI : public Protocol
 		{
 			// Identify which constructor was used
 			inputs = 2;
+		}
+
+		/**
+		 * Destructor
+		 */
+		~option()
+		{
+			if (_update_sig) delete _update_sig;
+		}
+
+		/**
+		 * Assign the method that will actually update the engine's
+		 * internals when this option is changed
+		 *
+		 * @tparam C The class that implements the updater function
+		 *
+		 * @param[in] obj  The object through which to call the
+		 *                 updater
+		 * @param[in] func The updater itself
+		 *
+		 * @return True on success
+		 */
+		template <typename C>
+		bool assign_updater(C& obj, void(C::*func)(T))
+		{
+			AbortIf(_update_sig, false);
+
+			_update_sig = new Signal::mem_ptr<void,C,T>(obj, func);
+			AbortIfNot(_update_sig->is_connected(),
+				false);
+
+			/*
+			 * Send the default value to the engine:
+			 */
+			_update_sig->raise(default_value);
+
+			return true;
 		}
 
 		/**
@@ -251,17 +294,74 @@ class UCI : public Protocol
 		}
 
 		/**
+		 * Updates the engine with the current value of this
+		 * option
+		 *
+		 * @param [in] value The value passed in by the user
+		 *
+		 * @return True on success
+		 */
+		bool update(const std::string& value) const
+		{
+			AbortIfNot(_update_sig, false);
+
+			T val;
+			if (!Util::from_string(value, val))
+				return false;
+
+			/*
+			 * Attempt to match the input value against one of the
+			 * predefined ones:
+			 */
+			if (!vars.empty())
+			{
+				for (size_t i = 0; i < vars.size(); i++)
+				{
+					if (vars[i] == val)
+					{
+						_update_sig->raise(val);
+						return true;
+					}
+				}
+
+				return false;
+			}
+
+			/*
+			 * If this is a boolean option, then it makes no sense
+			 * for us to perform bounds checking:
+			 */
+			if (Util::is_bool<T>::value)
+			{
+				_update_sig->raise(val);
+				return true;
+			}
+
+			/*
+			 * Otherwise, saturate the input value if needed:
+			 */
+			if (val > max)
+				_update_sig->raise(max);
+			else if (val < min)
+				_update_sig->raise(min);
+			else
+				_update_sig->raise(val);
+
+			return true;
+		}
+
+		/**
 		 * The default value for this option
 		 */
 		const T default_value;
 
 		/**
-		 * The minimum value for this option
+		 * The minimum value for the option
 		 */
 		const T min;
 
 		/**
-		 * The maximum value for this option
+		 * The maximum value for the option
 		 */
 		const T max;
 
@@ -269,6 +369,14 @@ class UCI : public Protocol
 		 * A set of pre-defined values
 		 */
 		std::vector<T> vars;
+
+	private:
+
+		/**
+		 * The handler that will update the engine after
+		 * the "setoption" command is sent
+		 */
+		signal_t* _update_sig;
 	};
 
 public:
@@ -279,7 +387,14 @@ public:
 
 	bool debug(const std::string& _state);
 
+	std::vector<option_base*>::iterator
+		find_option(const std::string& name);
+
 	bool init(int fd);
+
+	bool isready(const std::string&) const;
+
+	bool setoption(const std::string& _args);
 
 	bool sniff();
 

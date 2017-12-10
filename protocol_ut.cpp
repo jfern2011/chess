@@ -12,6 +12,9 @@ int main(int argc, char** argv)
 	uci.uci(dummy);
 	uci.debug("off");
 	uci.debug("on");
+	uci.isready(dummy);
+	uci.setoption("name hash value 10");
+	uci.setoption("name ponder value true");
 
 	return 0;
 }
