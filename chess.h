@@ -69,7 +69,7 @@
 	  ((promote) << 18) |    \
 	  ((to) << 6))
 
-#define MATE_SCORE 1000000
+#define MATE_SCORE 22000
 
 /*
  * Bit masks for determining castling rights:
@@ -169,11 +169,11 @@ typedef enum
 
 typedef enum
 {
-	PAWN_VALUE   = 1000,
-	KNIGHT_VALUE = 3250,
-	BISHOP_VALUE = 3250,
-	ROOK_VALUE   = 5000,
-	QUEEN_VALUE  = 9750
+	PAWN_VALUE   = 100,
+	KNIGHT_VALUE = 325,
+	BISHOP_VALUE = 325,
+	ROOK_VALUE   = 500,
+	QUEEN_VALUE  = 975
 
 } value_t;
 

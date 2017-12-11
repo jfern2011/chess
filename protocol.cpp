@@ -204,6 +204,16 @@ bool UCI::isready(const std::string&) const
 }
 
 /**
+ * The handler for the "register" command
+ *
+ * @return True on success
+ */
+bool UCI::register_engine(const std::string&) const
+{
+	return true;
+}
+
+/**
  * The command handler for the UCI "setoption" user command
  *
  * @return True on success

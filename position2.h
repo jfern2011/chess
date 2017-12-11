@@ -394,7 +394,7 @@ inline uint64 Position::attacks_from(int square, piece_t piece,
 				   attacks_from_bishop(square, occ);
 		default:
 			AbortIf(true, ~0,
-					"Position::attacks_from(): Invalid piece");
+				"Position::attacks_from(): Invalid piece");
 	}
 
 	return 0;

@@ -394,6 +394,8 @@ public:
 
 	bool isready(const std::string&) const;
 
+	bool register_engine(const std::string&) const;
+
 	bool setoption(const std::string& _args);
 
 	bool sniff();
