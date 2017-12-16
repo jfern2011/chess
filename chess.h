@@ -192,7 +192,7 @@ const int piece_value[7] =
 	// captures, this ensures that capturing 
 	// with the king always wins material as long
 	// as it is legal
-	0            ,
+	MATE_SCORE/2 , // CHECK THIS
 
 	// INVALID
 	0

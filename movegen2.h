@@ -23,20 +23,20 @@ public:
 
 	~MoveGen();
 
-	uint32 generate_captures(const Position& pos, int to_move,
-							 uint32* captures) const;
+	size_t generate_captures(const Position& pos, int to_move,
+							 int* captures) const;
 
-	uint32 generate_check_evasions(const Position& pos, int to_move,
-								   uint32* evasions) const;
+	size_t generate_check_evasions(const Position& pos, int to_move,
+								   int* evasions) const;
 	
-	uint32 generate_checks(const Position& pos, int to_move,
-						   uint32* checks) const;
+	size_t generate_checks(const Position& pos, int to_move,
+						   int* checks) const;
 
-	uint32 generate_legal_moves(const Position& pos, int to_move,
-								uint32* moves) const;
+	size_t generate_legal_moves(const Position& pos, int to_move,
+								int* moves) const;
 
-	uint32 generate_non_captures(const Position& pos, int to_move,
-								 uint32* moves) const;
+	size_t generate_non_captures(const Position& pos, int to_move,
+								 int* moves) const;
 
 	bool validate_move(const Position& pos, int move,
 					   bool in_check) const;
@@ -61,14 +61,14 @@ private:
  *
  **********************************************************************
  */
-inline uint32 MoveGen::generate_captures(const Position& pos,
-	int to_move, uint32* captures) const
+inline size_t MoveGen::generate_captures(const Position& pos,
+	int to_move, int* captures) const
 {
 	const uint64 target = pos._occupied[flip(to_move)];
 	const uint64 occupied =
 				   pos._occupied[0] | pos._occupied[1];
 
-	uint32 count = 0;
+	size_t count = 0;
 
 	const uint64 pinned = pos.get_pinned_pieces(to_move);
 
@@ -571,12 +571,12 @@ inline uint32 MoveGen::generate_captures(const Position& pos,
  *
  **********************************************************************
  */
-inline uint32 MoveGen::generate_check_evasions(const Position& pos,
-	int to_move, uint32* moves) const
+inline size_t MoveGen::generate_check_evasions(const Position& pos,
+	int to_move, int* moves) const
 {
 	const uint64 occupied = pos._occupied[0] | pos._occupied[1];
 
-	uint32 count = 0;
+	size_t count = 0;
 
 	/*
 	 * Step 1: Gather all enemy squares attacking our king
@@ -994,15 +994,15 @@ inline uint32 MoveGen::generate_check_evasions(const Position& pos,
  *
  **********************************************************************
  */
-inline uint32 MoveGen::generate_checks(const Position& pos,
-	int to_move, uint32* moves) const
+inline size_t MoveGen::generate_checks(const Position& pos,
+	int to_move, int* moves) const
 {
 	const uint64 occupied =
 			pos._occupied[0] | pos._occupied[1];
 
 	const uint64 target = ~occupied;
 
-	uint32 count = 0;
+	size_t count = 0;
 
 	const uint64 pinned  = pos.get_pinned_pieces (to_move);
 	const uint64 xpinned = 
@@ -1653,14 +1653,14 @@ inline uint32 MoveGen::generate_checks(const Position& pos,
  *
  **********************************************************************
  */
-inline uint32 MoveGen::generate_legal_moves(const Position& pos,
-	int to_move, uint32* moves) const
+inline size_t MoveGen::generate_legal_moves(const Position& pos,
+	int to_move, int* moves) const
 {
 	const uint64 target = ~pos._occupied[to_move];
 	const uint64 occupied =
 			  pos._occupied[0] | pos._occupied[1];
 
-	uint32 count = 0;
+	size_t count = 0;
 
 	const uint64 pinned =  pos.get_pinned_pieces(to_move);
 
@@ -2292,13 +2292,13 @@ inline uint32 MoveGen::generate_legal_moves(const Position& pos,
  *
  **********************************************************************
  */
-inline uint32 MoveGen::generate_non_captures(const Position& pos,
-	int to_move, uint32* moves) const
+inline size_t MoveGen::generate_non_captures(const Position& pos,
+	int to_move, int* moves) const
 {
 	const uint64 occupied =
 					 pos._occupied[0] | pos._occupied[1];
 	const uint64 target   = ~occupied;
-	uint32 count = 0;
+	size_t count = 0;
 
 	const uint64 pinned = pos.get_pinned_pieces(to_move);
 

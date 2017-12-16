@@ -110,7 +110,6 @@ bool StateMachine::init()
 	_state_names[none]      = "none";
 	_state_names[idle]      = "idle";
 	_state_names[searching] = "searching";
-	_state_names[n_states]  = "?";
 
 	_is_init = true;
 

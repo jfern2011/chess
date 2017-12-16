@@ -207,6 +207,10 @@ public:
 
 	int get_bishop_mobility(int square, uint64 occupied) const;
 
+	uint64 get_bishops(int to_move) const;
+
+	uint64 get_bishops() const;
+
 	uint64 get_discover_ready(int to_move) const;
 
 	std::string get_fen() const;
@@ -215,11 +219,33 @@ public:
 
 	uint64 get_hash_key(int ply) const;
 
+	int get_king_square(int to_move) const;
+
+	uint64 get_kings(int to_move) const;
+
+	uint64 get_knights(int to_move) const;
+
+	int get_material() const;
+
+	uint64 get_occupied(int to_move) const;
+
+	uint64 get_occupied() const;
+
+	uint64 get_pawns(int to_move) const;
+
 	uint64 get_pinned_pieces(int to_move) const;
 
 	int get_queen_mobility( int square, uint64 occupied) const;
 
+	uint64 get_queens(int to_move) const;
+
+	uint64 get_queens() const;
+
 	int get_rook_mobility(  int square, uint64 occupied) const;
+
+	uint64 get_rooks(int to_move) const;
+
+	uint64 get_rooks() const;
 
 	int32 get_turn() const;
 
@@ -228,6 +254,8 @@ public:
 	direction_t is_pinned(int square, int to_move) const;
 
 	bool make_move(int move);
+
+	piece_t piece_on(int square) const;
 
 	void print() const;
 
@@ -532,6 +560,30 @@ inline int Position::get_bishop_mobility(int square,
 }
 
 /**
+ * Get a bitboard representing all bishops belonging to \a to_move
+ *
+ * @param[in] to_move Whose bishops to get
+ *
+ * @return  A bitboard with 1 bit set for each square containing a
+ *          bishop belonging to \a to_move
+ */
+inline uint64 Position::get_bishops(int to_move) const
+{
+	return _bishops[to_move];
+}
+
+/**
+ * Get a bit board representing all bishops on board
+ *
+ * @return A bitboard with 1 bit set for each square
+ *         containing a bishop
+ */
+inline uint64 Position::get_bishops() const
+{
+	return _bishops[BLACK] | _bishops[WHITE];
+}
+
+/**
  * Get a bitboard containing all pieces that, if moved, would uncover
  * check on \a to_move
  *
@@ -622,6 +674,92 @@ inline uint64 Position::get_hash_key(int ply) const
 }
 
 /**
+ * Get the square that the king belonging to \a to_move is
+ * currently on
+ *
+ * @param[in] to_move Get this guy's king
+ *
+ * @return  The king's location, which should be between 0
+ *          and 63 inclusive
+ */
+inline int Position::get_king_square(int to_move) const
+{
+	return _king_sq[to_move];
+}
+
+/**
+ * Get a bitboard that represents the king belonging to \a to_move
+ *
+ * @param[in] to_move Whose king to get
+ *
+ * @return A bitboard with 1 bit set for the square containing the
+ *         the king belonging to \a to_move
+ */
+inline uint64 Position::get_kings(int to_move) const
+{
+	return _kings[to_move];
+}
+
+/**
+ * Get a bitboard representing all knights belonging to \a to_move
+ *
+ * @param[in] to_move Whose knights to get
+ *
+ * @return  A bitboard with 1 bit set for each square containing a
+ *          knight belonging to \a to_move
+ */
+inline uint64 Position::get_knights(int to_move) const
+{
+	return _knights[to_move];
+}
+
+/**
+ * Get the material balance. A positive value means white is better
+ *
+ * @return The material balance
+ */
+inline int Position::get_material() const
+{
+	return _material;
+}
+
+/**
+ * Get a bitboard representing all squares occupied by \a to_move
+ *
+ * @param[in] to_move Get a bitboard for this guy
+ *
+ * @return A bitboard with 1 bit set for each square containing a
+ *         piece belonging to \a to_move
+ */
+inline uint64 Position::get_occupied(int to_move) const
+{
+	return _occupied[to_move];
+}
+
+/**
+ * Get a bitboard representing all squares occupied by both sides
+ *
+ * @return A bitboard with 1 bit set for each occupied square
+ */
+inline uint64 Position::get_occupied() const
+{
+	return _occupied[BLACK] | _occupied[WHITE];
+}
+
+/**
+ * Get a bitboard representing all pawns belonging to \a to_move
+ *
+ * @param[in] to_move Whose pawns to get
+ *
+ * @return  A bitboard with 1 bit set for each square containing
+ *          a pawn belonging to \a to_move
+ */
+inline uint64 Position::get_pawns(int to_move) const
+{
+	return _pawns[to_move];
+}
+
+/**
  * Get a bitboard containing all pieces that are pinned on the king
  * for the specified side
  *
@@ -696,6 +834,30 @@ inline int Position::get_queen_mobility(int square,
 }
 
 /**
+ * Get a bitboard representing all queens belonging to \a to_move
+ *
+ * @param[in] to_move Whose queens to get
+ *
+ * @return A bitboard with 1 bit set for each square containing a
+ *         queen belonging to \a to_move
+ */
+inline uint64 Position::get_queens(int to_move) const
+{
+	return _queens[to_move];
+}
+
+/**
+ * Get a bitboard representing all queens on the board
+ *
+ * @return   A bitboard with 1 bit set for each square
+ *           containing a queen
+ */
+inline uint64 Position::get_queens() const
+{
+	return _queens[BLACK] | _queens[WHITE];
+}
+
+/**
  * Returns the mobility of a rook on \a square. This is hashed to avoid
  * computing it on the fly
  *
@@ -713,7 +875,31 @@ inline int Position::get_rook_mobility(int square,
 }
 
 /**
- * Get the player whose turn it is to move in this Position
+ * Get a bitboard representing all rooks belonging to \a to_move
+ *
+ * @param[in] to_move Whose rooks to get
+ *
+ * @return  A bitboard with 1 bit set for each square containing
+ *          a rook belonging to \a to_move
+ */
+inline uint64 Position::get_rooks(int to_move) const
+{
+	return _rooks[to_move];
+}
+
+/**
+ * Get a bitboard representing all rooks on the board
+ *
+ * @return  A bitboard with 1 bit set for each square
+ *          containing a rook
+ */
+inline uint64 Position::get_rooks() const
+{
+	return _rooks[BLACK] | _rooks[WHITE];
+}
+
+/**
+ * Get the player whose turn it is to move in this position
  *
  * @return \ref WHITE or \ref BLACK
  */
@@ -1115,6 +1301,19 @@ inline bool Position::make_move(int move)
 
 	_to_move = flip(_to_move);
 	return true;
+}
+
+/**
+ * Fetch the piece that is on a particular square, returning one of
+ * the piece types defined in chess.h
+ *
+ * @param[in] square The square of interest
+ *
+ * @return The piece on \a square
+ */
+inline piece_t Position::piece_on(int square) const
+{
+	return _pieces[square];
 }
 
 /**

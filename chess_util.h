@@ -5,6 +5,44 @@
 
 namespace Util
 {
+	static bool compare_moves(int a, int b);
+
+	/**
+	 * Perform a bubble sort (one of the sorting algorithms used for
+	 * move ordering)
+	 *
+	 * @param[in] items A list of items
+	 * @param[in] numel The number of elements to sort
+	 *
+	 * @return  The number of passes performed as a result of having
+	 *          to swap items
+	 */
+	inline int bubble_sort(int* items, size_t numel)
+	{
+		bool swapped = true;
+		int passes = 0;
+
+		while (swapped)
+		{
+			swapped = false;
+
+			for (register size_t i = 1; i < numel; i++)
+			{
+				if ( !compare_moves(items[i-1], items[i]) )
+				{
+					swap(items[i-1], items[i]);
+					swapped = true;
+				}
+			}
+			passes++;
+
+			// We've sorted the last element:
+			numel--;
+		}
+
+		return passes;
+	}
+
 	/**
 	 ******************************************************************
 	 *
@@ -18,6 +56,27 @@ namespace Util
 	inline void clear_bit64(int bit, uint64& word)
 	{
 		word &= data_tables.clear_mask[bit];
+	}
+
+	/**
+	 * Compare two moves by material gained. Moves are compared using
+	 * the MVV/LVA approach, e.g. PxQ is ordered before PxR
+	 *
+	 * @param[in] a The first value
+	 * @param[in] b The value to compare the first against
+	 *
+	 * @return True if \a a is greater than or equal to \a b; returns
+	 *         false otherwise
+	 */
+	inline static bool compare_moves(int a, int b)
+	{
+		const int gain_a =
+			piece_value[CAPTURED(a)] - piece_value[MOVED(a)];
+
+		const int gain_b =
+			piece_value[CAPTURED(b)] - piece_value[MOVED(b)];
+
+		return gain_b <= gain_a;
 	}
 
 	/**
