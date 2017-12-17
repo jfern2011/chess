@@ -177,6 +177,14 @@ typedef enum
 
 } value_t;
 
+typedef enum
+{
+	console_mode    = 0,
+	xboard_protocol = 1,
+	uci_protocol    = 2
+
+} protocol_t;
+
 /**
  * A mapping from piece enumeration to its value:
  */

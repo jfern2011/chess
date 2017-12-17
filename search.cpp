@@ -102,7 +102,7 @@ bool PvSearch::search(const Position& master)
 		else
 		{
 			if ((to_move == WHITE && score > _search_score)
-				|| (to_move == score && score < _search_score))
+				|| (to_move == BLACK && score < _search_score))
 			{
 				_search_score = score;
 				_best_move =

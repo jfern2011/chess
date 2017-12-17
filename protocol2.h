@@ -24,6 +24,8 @@ public:
 
 	virtual ~Protocol();
 
+	CommandInterface& get_cmd_interface();
+
 	virtual bool init(int fd) = 0;
 
 	virtual bool sniff() = 0;
@@ -139,6 +141,7 @@ class UCI : public Protocol
 			   const T& _max)
 
 			: option_base(name, type),
+			  _update_sig(nullptr),
 			  default_value(_default),
 			  min(_min),
 			  max(_max),
@@ -161,6 +164,7 @@ class UCI : public Protocol
 			   const T& _default)
 
 			: option_base(name, type),
+			  _update_sig(nullptr),
 			  default_value(_default),
 			  min(),
 			  max(),
@@ -181,6 +185,7 @@ class UCI : public Protocol
 			   const std::string& type)
 
 			: option_base(name, type),
+			  _update_sig(nullptr),
 			  default_value(),
 			  min(),
 			  max(),
@@ -350,6 +355,16 @@ class UCI : public Protocol
 			return true;
 		}
 
+	private:
+
+		/**
+		 * The handler that will update the engine after
+		 * the "setoption" command is sent
+		 */
+		signal_t* _update_sig;
+
+	public:
+
 		/**
 		 * The default value for this option
 		 */
@@ -369,14 +384,6 @@ class UCI : public Protocol
 		 * A set of pre-defined values
 		 */
 		std::vector<T> vars;
-
-	private:
-
-		/**
-		 * The handler that will update the engine after
-		 * the "setoption" command is sent
-		 */
-		signal_t* _update_sig;
 	};
 
 public:
@@ -394,6 +401,8 @@ public:
 
 	bool isready(const std::string&) const;
 
+	bool position(const std::string& _args) const;
+
 	bool register_engine(const std::string&) const;
 
 	bool setoption(const std::string& _args);
@@ -401,6 +410,8 @@ public:
 	bool sniff();
 
 	bool uci(const std::string&) const;
+
+	bool ucinewgame(const std::string&) const;
 
 private:
 
@@ -434,7 +445,7 @@ class xBoard : public Protocol
 
 public:
 
-	xBoard();
+	xBoard(Logger& logger);
 
 	~xBoard();
 
@@ -446,6 +457,34 @@ private:
 
 	bool _init_commands();
 
+	bool    _is_init;
+	Logger& _logger;
+
+	const std::string 
+		_name;
+
+};
+
+class Console : public Protocol
+{
+
+public:
+
+	Console(Logger& logger);
+
+	~Console();
+
+	bool init(int fd);
+
+	bool sniff();
+
+private:
+
+	bool    _is_init;
+	Logger& _logger;
+
+	const std::string
+		_name;
 };
 
 #endif

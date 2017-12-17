@@ -6,8 +6,12 @@ int main(void)
 {
 	ChessEngine engine(tables);
 
-	if (!engine.init())
+	if (!engine.init(STDIN_FILENO, STDERR_FILENO,
+		uci_protocol))
+	{
 		std::cout << "Error..." << std::endl;
+		return 0;
+	}
 
 	if (!engine.run())
 		std::cout << "Runtime error..." << std::endl;

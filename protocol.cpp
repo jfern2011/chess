@@ -23,6 +23,17 @@ Protocol::~Protocol()
 }
 
 /**
+ * Get a reference to the internal commanding interface which
+ * handles user commands
+ *
+ * @return The commanding interface
+ */
+CommandInterface& Protocol::get_cmd_interface()
+{
+	return _cmd;
+}
+
+/**
  * Construct a Universal Chess Interface
  */
 UCI::UCI(Logger& logger)
@@ -56,6 +67,12 @@ bool UCI::_init_commands()
 		false);
 
 	AbortIfNot(_cmd.install<UCI>("isready", *this, &UCI::isready),
+		false);
+
+	AbortIfNot(_cmd.install<UCI>("ucinewgame", *this,
+		&UCI::ucinewgame), false);
+
+	AbortIfNot(_cmd.install<UCI>("position", *this, &UCI::position),
 		false);
 
 	return true;
@@ -200,6 +217,19 @@ bool UCI::isready(const std::string&) const
 	AbortIfNot(Output::to_stdout("readyok\n"),
 		false);
 
+	return true;
+}
+
+/**
+ * The handler for the "position" UCI command
+ *
+ * @param[in] _args The arguments passed in from the command
+ *                  interface
+ *
+ * @return True on success
+ */
+bool UCI::position(const std::string& _args) const
+{
 	return true;
 }
 
@@ -363,5 +393,85 @@ bool UCI::uci(const std::string&) const
 	AbortIfNot(Output::to_stdout("uciok\n"),
 		false);
 
+	return true;
+}
+
+/**
+ * Handles the "ucinewgame" command.
+ *
+ * @return True on success
+ */
+bool UCI::ucinewgame(const std::string&) const
+{
+	return true;
+}
+
+xBoard::xBoard(Logger& logger)
+	: Protocol(logger),
+	  _is_init(false),
+	  _logger(logger),
+	  _name("xBoard")
+{
+}
+
+xBoard::~xBoard()
+{
+}
+
+bool xBoard::init(int fd)
+{
+	/*
+	 * Register the engine settings component with
+	 * the Logger
+	 */
+	AbortIfNot(settings.init(), false);
+
+	AbortIfNot(_cmd.init(fd),
+		false);
+
+	AbortIfNot(_logger.register_source(_name),
+		false);
+
+	_is_init = true;
+	return true;
+}
+
+bool xBoard::sniff()
+{
+	return true;
+}
+
+Console::Console(Logger& logger)
+	: Protocol(logger),
+	  _is_init(false),
+	  _logger(logger),
+	  _name("Console")
+{
+}
+
+Console::~Console()
+{
+}
+
+bool Console::init(int fd)
+{
+	/*
+	 * Register the engine settings component with
+	 * the Logger
+	 */
+	AbortIfNot(settings.init(), false);
+
+	AbortIfNot(_cmd.init(fd),
+		false);
+
+	AbortIfNot(_logger.register_source(_name),
+		false);
+
+	_is_init = true;
+	return true;
+}
+
+bool Console::sniff()
+{
 	return true;
 }
