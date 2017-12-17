@@ -8,7 +8,7 @@
  *                   diagnostics to
  */
 Protocol::Protocol(Logger& logger)
-	: settings(logger),
+	: inputs(logger),
 	  _cmd(),
 	  _is_init( false ),
 	  _logger(logger)
@@ -105,7 +105,7 @@ bool UCI::_init_options()
 								   65536); // Max
 		AbortIfNot(opt, false);
 		AbortIfNot(opt->assign_updater(
-			settings, &EngineSettings::set_hash_size), false);
+			inputs, &EngineInputs::set_hash_size), false);
 
 		_options.push_back(opt);
 	}
@@ -120,7 +120,7 @@ bool UCI::_init_options()
 
 		AbortIfNot(opt, false);
 		AbortIfNot(opt->assign_updater(
-			   settings, &EngineSettings::set_ponder), false);
+			   inputs, &EngineInputs::set_ponder), false);
 
 		_options.push_back(opt);
 	}
@@ -149,9 +149,9 @@ bool UCI::debug(const std::string& _state)
 	}
 
 	if (state == "on")
-		settings.set_debug(true );
+		inputs.set_debug(true );
 	else
-		settings.set_debug(false);
+		inputs.set_debug(false);
 
 	return true;
 }
@@ -189,10 +189,10 @@ std::vector<UCI::option_base*>::iterator
 bool UCI::init(int fd)
 {
 	/*
-	 * Register the engine settings component with
+	 * Register the engine inputs component with
 	 * the Logger
 	 */
-	AbortIfNot(settings.init(), false);
+	AbortIfNot(inputs.init(), false);
 
 	AbortIfNot(_cmd.init(fd),
 		false);
@@ -421,10 +421,10 @@ xBoard::~xBoard()
 bool xBoard::init(int fd)
 {
 	/*
-	 * Register the engine settings component with
+	 * Register the engine inputs component with
 	 * the Logger
 	 */
-	AbortIfNot(settings.init(), false);
+	AbortIfNot(inputs.init(), false);
 
 	AbortIfNot(_cmd.init(fd),
 		false);
@@ -456,10 +456,10 @@ Console::~Console()
 bool Console::init(int fd)
 {
 	/*
-	 * Register the engine settings component with
+	 * Register the engine inputs component with
 	 * the Logger
 	 */
-	AbortIfNot(settings.init(), false);
+	AbortIfNot(inputs.init(), false);
 
 	AbortIfNot(_cmd.init(fd),
 		false);

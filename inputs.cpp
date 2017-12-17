@@ -1,4 +1,4 @@
-#include "settings.h"
+#include "inputs.h"
 
 /**
  * Constructor
@@ -6,11 +6,11 @@
  * @param[in] logger The Logger that this component can write
  *                   diagnostics to
  */
-EngineSettings::EngineSettings(Logger& logger)
+EngineInputs::EngineInputs(Logger& logger)
 	: _debug(false),
 	  _hash_size(0),
 	  _logger(logger),
-	  _name("EngineSettings"),
+	  _name("EngineInputs"),
 	  _ponder(false)
 {
 }
@@ -18,7 +18,7 @@ EngineSettings::EngineSettings(Logger& logger)
 /**
  * Destructor
  */
-EngineSettings::~EngineSettings()
+EngineInputs::~EngineInputs()
 {
 }
 
@@ -27,7 +27,7 @@ EngineSettings::~EngineSettings()
  *
  * @return True if debugging is enabled
  */
-bool EngineSettings::get_debug() const
+bool EngineInputs::get_debug() const
 {
 	return _debug;
 }
@@ -37,7 +37,7 @@ bool EngineSettings::get_debug() const
  *
  * @return The size, in MB
  */
-int EngineSettings::get_hash_size() const
+int EngineInputs::get_hash_size() const
 {
 	return _hash_size;
 }
@@ -47,7 +47,7 @@ int EngineSettings::get_hash_size() const
  *
  * @return True if pondering is enabled
  */
-bool EngineSettings::get_ponder() const
+bool EngineInputs::get_ponder() const
 {
 	return _ponder;
 }
@@ -57,7 +57,7 @@ bool EngineSettings::get_ponder() const
  *
  * @return True on success
  */
-bool EngineSettings::init()
+bool EngineInputs::init()
 {
 	AbortIfNot(_logger.register_source(_name),
 		false);
@@ -70,7 +70,7 @@ bool EngineSettings::init()
  *
  * @param[in] debug True or false
  */
-void EngineSettings::set_debug(bool debug)
+void EngineInputs::set_debug(bool debug)
 {
 	std::string val;
 	Util::to_string<bool>(debug, val);
@@ -86,7 +86,7 @@ void EngineSettings::set_debug(bool debug)
  *
  * @param[in] bytes The size, in MB
  */
-void EngineSettings::set_hash_size(int size)
+void EngineInputs::set_hash_size(int size)
 {
 	std::string val;
 	Util::to_string<int>(size, val);
@@ -102,7 +102,7 @@ void EngineSettings::set_hash_size(int size)
  *
  * @param[in] on True to enable
  */
-void EngineSettings::set_ponder(bool on)
+void EngineInputs::set_ponder(bool on)
 {
 	if (on)
 		_logger.write(_name, "pondering enabled. \n");

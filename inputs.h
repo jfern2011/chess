@@ -1,20 +1,16 @@
-#ifndef __SETTINGS_H__
-#define __SETTINGS_H__
+#ifndef __INPUTS_H__
+#define __INPUTS_H__
 
 #include "log.h"
 
-/**
- * A class that maintains the engine configuration parameters,
- * settable by the UCI or xBoard interfaces
- */
-class EngineSettings
+class EngineInputs
 {
 
 public:
 
-	EngineSettings(Logger& logger);
+	EngineInputs(Logger& logger);
 
-	~EngineSettings();
+	~EngineInputs();
 
 	bool get_debug() const;
 

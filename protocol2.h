@@ -3,7 +3,7 @@
 
 #include "cmd.h"
 #include "log.h"
-#include "settings.h"
+#include "inputs.h"
 
 /**
  **********************************************************************
@@ -30,11 +30,8 @@ public:
 
 	virtual bool sniff() = 0;
 
-	/*
-	 * The engine settings which can be adjusted
-	 * via this protocol
-	 */
-	EngineSettings settings;
+
+	EngineInputs inputs;
 
 protected:
 
