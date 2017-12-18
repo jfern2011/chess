@@ -1,7 +1,7 @@
 #ifndef __ENGINE_H__
 #define __ENGINE_H__
 
-#include "position2.h"
+#include "EngineInputs.h"
 #include "protocol2.h"
 #include "StateMachine2.h"
 
@@ -21,11 +21,11 @@ public:
 
 private:
 
+	EngineInputs* _inputs;
+
 	bool _is_init;
 
 	Logger _logger;
-
-	Position _position;
 
 	Protocol* _protocol;
 

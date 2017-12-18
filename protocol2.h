@@ -2,8 +2,8 @@
 #define __PROTOCOL_H__
 
 #include "cmd.h"
+#include "EngineInputs.h"
 #include "log.h"
-#include "inputs.h"
 
 /**
  **********************************************************************
@@ -20,7 +20,7 @@ class Protocol
 
 public:
 
-	Protocol(Logger& logger);
+	Protocol(EngineInputs& _inputs, Logger& logger);
 
 	virtual ~Protocol();
 
@@ -28,10 +28,10 @@ public:
 
 	virtual bool init(int fd) = 0;
 
-	virtual bool sniff() = 0;
+	virtual bool sniff()      = 0;
 
 
-	EngineInputs inputs;
+	EngineInputs& inputs;
 
 protected:
 
@@ -385,7 +385,7 @@ class UCI : public Protocol
 
 public:
 
-	UCI(Logger& logger);
+	UCI(EngineInputs& inputs, Logger& logger);
 
 	~UCI();
 
@@ -442,7 +442,7 @@ class xBoard : public Protocol
 
 public:
 
-	xBoard(Logger& logger);
+	xBoard(EngineInputs& inputs, Logger& logger);
 
 	~xBoard();
 
@@ -467,7 +467,7 @@ class Console : public Protocol
 
 public:
 
-	Console(Logger& logger);
+	Console(EngineInputs& inputs, Logger& logger);
 
 	~Console();
 

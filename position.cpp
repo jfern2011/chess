@@ -61,7 +61,56 @@ Position& Position::operator=(const Position& rhs)
 	
 	if (this != &rhs)
 	{
-		// TODO
+		_bishops[WHITE] = rhs._bishops[WHITE];
+		_bishops[BLACK] = rhs._bishops[BLACK];
+
+		for (int i = 0; i < MAX_PLY; i++)
+		{
+			_castle_rights[i][WHITE] = rhs._castle_rights[i][WHITE];
+			_castle_rights[i][BLACK] = rhs._castle_rights[i][BLACK];
+			_ep_info[i]   = rhs._ep_info[i];
+			_save_hash[i] =
+				rhs._save_hash[i];
+		}
+
+		_full_move  = rhs._full_move;
+		_half_move  = rhs._half_move;
+		_hash_input = rhs._hash_input;
+		_is_init    = rhs._is_init;
+
+		_kings[WHITE]    = rhs._kings[ WHITE ];
+		_kings[BLACK]    = rhs._kings[ BLACK ];
+
+		_king_sq[WHITE]  = rhs._king_sq[WHITE];
+		_king_sq[BLACK]  = rhs._king_sq[BLACK];
+
+		_knights[WHITE]  = rhs._knights[WHITE];
+		_knights[BLACK]  = rhs._knights[BLACK];
+
+		_material = rhs._material;
+
+		_occupied[WHITE] =
+			rhs._occupied[WHITE];
+		_occupied[BLACK] =
+			rhs._occupied[BLACK];
+
+		_pawns[WHITE]    = rhs._pawns[ WHITE ];
+		_pawns[BLACK]    = rhs._pawns[ BLACK ];
+
+		for (int i = 0; i < 64; i++)
+		{
+			_pieces[i] = rhs._pieces[i];
+		}
+
+		_ply = rhs._ply;
+
+		_queens[WHITE] = rhs._queens[WHITE];
+		_queens[BLACK] = rhs._queens[BLACK];
+
+		_rooks[WHITE] = rhs._rooks[ WHITE ];
+		_rooks[BLACK] = rhs._rooks[ BLACK ];
+
+		_to_move = rhs._to_move;
 	}
 
 	return *this;

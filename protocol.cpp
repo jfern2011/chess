@@ -4,11 +4,13 @@
 /**
  * Constructor
  *
- * @param[in] logger The Logger that this component can write
- *                   diagnostics to
+ * @param[in] logger  The Logger that this component can write
+ *                    diagnostics to
+ * @param[in] _inputs The EngineInputs that we'll set via user
+ *                    commands
  */
-Protocol::Protocol(Logger& logger)
-	: inputs(logger),
+Protocol::Protocol(EngineInputs& _inputs, Logger& logger)
+	: inputs(_inputs),
 	  _cmd(),
 	  _is_init( false ),
 	  _logger(logger)
@@ -36,9 +38,10 @@ CommandInterface& Protocol::get_cmd_interface()
 /**
  * Construct a Universal Chess Interface
  */
-UCI::UCI(Logger& logger)
-	: Protocol(logger),
-	  _name("UCI"), _options()
+UCI::UCI(EngineInputs& inputs, Logger& logger)
+	: Protocol(inputs, logger),
+	  _name("UCI"),
+	  _options()
 {
 }
 
@@ -188,12 +191,6 @@ std::vector<UCI::option_base*>::iterator
  */
 bool UCI::init(int fd)
 {
-	/*
-	 * Register the engine inputs component with
-	 * the Logger
-	 */
-	AbortIfNot(inputs.init(), false);
-
 	AbortIfNot(_cmd.init(fd),
 		false);
 
@@ -406,8 +403,8 @@ bool UCI::ucinewgame(const std::string&) const
 	return true;
 }
 
-xBoard::xBoard(Logger& logger)
-	: Protocol(logger),
+xBoard::xBoard(EngineInputs& inputs, Logger& logger)
+	: Protocol(inputs, logger),
 	  _is_init(false),
 	  _logger(logger),
 	  _name("xBoard")
@@ -420,12 +417,6 @@ xBoard::~xBoard()
 
 bool xBoard::init(int fd)
 {
-	/*
-	 * Register the engine inputs component with
-	 * the Logger
-	 */
-	AbortIfNot(inputs.init(), false);
-
 	AbortIfNot(_cmd.init(fd),
 		false);
 
@@ -441,8 +432,8 @@ bool xBoard::sniff()
 	return true;
 }
 
-Console::Console(Logger& logger)
-	: Protocol(logger),
+Console::Console(EngineInputs& inputs, Logger& logger)
+	: Protocol(inputs, logger),
 	  _is_init(false),
 	  _logger(logger),
 	  _name("Console")
@@ -455,12 +446,6 @@ Console::~Console()
 
 bool Console::init(int fd)
 {
-	/*
-	 * Register the engine inputs component with
-	 * the Logger
-	 */
-	AbortIfNot(inputs.init(), false);
-
 	AbortIfNot(_cmd.init(fd),
 		false);
 
