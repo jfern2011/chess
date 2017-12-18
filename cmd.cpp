@@ -90,8 +90,8 @@ bool CommandInterface::is_installed(const std::string& name) const
  */
 bool CommandInterface::poll()
 {
-	ReadEventSink::err_code code =
-					_res.read( std::string("\n") );
+	ReadEventSink::err_code code
+					= _res.read(std::string("\n"));
 
 	AbortIf(code != ReadEventSink::SUCCESS &&
 			code != ReadEventSink::NO_DATA, false);

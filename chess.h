@@ -313,7 +313,7 @@ namespace Util
 	 *
 	 ******************************************************************
 	 */
-	inline int32 parseCoordinate(const std::string& _move)
+	inline int32 parse_coordinate(const std::string& _move)
 	{
 		std::string from, to, move = to_lower(_move);
 		piece_t promote;

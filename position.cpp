@@ -691,6 +691,21 @@ bool Position::reset(const std::string& fen, bool xboard)
 }
 
 /**
+ * Reset to the initial (starting) position
+ *
+ * @param [in] xboard If true, then suppress error messages since we
+ *                    are interfacing with xBoard
+ *
+ * @return True on success
+ */
+bool Position::reset(bool xboard)
+{
+	return
+	reset("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+		xboard);
+}
+
+/**
  * Set default (uninitialized) values for this position
  */
 void Position::set_default()

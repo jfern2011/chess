@@ -1,7 +1,8 @@
 #include "StateMachine2.h"
 
 StateMachine::StateMachine(CommandInterface& cmd, Logger& logger)
-	: _cmd(cmd),
+	: _clients(),
+	  _cmd(cmd),
 	  _current_state(none),
 	  _is_init(false),
 	  _logger(logger),
@@ -14,6 +15,8 @@ StateMachine::StateMachine(CommandInterface& cmd, Logger& logger)
 
 StateMachine::~StateMachine()
 {
+	for (size_t i = 0; i < _clients.size(); i++)
+		delete _clients[i];
 }
 
 bool StateMachine::acknowledge_transition()
@@ -142,8 +145,80 @@ bool StateMachine::poll()
 	return true;
 }
 
-bool StateMachine::request_transition(state_t state)
+bool StateMachine::register_client(const std::string& _name,
+	StateMachineClient* _client)
 {
-	_pending_state = state;
+	const std::string name = Util::trim(_name);
+	AbortIf(name.size() == 0,
+		false);
+
+	AbortIf(_client == nullptr, false);
+
+	for (auto iter = _clients.begin(), end = _clients.end();
+		 iter != end; ++iter)
+	{
+		const auto& client = *iter;
+		AbortIfNot(client->get_name() == name,
+			false);
+	}
+
+	auto client = new StateMachineClient(name);
+
+	AbortIfNot(client->transition_sig.attach<StateMachine>(*this,
+		&StateMachine::request_transition), false);
+
+	_clients.push_back(client);
+
 	return true;
+}
+
+bool StateMachine::request_transition(const std::string& _client,
+	state_t state)
+{
+	AbortIfNot(_is_init, false);
+
+	const std::string client=Util::trim(_client);
+	AbortIf(client.empty(), false);
+
+	for ( size_t i = 0; i < _clients.size(); i++)
+	{
+		if (_clients[i]->get_name() == client)
+		{
+			if (_logging_enabled)
+			{
+				const std::string new_state = _state_names[state];
+
+				_logger.write(_name,
+					"received transition request from '%s': %s -> %s\n",
+					client.c_str(),
+					_state_names[_current_state].c_str(),
+					new_state.c_str());
+			}
+
+			_pending_state = state;
+			return true;
+		}
+	}
+
+	if (_logging_enabled)
+	{
+		_logger.write(_name, "unregistered client: '%s'\n",
+			client.c_str());
+	}
+
+	return false;
+}
+
+StateMachineClient::StateMachineClient(const std::string& name)
+	: _name(name), transition_sig()
+{
+}
+
+StateMachineClient::~StateMachineClient()
+{
+}
+
+std::string StateMachineClient::get_name() const
+{
+	return _name;
 }

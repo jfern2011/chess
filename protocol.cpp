@@ -4,16 +4,20 @@
 /**
  * Constructor
  *
+ * @param[in] name    The name of this component
  * @param[in] logger  The Logger that this component can write
  *                    diagnostics to
  * @param[in] _inputs The EngineInputs that we'll set via user
  *                    commands
  */
-Protocol::Protocol(EngineInputs& _inputs, Logger& logger)
-	: inputs(_inputs),
+Protocol::Protocol(const std::string& name, EngineInputs& _inputs,
+		Logger& logger)
+	: StateMachineClient(name),
+	  inputs(_inputs),
 	  _cmd(),
 	  _is_init( false ),
-	  _logger(logger)
+	  _logger(logger),
+	  _name(name)
 {
 }
 
@@ -35,12 +39,16 @@ CommandInterface& Protocol::get_cmd_interface()
 	return _cmd;
 }
 
+std::string Protocol::get_name() const
+{
+	return _name;
+}
+
 /**
  * Construct a Universal Chess Interface
  */
 UCI::UCI(EngineInputs& inputs, Logger& logger)
-	: Protocol(inputs, logger),
-	  _name("UCI"),
+	: Protocol("UCI", inputs, logger),
 	  _options()
 {
 }
@@ -76,6 +84,9 @@ bool UCI::_init_commands()
 		&UCI::ucinewgame), false);
 
 	AbortIfNot(_cmd.install<UCI>("position", *this, &UCI::position),
+		false);
+
+	AbortIfNot(_cmd.install<UCI>("go", *this, &UCI::go),
 		false);
 
 	return true;
@@ -183,6 +194,19 @@ std::vector<UCI::option_base*>::iterator
 }
 
 /**
+ * The handler for the "go" command
+ *
+ * @param [in] _args Arguments passed in from the command interface
+ *                   interface
+ *
+ * @return True on success
+ */
+bool UCI::go(const std::string& _args) const
+{
+	return true;
+}
+
+/**
  * Initialize this interface
  *
  * @param[in] fd The file descriptor on which to read user commands
@@ -227,6 +251,79 @@ bool UCI::isready(const std::string&) const
  */
 bool UCI::position(const std::string& _args) const
 {
+	AbortIf(_args.size() == 0, false);
+
+	Util::str_v args, parts;
+	Util::split(_args, parts, "moves");
+
+	Util::split(parts[0], args);
+
+	AbortIfNot(args[0] == "startpos" || args[0] == "fen",
+		false);
+
+	Position pos(*inputs.get_position());
+
+	if (args[0] == "startpos")
+	{
+		AbortIfNot(pos.reset(true), false);
+	}
+	else
+	{
+		AbortIf(args.size() < 2, false);
+
+		args.erase(args.begin());
+
+		std::string fen = Util::build_string(args, " ");
+
+		AbortIfNot(pos.reset(fen, true),
+			false);
+	}
+
+	AbortIfNot(inputs.set_position(pos),
+		false);
+
+	if (parts.size() < 2)
+		return true;
+
+	/*
+	 * The position was reset, now play any moves passed
+	 * in by the GUI
+	 */
+	Util::str_v moves; Util::split(parts[1], moves);
+
+	for (size_t i = 0; i < moves.size(); i++)
+	{
+		const int partial =
+			Util::parse_coordinate(moves[i]);
+
+		AbortIf(partial == 0, false);
+
+		const int promote = PROMOTE(partial);
+		const int to = TO(partial);
+		const int from = FROM(partial );
+
+		const piece_t moved =
+			pos.piece_on(FROM(partial));
+
+		AbortIf(moved == INVALID,
+			false);
+
+		piece_t captured =
+			pos.piece_on( TO(partial) );
+
+		if (captured == INVALID && moved == PAWN
+			&& FILE(from) != FILE(to))
+		{
+			captured = PAWN; // en passant
+		}
+
+		int move = pack(captured, from, moved,
+						promote, to);
+
+		AbortIfNot(pos.make_move(move),
+			false);
+	}
+
 	return true;
 }
 
@@ -308,7 +405,7 @@ bool UCI::setoption(const std::string& _args)
  */
 bool UCI::sniff()
 {
-	AbortIfNot(_is_init, false);
+	AbortIfNot( _is_init, false);
 
 	return _cmd.poll();
 }
@@ -404,10 +501,9 @@ bool UCI::ucinewgame(const std::string&) const
 }
 
 xBoard::xBoard(EngineInputs& inputs, Logger& logger)
-	: Protocol(inputs, logger),
+	: Protocol("xBoard", inputs, logger),
 	  _is_init(false),
-	  _logger(logger),
-	  _name("xBoard")
+	  _logger(logger)
 {
 }
 
@@ -433,10 +529,9 @@ bool xBoard::sniff()
 }
 
 Console::Console(EngineInputs& inputs, Logger& logger)
-	: Protocol(inputs, logger),
+	: Protocol("Console", inputs, logger),
 	  _is_init(false),
-	  _logger(logger),
-	  _name("Console")
+	  _logger(logger)
 {
 }
 

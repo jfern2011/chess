@@ -1,5 +1,6 @@
 #include "engine.h"
 #include "position2.h"
+#include "search2.h"
 
 ChessEngine::ChessEngine(const DataTables& tables)
 	: _inputs(nullptr),
@@ -48,10 +49,17 @@ bool ChessEngine::init(int cmd_fd, int log_fd, protocol_t protocol)
 	AbortIfNot(_protocol->init(cmd_fd),
 		false);
 
-	_state_machine =
-		new StateMachine(_protocol->get_cmd_interface(), _logger);
+	_state_machine = new StateMachine(_protocol->get_cmd_interface(),
+		_logger);
 
 	AbortIfNot(_state_machine->init(), false);
+
+	/*
+	 * Inform the state machine that _protocol may request state
+	 * transitions:
+	 */
+	AbortIfNot(_state_machine->register_client(_protocol->get_name(),
+		_protocol), false);
 
 	_is_init = true;
 	return true;
@@ -60,5 +68,26 @@ bool ChessEngine::init(int cmd_fd, int log_fd, protocol_t protocol)
 bool ChessEngine::run()
 {
 	AbortIfNot(_is_init, false);
+
+	MoveGen movegen(_tables);
+
+	PvSearch pvs(movegen, *_state_machine, _logger,
+		_tables);
+
+	AbortIfNot(pvs.init(), false);
+
+	/*
+	 * Check every 100 ms for user input when idle (not searching)
+	 */
+	const int sleep_time = 100000;
+
+	while (_state_machine->get_current_state()
+			!= StateMachine::exiting)
+	{
+		AbortIfNot(_protocol->sniff(), false);
+
+		::usleep(sleep_time);
+	}
+
 	return true;
 }

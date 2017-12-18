@@ -4,6 +4,8 @@
 #include "cmd.h"
 #include "log.h"
 
+class StateMachineClient;
+
 class StateMachine
 {
 
@@ -14,7 +16,8 @@ public:
 		none      = 0,
 		idle      = 1,
 		searching = 2,
-		n_states  = 3
+		exiting   = 3,
+		n_states  = 4
 
 	} state_t;
 
@@ -38,9 +41,16 @@ public:
 
 	bool poll();
 
-	bool request_transition(state_t state);
+	bool register_client(const std::string& _name,
+		StateMachineClient* _client);
+
+	bool request_transition(const std::string& _client,
+		state_t state);
 
 private:
+
+	std::vector<StateMachineClient*>
+		_clients;
 
 	CommandInterface&
 		_cmd;
@@ -66,6 +76,28 @@ private:
 	 */
 	std::vector<state_v>
 		_transitions;
+};
+
+class StateMachineClient
+{
+
+public:
+
+	StateMachineClient(const std::string& name);
+
+	~StateMachineClient();
+
+	std::string get_name() const;
+
+	typedef Signal::Signal<bool, const std::string&, StateMachine::state_t>
+		sig_t;
+
+	sig_t transition_sig;
+
+private:
+
+	const std::string
+		_name;
 };
 
 #endif

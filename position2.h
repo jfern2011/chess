@@ -261,6 +261,8 @@ public:
 
 	bool reset(const std::string& fen, bool xboard);
 
+	bool reset(bool xboard);
+
 	void set_default();
 
 	bool under_attack(int square, int to_move) const;

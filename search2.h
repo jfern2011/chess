@@ -29,7 +29,8 @@ public:
 
 	const SearchData& get_search_data() const;
 
-	virtual bool search(Position& pos) = 0;
+	virtual bool search(const Position& pos)
+		= 0;
 
 protected:
 
@@ -89,11 +90,11 @@ public:
 
 	bool is_mated(int to_move) const;
 
+	int quiesce(Position& pos, int depth, int alpha, int beta);
+
 	bool search(const Position& master);
 
 	int see(Position& pos, int square, int to_move, int move=0) const;
-
-	int quiesce(Position& pos, int depth, int alpha, int beta);
 
 private:
 

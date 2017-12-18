@@ -1,9 +1,8 @@
 #ifndef __PROTOCOL_H__
 #define __PROTOCOL_H__
 
-#include "cmd.h"
 #include "EngineInputs.h"
-#include "log.h"
+#include "StateMachine2.h"
 
 /**
  **********************************************************************
@@ -15,20 +14,23 @@
  *
  **********************************************************************
  */
-class Protocol
+class Protocol : public StateMachineClient
 {
 
 public:
 
-	Protocol(EngineInputs& _inputs, Logger& logger);
+	Protocol(const std::string& name, EngineInputs& _inputs,
+			 Logger& logger);
 
 	virtual ~Protocol();
 
 	CommandInterface& get_cmd_interface();
 
-	virtual bool init(int fd) = 0;
+	std::string get_name() const;
 
-	virtual bool sniff()      = 0;
+	virtual bool init(int fd)  = 0;
+
+	virtual bool sniff() = 0;
 
 
 	EngineInputs& inputs;
@@ -50,6 +52,12 @@ protected:
 	 * Writes to the chess engine log file
 	 */
 	Logger& _logger;
+
+	/**
+	 * The name of this class for
+	 * logging purposes
+	 */
+	const std::string _name;
 };
 
 /**
@@ -394,6 +402,8 @@ public:
 	std::vector<option_base*>::iterator
 		find_option(const std::string& name);
 
+	bool go(const std::string& _args) const;
+
 	bool init(int fd);
 
 	bool isready(const std::string&) const;
@@ -415,11 +425,6 @@ private:
 	bool _init_options();
 
 	bool _init_commands();
-
-	/**
-	 * The name of this class for logging purposes
-	 */
-	const std::string _name;
 
 	/**
 	 * Options settable by the GUI
@@ -456,10 +461,6 @@ private:
 
 	bool    _is_init;
 	Logger& _logger;
-
-	const std::string 
-		_name;
-
 };
 
 class Console : public Protocol
@@ -479,9 +480,6 @@ private:
 
 	bool    _is_init;
 	Logger& _logger;
-
-	const std::string
-		_name;
 };
 
 #endif
