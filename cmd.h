@@ -5,6 +5,7 @@
 #include <map>
 #include <string>
 
+#include "log.h"
 #include "ReadEventSink.h"
 
 /**
@@ -79,7 +80,7 @@ class CommandInterface
 
 public:
 
-	CommandInterface();
+	CommandInterface(Logger& logger);
 
 	~CommandInterface();
 
@@ -153,6 +154,16 @@ private:
 	 */
 	std::map<std::string,cmd_info>
 		_cmds;
+
+	/**
+	 * Write diagnostic messages to this
+	 */
+	Logger& _logger;
+
+	/**
+	 * The name of this component
+	 */
+	const std::string _name;
 
 	/**
 	 * Initialized flag

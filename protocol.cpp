@@ -14,8 +14,8 @@ Protocol::Protocol(const std::string& name, EngineInputs& _inputs,
 		Logger& logger)
 	: StateMachineClient(name),
 	  inputs(_inputs),
-	  _cmd(),
-	  _is_init( false ),
+	  _cmd(logger),
+	  _is_init(false),
 	  _logger(logger),
 	  _name(name)
 {
@@ -87,6 +87,9 @@ bool UCI::_init_commands()
 		false);
 
 	AbortIfNot(_cmd.install<UCI>("go", *this, &UCI::go),
+		false);
+
+	AbortIfNot(_cmd.install<UCI>("quit", *this, &UCI::quit),
 		false);
 
 	return true;
@@ -338,6 +341,19 @@ bool UCI::register_engine(const std::string&) const
 }
 
 /**
+ * The handler for the "quit" command
+ *
+ * @return True on success
+ */
+bool UCI::quit(const std::string&)
+{
+	AbortIfNot(transition_sig.raise(_name, StateMachine::exiting,
+		true), false);
+
+	return true;
+}
+
+/**
  * The command handler for the UCI "setoption" user command
  *
  * @return True on success
@@ -405,7 +421,7 @@ bool UCI::setoption(const std::string& _args)
  */
 bool UCI::sniff()
 {
-	AbortIfNot( _is_init, false);
+	AbortIfNot(_is_init, false);
 
 	return _cmd.poll();
 }

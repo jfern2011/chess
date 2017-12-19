@@ -410,6 +410,8 @@ public:
 
 	bool position(const std::string& _args) const;
 
+	bool quit(const std::string&);
+
 	bool register_engine(const std::string&) const;
 
 	bool setoption(const std::string& _args);

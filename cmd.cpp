@@ -2,10 +2,14 @@
 
 /**
  * Constructor
+ *
+ * @param [in] logger The logger we'll write diagnostics to
  */
-CommandInterface::CommandInterface()
+CommandInterface::CommandInterface(Logger& logger)
 	: _cmds(),
 	  _is_init(false),
+	  _logger(logger),
+	  _name("CommandInterface"),
 	  _res()
 {
 }
@@ -33,6 +37,12 @@ bool CommandInterface::init(int fd)
 
 	AbortIfNot(_res.attach_reader(
 		*this, &CommandInterface::handle_command), false );
+
+	/*
+	 * Register this component with the logger
+	 */
+	AbortIfNot(_logger.register_source(_name),
+		false);
 
 	_is_init = true;
 	return true;
@@ -92,6 +102,17 @@ bool CommandInterface::poll()
 {
 	ReadEventSink::err_code code
 					= _res.read(std::string("\n"));
+
+	/*
+	 * Don't abort if a command handler returned false as it's
+	 * probably only user error
+	 */
+	if (code == ReadEventSink::READER_ERR)
+	{
+		_logger.write(
+			_name, "a command handler reported an error.\n" );
+		return true;
+	}
 
 	AbortIf(code != ReadEventSink::SUCCESS &&
 			code != ReadEventSink::NO_DATA, false);

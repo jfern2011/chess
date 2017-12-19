@@ -15,16 +15,13 @@ StateMachine::StateMachine(CommandInterface& cmd, Logger& logger)
 
 StateMachine::~StateMachine()
 {
-	for (size_t i = 0; i < _clients.size(); i++)
-		delete _clients[i];
 }
 
 bool StateMachine::acknowledge_transition()
 {
-	AbortIf(_pending_state == _current_state,
-		false);
-
 	AbortIfNot(_is_init, false);
+
+	AbortIfNot( pending_request(), false );
 
 	const std::string old   = _state_names[_current_state];
 	const std::string young = _state_names[_pending_state];
@@ -95,12 +92,14 @@ bool StateMachine::init()
 	 * 'idle'
 	 */
 	_transitions[idle].push_back(searching);
+	_transitions[idle].push_back(exiting);
 
 	/*
 	 * Set the state(s) we can transition to from
 	 * 'searching'
 	 */
 	_transitions[searching].push_back(idle);
+	_transitions[searching].push_back(exiting);
 
 	AbortIfNot(_logger.register_source(_name),
 		false);
@@ -113,6 +112,7 @@ bool StateMachine::init()
 	_state_names[none]      = "none";
 	_state_names[idle]      = "idle";
 	_state_names[searching] = "searching";
+	_state_names[exiting]   = "exiting";
 
 	_is_init = true;
 
@@ -146,34 +146,36 @@ bool StateMachine::poll()
 }
 
 bool StateMachine::register_client(const std::string& _name,
-	StateMachineClient* _client)
+	StateMachineClient* client)
 {
 	const std::string name = Util::trim(_name);
 	AbortIf(name.size() == 0,
 		false);
 
-	AbortIf(_client == nullptr, false);
+	AbortIf(client == nullptr, false);
 
 	for (auto iter = _clients.begin(), end = _clients.end();
 		 iter != end; ++iter)
 	{
-		const auto& client = *iter;
-		AbortIfNot(client->get_name() == name,
-			false);
+		if (*iter == name)
+		{
+			char msg[128];
+			std::snprintf(msg,128,"duplicate client '%s'\n",
+						name.c_str());
+			Abort(false, msg);
+		}
 	}
 
-	auto client = new StateMachineClient(name);
+	_clients.push_back(name);
 
 	AbortIfNot(client->transition_sig.attach<StateMachine>(*this,
 		&StateMachine::request_transition), false);
-
-	_clients.push_back(client);
 
 	return true;
 }
 
 bool StateMachine::request_transition(const std::string& _client,
-	state_t state)
+	state_t state, bool acknowledge)
 {
 	AbortIfNot(_is_init, false);
 
@@ -182,7 +184,7 @@ bool StateMachine::request_transition(const std::string& _client,
 
 	for ( size_t i = 0; i < _clients.size(); i++)
 	{
-		if (_clients[i]->get_name() == client)
+		if (_clients[i] == client)
 		{
 			if (_logging_enabled)
 			{
@@ -196,6 +198,12 @@ bool StateMachine::request_transition(const std::string& _client,
 			}
 
 			_pending_state = state;
+			if (acknowledge)
+			{
+				AbortIfNot(acknowledge_transition(),
+					false);
+			}
+
 			return true;
 		}
 	}

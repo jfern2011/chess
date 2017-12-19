@@ -42,15 +42,14 @@ public:
 	bool poll();
 
 	bool register_client(const std::string& _name,
-		StateMachineClient* _client);
+		StateMachineClient* client);
 
 	bool request_transition(const std::string& _client,
-		state_t state);
+		state_t state, bool acknowledge=true);
 
 private:
 
-	std::vector<StateMachineClient*>
-		_clients;
+	Util::str_v _clients;
 
 	CommandInterface&
 		_cmd;
@@ -89,8 +88,8 @@ public:
 
 	std::string get_name() const;
 
-	typedef Signal::Signal<bool, const std::string&, StateMachine::state_t>
-		sig_t;
+	typedef Signal::Signal
+		<bool, const std::string&, StateMachine::state_t, bool> sig_t;
 
 	sig_t transition_sig;
 

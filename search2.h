@@ -66,8 +66,8 @@ class PvSearch : public Search
 			if (!_state_machine.poll())
 				return false;
 
-			return _state_machine.pending_request()
-					&& _state_machine.acknowledge_transition();
+			return _state_machine.get_current_state()
+					!= StateMachine::searching;
 		}
 
 	private:
