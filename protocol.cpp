@@ -204,8 +204,141 @@ std::vector<UCI::option_base*>::iterator
  *
  * @return True on success
  */
-bool UCI::go(const std::string& _args) const
+bool UCI::go(const std::string& _args)
 {
+	Util::str_v args;
+
+	Util::split(_args, args);
+
+	bool searchmoves = false;
+	std::string moves = "";
+	for (auto iter = args.begin(), end = args.end(); iter != end;
+		 ++iter)
+	{
+		if (*iter == "searchmoves")
+		{
+			searchmoves = true;
+			continue;
+		}
+		else if (*iter == "ponder")
+		{
+			searchmoves = false;
+
+			inputs.set_ponder(true);
+		}
+		else if (*iter == "wtime")
+		{
+			searchmoves = false;
+
+			int ms;
+			AbortIfNot(Util::str_to_i32(*(iter+1), 10, ms), false);
+
+			AbortIfNot(inputs.set_time(ms, WHITE),
+				false);
+		}
+		else if (*iter == "btime")
+		{
+			searchmoves = false;
+
+			int ms;
+			AbortIfNot(Util::str_to_i32(*(iter+1), 10, ms), false);
+
+			AbortIfNot(inputs.set_time(ms, BLACK),
+				false);
+		}
+		else if (*iter == "winc")
+		{
+			searchmoves = false;
+
+			int ms;
+			AbortIfNot(Util::str_to_i32(*(iter+1), 10, ms), false);
+
+			AbortIfNot(inputs.set_increment(ms, WHITE),
+				false);
+		}
+		else if (*iter == "binc")
+		{
+			searchmoves = false;
+
+			int ms;
+			AbortIfNot(Util::str_to_i32(*(iter+1), 10, ms), false);
+
+			AbortIfNot(inputs.set_increment(ms, BLACK),
+				false);
+		}
+		else if (*iter == "movestogo")
+		{
+			searchmoves = false;
+
+			int n;
+			AbortIfNot(Util::str_to_i32(*(iter+1), 10, n ), false);
+
+			AbortIfNot(inputs.set_movestogo(n),
+				false);
+		}
+		else if (*iter == "depth")
+		{
+			searchmoves = false;
+
+			int n;
+			AbortIfNot(Util::str_to_i32(*(iter+1), 10, n ), false);
+
+			AbortIfNot(inputs.set_depth(n),
+				false);
+		}
+		else if (*iter == "nodes")
+		{
+			searchmoves = false;
+
+			int n;
+			AbortIfNot(Util::str_to_i32(*(iter+1), 10, n ), false);
+
+			AbortIfNot(inputs.set_node_limit(n),
+				false);
+		}
+		else if (*iter == "mate")
+		{
+			searchmoves = false;
+
+			int n;
+			AbortIfNot(Util::str_to_i32(*(iter+1), 10, n ), false);
+
+			AbortIfNot(inputs.set_mate_depth(n),
+				false);
+		}
+		else if (*iter == "movetime")
+		{
+			searchmoves = false;
+
+			int ms;
+			AbortIfNot(Util::str_to_i32(*(iter+1), 10, ms), false);
+
+			AbortIfNot(inputs.set_movetime(ms),
+				false);
+		}
+		else if (*iter == "infinite")
+		{
+			searchmoves = false;
+
+			AbortIfNot(inputs.set_depth(MAX_PLY),
+				false);
+		}
+
+		if (searchmoves)
+		{
+			moves += (*iter + " ");
+		}
+	}
+
+	AbortIfNot(inputs.searchmoves(moves),
+		false);
+
+	/*
+	 * Request a state transition to StateMachine::searching
+	 */
+	AbortIfNot(transition_sig.raise(
+		_name, StateMachine::searching, false), false);
+
 	return true;
 }
 
@@ -348,7 +481,7 @@ bool UCI::register_engine(const std::string&) const
 bool UCI::quit(const std::string&)
 {
 	AbortIfNot(transition_sig.raise(_name, StateMachine::exiting,
-		true), false);
+		false), false);
 
 	return true;
 }

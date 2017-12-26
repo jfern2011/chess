@@ -1,11 +1,22 @@
 #include "search2.h"
 
-Search::Search(const MoveGen& movegen)
-	: _data(),
+/**
+ * Constructor
+ *
+ * @param[in] name    The name of this software component
+ * @param[in] movegen A move generator
+ */
+Search::Search(const std::string& name,
+			   const MoveGen& movegen)
+	: StateMachineClient(name),
+	  _data(),
 	  _movegen(movegen)
 {
 }
 
+/**
+ * Destructor
+ */
 Search::~Search()
 {
 }
@@ -16,18 +27,17 @@ const Search::SearchData& Search::get_search_data() const
 }
 
 PvSearch::PvSearch(const MoveGen& movegen,
-				   StateMachine& state_machine,
+				   CommandInterface& cmd,
 				   Logger& logger,
 				   const DataTables& tables)
-	: Search(movegen),
+	: Search("PvSearch", movegen),
 	  _abort_requested(false),
 	  _best_move(0),
 	  _depth(1),
 	  _input_check_delay(100000),
-	  _interrupt_handler(state_machine),
+	  _interrupt_handler(cmd),
 	  _is_init(false),
 	  _logger(logger),
-	  _name("PvSearch"),
 	  _next_input_check(0),
 	  _node_count(0),
 	  _qnode_count(0),
@@ -57,7 +67,7 @@ bool PvSearch::is_mated(int to_move) const
 		return _search_score ==  MATE_SCORE;
 }
 
-bool PvSearch::search(const Position& master)
+bool PvSearch::search(const Position& master, bool ponder)
 {
 	AbortIfNot(_is_init, false);
 
@@ -97,7 +107,7 @@ bool PvSearch::search(const Position& master)
 
 		if (depth > 0 && _abort_requested)
 		{
-			return true;
+			break;
 		}
 		else
 		{
@@ -113,6 +123,14 @@ bool PvSearch::search(const Position& master)
 		if (is_mated(to_move))
 			return true;
 	}
+
+	/*
+	 * Request the state machine to transition to the
+	 * idle state
+	 */
+	AbortIfNot(transition_sig.raise(
+			_name, StateMachine::idle, false),
+		false);
 
 	return true;
 }

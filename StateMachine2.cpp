@@ -131,20 +131,6 @@ bool StateMachine::pending_request() const
 	return _pending_state != _current_state;
 }
 
-/**
- * Poll the commanding interface for user inputs, which
- * will enable command handlers to request a state
- * transition if needed
- *
- * @return True on success
- */
-bool StateMachine::poll()
-{
-	AbortIfNot(_cmd.poll(), false);
-
-	return true;
-}
-
 bool StateMachine::register_client(const std::string& _name,
 	StateMachineClient* client)
 {
@@ -175,7 +161,7 @@ bool StateMachine::register_client(const std::string& _name,
 }
 
 bool StateMachine::request_transition(const std::string& _client,
-	state_t state, bool acknowledge)
+	state_t state, bool defer)
 {
 	AbortIfNot(_is_init, false);
 
@@ -198,7 +184,7 @@ bool StateMachine::request_transition(const std::string& _client,
 			}
 
 			_pending_state = state;
-			if (acknowledge)
+			if (!defer)
 			{
 				AbortIfNot(acknowledge_transition(),
 					false);

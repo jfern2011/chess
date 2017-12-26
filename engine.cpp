@@ -25,7 +25,7 @@ bool ChessEngine::init(int cmd_fd, int log_fd, protocol_t protocol)
 
 	AbortIfNot(_logger.assign_fd(log_fd, true), false);
 
-	_inputs = new EngineInputs(_logger);
+	_inputs = new EngineInputs(_tables, _logger);
 	AbortIfNot(_inputs->init(Position(_tables, true )),
 		false);
 
@@ -55,7 +55,7 @@ bool ChessEngine::init(int cmd_fd, int log_fd, protocol_t protocol)
 	AbortIfNot(_state_machine->init(), false);
 
 	/*
-	 * Inform the state machine that _protocol may request state
+	 * Inform the state machine that _protocol may initiate state
 	 * transitions:
 	 */
 	AbortIfNot(_state_machine->register_client(_protocol->get_name(),
@@ -71,7 +71,7 @@ bool ChessEngine::run()
 
 	MoveGen movegen(_tables);
 
-	PvSearch pvs(movegen, *_state_machine, _logger,
+	PvSearch pvs(movegen, _protocol->get_cmd_interface(), _logger,
 		_tables);
 
 	AbortIfNot(pvs.init(), false);

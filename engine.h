@@ -30,8 +30,8 @@ private:
 	Protocol* _protocol;
 
 	/**
-	 * The state machine, which determines what the program is
-	 * doing at any given time
+	 * The state machine, which determines what tasks are running
+	 * at any given time
 	 */
 	StateMachine*
 		_state_machine;

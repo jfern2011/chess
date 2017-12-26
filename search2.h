@@ -4,7 +4,7 @@
 #include "movegen2.h"
 #include "StateMachine2.h"
 
-class Search
+class Search : public StateMachineClient
 {
 
 public:
@@ -23,14 +23,15 @@ public:
 		int score;
 	};
 
-	Search(const MoveGen& movegen);
+	Search(const std::string& name,
+		   const MoveGen& movegen);
 
 	virtual ~Search();
 
 	const SearchData& get_search_data() const;
 
-	virtual bool search(const Position& pos)
-		= 0;
+	virtual bool search(const Position& pos,
+						bool ponder) = 0;
 
 protected:
 
@@ -46,8 +47,8 @@ class PvSearch : public Search
 
 	public:
 
-		InterruptHandler(StateMachine& state_machine)
-			: _state_machine(state_machine)
+		InterruptHandler(CommandInterface& cmd)
+			: _cmd(cmd)
 		{
 		}
 
@@ -63,24 +64,20 @@ class PvSearch : public Search
 			 * machine. Don't print abort messages on error; doing so 
 			 * may just send high-rate spam to standard output
 			 */
-			if (!_state_machine.poll())
-				return false;
-
-			return _state_machine.get_current_state()
-					!= StateMachine::searching;
+			return _cmd.poll();
 		}
 
 	private:
 
-		StateMachine&
-			_state_machine;
+		CommandInterface&
+			_cmd;
 
 	};
 
 public:
 
 	PvSearch(const MoveGen& movegen,
-		     StateMachine& state_machine,
+		     CommandInterface& cmd,
 		     Logger& logger,
 		     const DataTables& tables);
 
@@ -92,7 +89,7 @@ public:
 
 	int quiesce(Position& pos, int depth, int alpha, int beta);
 
-	bool search(const Position& master);
+	bool search(const Position& master, bool ponder);
 
 	int see(Position& pos, int square, int to_move, int move=0) const;
 
@@ -124,8 +121,6 @@ private:
 	bool _is_init;
 
 	Logger& _logger;
-
-	const std::string _name;
 
 	int64 _next_input_check;
 	int64 _node_count;

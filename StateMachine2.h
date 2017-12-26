@@ -39,13 +39,11 @@ public:
 
 	bool pending_request() const;
 
-	bool poll();
-
 	bool register_client(const std::string& _name,
 		StateMachineClient* client);
 
 	bool request_transition(const std::string& _client,
-		state_t state, bool acknowledge=true);
+		state_t state, bool defer=false);
 
 private:
 
@@ -84,7 +82,7 @@ public:
 
 	StateMachineClient(const std::string& name);
 
-	~StateMachineClient();
+	virtual ~StateMachineClient();
 
 	std::string get_name() const;
 
@@ -93,7 +91,7 @@ public:
 
 	sig_t transition_sig;
 
-private:
+protected:
 
 	const std::string
 		_name;

@@ -402,7 +402,7 @@ public:
 	std::vector<option_base*>::iterator
 		find_option(const std::string& name);
 
-	bool go(const std::string& _args) const;
+	bool go(const std::string& _args);
 
 	bool init(int fd);
 
