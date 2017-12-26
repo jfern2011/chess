@@ -5,10 +5,10 @@
  * Constructor
  *
  * @param[in] name    The name of this component
- * @param[in] logger  The Logger that this component can write
- *                    diagnostics to
  * @param[in] _inputs The EngineInputs that we'll set via user
  *                    commands
+ * @param[in] logger  The Logger that this component can write
+ *                    diagnostics to
  */
 Protocol::Protocol(const std::string& name, EngineInputs& _inputs,
 		Logger& logger)
@@ -29,7 +29,7 @@ Protocol::~Protocol()
 }
 
 /**
- * Get a reference to the internal commanding interface which
+ * Get a reference to the internal commanding interface, which
  * handles user commands
  *
  * @return The commanding interface
@@ -39,6 +39,11 @@ CommandInterface& Protocol::get_cmd_interface()
 	return _cmd;
 }
 
+/**
+ * Get the name of this software component
+ *
+ * @return The component name
+ */
 std::string Protocol::get_name() const
 {
 	return _name;
@@ -46,6 +51,10 @@ std::string Protocol::get_name() const
 
 /**
  * Construct a Universal Chess Interface
+ *
+ * @param[in] inputs A reference to the user inputs to forward
+ *                   to the search algorithm
+ * @param[in] logger Log activity to this
  */
 UCI::UCI(EngineInputs& inputs, Logger& logger)
 	: Protocol("UCI", inputs, logger),
@@ -174,11 +183,11 @@ bool UCI::debug(const std::string& _state)
 }
 
 /**
- * Get an iterator to the option with the specified name
+ * Grab an iterator to the option with the specified name
  *
  * @param[in] name The name of the option
  *
- * @return An iterator to the option give by \a name, or
+ * @return An iterator to the option given by \a name, or
  *         vector::end if not found
  */
 std::vector<UCI::option_base*>::iterator
@@ -200,7 +209,6 @@ std::vector<UCI::option_base*>::iterator
  * The handler for the "go" command
  *
  * @param [in] _args Arguments passed in from the command interface
- *                   interface
  *
  * @return True on success
  */
@@ -583,7 +591,7 @@ bool UCI::uci(const std::string&) const
 	{
 		const auto& ptr = *iter;
 
-		switch (ptr->inputs)
+		switch (ptr->display_type)
 		{
 		case 5:
 			AbortIfNot(Output::to_stdout(

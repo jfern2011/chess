@@ -4,6 +4,10 @@
 #include "log.h"
 #include "movegen2.h"
 
+/**
+ * Stores inputs from the GUI for retrieval by the search
+ * algorithm
+ */
 class EngineInputs
 {
 
@@ -86,7 +90,7 @@ private:
 	int _depth;
 
 	/**
-	 * Size of the hash table, in MB
+	 * Size of the hash tables, in MB
 	 */
 	int _hash_size;
 
@@ -112,13 +116,12 @@ private:
 	int _movetime;
 
 	/**
-	 * Log activity to this object
+	 * Used for logging activity
 	 */
 	Logger& _logger;
 
 	/**
-	 * The name of this module for logging
-	 * purposes
+	 * The name of this module for (logging purposes)
 	 */
 	const std::string _name;
 
@@ -133,7 +136,7 @@ private:
 	bool _ponder;
 
 	/**
-	 * The current chess position (passed into Search::search())
+	 * The chess position to search
 	 */
 	Position* _position;
 

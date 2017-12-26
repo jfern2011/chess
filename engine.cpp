@@ -1,7 +1,10 @@
 #include "engine.h"
-#include "position2.h"
-#include "search2.h"
 
+/**
+ * Constructor
+ *
+ * @param[in] tables The set of global pre-computed databases
+ */
 ChessEngine::ChessEngine(const DataTables& tables)
 	: _inputs(nullptr),
 	  _is_init(false),
@@ -12,6 +15,9 @@ ChessEngine::ChessEngine(const DataTables& tables)
 {
 }
 
+/**
+ * Destructor
+ */
 ChessEngine::~ChessEngine()
 {
 	if (_state_machine) delete _state_machine;
@@ -19,6 +25,17 @@ ChessEngine::~ChessEngine()
 	if (_protocol) delete _protocol;
 }
 
+/**
+ * Initialize the engine
+ *
+ * @param[in] cmd_fd   The file descriptor through which to listen
+ *                     for inputs from the GUI
+ * @param[in] log_fd   The file descriptor used for logging
+ * @param[in] protocol The communication protocol to use. See \ref
+ *                     protocol.h for details
+ *
+ * @return True on success
+ */
 bool ChessEngine::init(int cmd_fd, int log_fd, protocol_t protocol)
 {
 	char msg[128];
@@ -55,7 +72,7 @@ bool ChessEngine::init(int cmd_fd, int log_fd, protocol_t protocol)
 	AbortIfNot(_state_machine->init(), false);
 
 	/*
-	 * Inform the state machine that _protocol may initiate state
+	 * Inform the state machine that _protocol may request state
 	 * transitions:
 	 */
 	AbortIfNot(_state_machine->register_client(_protocol->get_name(),
@@ -65,29 +82,71 @@ bool ChessEngine::init(int cmd_fd, int log_fd, protocol_t protocol)
 	return true;
 }
 
-bool ChessEngine::run()
+/**
+ * Run the engine
+ *
+ * @param[in] algorithm The type of search algorithm to use
+ *
+ * @return True on success
+ */
+bool ChessEngine::run(algorithm_t algorithm)
 {
 	AbortIfNot(_is_init, false);
 
-	MoveGen movegen(_tables);
+	Search* search = nullptr;
 
-	PvSearch pvs(movegen, _protocol->get_cmd_interface(), _logger,
-		_tables);
+	if (algorithm == pvs)
+	{
+		MoveGen movegen(_tables);
+		search = new PvSearch(
+			movegen, _protocol->get_cmd_interface(), _logger, _tables);
+	}
+	else
+	{
+		Abort(false, "unsupported search algorithm.\n");
+	}
 
-	AbortIfNot(pvs.init(), false);
+	AbortIfNot(search->init(), false);
 
 	/*
-	 * Check every 100 ms for user input when idle (not searching)
+	 * Register the algorithm with the state machine:
+	 */
+	AbortIfNot(_state_machine->register_client(search->get_name(),
+		search), false);
+
+	/*
+	 * Check every 100 ms for user input when idle (i.e. not searching)
 	 */
 	const int sleep_time = 100000;
 
-	while (_state_machine->get_current_state()
-			!= StateMachine::exiting)
+	bool exit_now = false;
+	while (!exit_now)
 	{
-		AbortIfNot(_protocol->sniff(), false);
-
 		::usleep(sleep_time);
+
+		const StateMachine::state_t state
+			= _state_machine->get_current_state();
+
+		AbortIf(state == StateMachine::none,
+			false);
+
+		switch (state)
+		{
+		case StateMachine::idle:
+			AbortIfNot(_protocol->sniff(), false);
+			break;
+		case StateMachine::searching:
+			AbortIfNot(search->search( *_inputs ),
+				false);
+			break;
+		case StateMachine::exiting:
+			exit_now = true;
+			break;
+		default:
+			Abort(false);
+		}
 	}
 
+	delete(search);
 	return true;
 }

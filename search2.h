@@ -1,9 +1,27 @@
 #ifndef __SEARCH_H__
 #define __SEARCH_H__
 
+#include "EngineInputs.h"
 #include "movegen2.h"
 #include "StateMachine2.h"
 
+/**
+ * The type of search algorithm being employed
+ */
+typedef enum
+{
+	/**
+	 * Principal Variation Search
+	 */
+	pvs
+	
+} algorithm_t;
+
+/**
+ * @class Search
+ *
+ * An class that abstracts the search algorithms being used
+ */
 class Search : public StateMachineClient
 {
 
@@ -30,8 +48,9 @@ public:
 
 	const SearchData& get_search_data() const;
 
-	virtual bool search(const Position& pos,
-						bool ponder) = 0;
+	virtual bool init();
+
+	virtual bool search(const EngineInputs& inputs) = 0;
 
 protected:
 
@@ -89,7 +108,7 @@ public:
 
 	int quiesce(Position& pos, int depth, int alpha, int beta);
 
-	bool search(const Position& master, bool ponder);
+	bool search(const EngineInputs& inputs);
 
 	int see(Position& pos, int square, int to_move, int move=0) const;
 

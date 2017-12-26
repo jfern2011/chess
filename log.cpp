@@ -26,9 +26,9 @@ Logger::~Logger()
  * Assign a file descriptor to write to. Note that this can be called
  * any number of times
  *
- * @param [in] fd        The file descriptor
- * @param [in] nonblock  If true, then this call will fail if writing
- *                       would block
+ * @param[in] fd       The file descriptor
+ * @param[in] nonblock If true, then logging will not be performed if
+ *                     writing would block
  *
  * @return True on success
  */
@@ -69,8 +69,8 @@ bool Logger::is_registered(const std::string& name) const
 }
 
 /**
- * Register a new log source. External code modules must register
- * here to \ref write() to the log
+ * Register a new log source. External code must register here
+ * to \ref write() to the log
  *
  * @param[in] name The source name
  *

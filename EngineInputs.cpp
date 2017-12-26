@@ -68,11 +68,12 @@ int EngineInputs::get_hash_size() const
 }
 
 /**
- * Get the increment per move for the given player
+ * Get the increment per move for the given player,
+ * in milliseconds
  *
  * @param[in] side Get the increment for this side
  *
- * @return The increment per move, in milliseconds
+ * @return The increment per move
  */
 int EngineInputs::get_increment(int side) const
 {
@@ -83,7 +84,7 @@ int EngineInputs::get_increment(int side) const
  * Get the number of moves to search for a checkmate
  *
  * @return The number of moves (not plies) to search
- *         for mate
+ *         for mate, i.e. mate in 5
  */
 int EngineInputs::get_mate_depth() const
 {
@@ -102,7 +103,7 @@ int EngineInputs::get_movestogo() const
 }
 
 /**
- * Get the amount of time to search for, in milliseconds
+ *  Get the amount of time to search for, in milliseconds
  *
  * @return The exact search time
  */
@@ -132,7 +133,7 @@ bool EngineInputs::get_ponder() const
 }
 
 /**
- * Get the current position
+ * Get the position that will be searched
  *
  * @return The internal position
  */
@@ -214,6 +215,8 @@ bool EngineInputs::searchmoves(const std::string& moves)
 			Abort(false, msg);
 		}
 
+		AbortIfNot(_position->make_move(move),
+			false);
 		_search_moves.push_back(move);
 	}
 
@@ -308,7 +311,7 @@ bool EngineInputs::set_increment(int ms, int side)
 /**
  * Set the depth (in full moves) to search for a mate
  *
- * @param[in] moves The search depth
+ * @param[in] moves Find a mate in this many moves
  *
  * @return True on success
  */
@@ -338,7 +341,7 @@ bool EngineInputs::set_movestogo(int moves)
 	_movestogo = moves;
 
 	_logger.write(_name,
-		"%d moves left in current time control", _movestogo);
+		"%d moves left in current time control.\n", _movestogo);
 
 	return true;
 }
@@ -396,7 +399,8 @@ void EngineInputs::set_ponder(bool on)
 }
 
 /**
- * Set the internal copy of the position to \a pos
+ * Set the internal copy of the position to \a pos, which will
+ * be searched by \ref search()
  *
  * @param[in] pos The new position
  *

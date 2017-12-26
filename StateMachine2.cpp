@@ -1,5 +1,12 @@
 #include "StateMachine2.h"
 
+/**
+ * Constructor
+ *
+ * @param[in] cmd    The command interface, which allows user inputs
+ *                   to drive the state machine
+ * @param[in] logger For logging activity
+ */
 StateMachine::StateMachine(CommandInterface& cmd, Logger& logger)
 	: _clients(),
 	  _cmd(cmd),
@@ -13,10 +20,20 @@ StateMachine::StateMachine(CommandInterface& cmd, Logger& logger)
 {
 }
 
+/**
+ * Destructor
+ */
 StateMachine::~StateMachine()
 {
 }
 
+/**
+ * Acknowledge a pending state transition request. This does not
+ * need to be called explicitly unless the requestor asked to
+ * defer acknowledgement until later in \ref request_transition()
+ *
+ * @return True on success
+ */
 bool StateMachine::acknowledge_transition()
 {
 	AbortIfNot(_is_init, false);
@@ -62,21 +79,38 @@ bool StateMachine::acknowledge_transition()
 	return false;
 }
 
+/**
+ * Disable logging :(
+ */
 void StateMachine::disable_logging()
 {
 	_logging_enabled = false;
 }
 
+/**
+ * Enable logging :)
+ */
 void StateMachine::enable_logging()
 {
 	_logging_enabled = true;
 }
 
+/**
+ * Get the state machine's current state
+ *
+ * @return The current state
+ */
 StateMachine::state_t StateMachine::get_current_state() const
 {
 	return _current_state;
 }
 
+/**
+ * Initialize. If successful, this will cause a transition to
+ * \ref idle
+ *
+ * @return True on success
+ */
 bool StateMachine::init()
 {
 	_transitions.resize(n_states);
@@ -126,11 +160,25 @@ bool StateMachine::init()
 	return true;
 }
 
+/**
+ * Check to see if there are any pending state transition requests
+ *
+ * @return True if a request is pending
+ */
 bool StateMachine::pending_request() const
 {
 	return _pending_state != _current_state;
 }
 
+/**
+ *  Registers a user with this state machine, allowing it to issue
+ *  transition requests
+ *
+ * @param[in] _name  The name of the subscriber
+ * @param[in] client The subscriber itself
+ *
+ * @return True on success
+ */
 bool StateMachine::register_client(const std::string& _name,
 	StateMachineClient* client)
 {
@@ -160,6 +208,17 @@ bool StateMachine::register_client(const std::string& _name,
 	return true;
 }
 
+/**
+ * Request a state transition
+ *
+ * @param[in] _client The name of the user who is making this request
+ * @param[in] state   Transition to this state
+ * @param[in] defer   If true, do not transition yet. Instead, wait
+ *                    until \ref acknowledge_transition() gets called
+ *                    explicitly
+ *
+ * @return True on success
+ */
 bool StateMachine::request_transition(const std::string& _client,
 	state_t state, bool defer)
 {
@@ -203,15 +262,30 @@ bool StateMachine::request_transition(const std::string& _client,
 	return false;
 }
 
+/**
+ * Constructor
+ *
+ * @param[in] name The name of this client (i.e. software
+ *                 component)
+ */
 StateMachineClient::StateMachineClient(const std::string& name)
 	: _name(name), transition_sig()
 {
 }
 
+/**
+ * Destructor
+ */
 StateMachineClient::~StateMachineClient()
 {
 }
 
+/**
+ * Get the name of this client. This is what makes us known
+ * to the state machine
+ *
+ * @return The state machine user
+ */
 std::string StateMachineClient::get_name() const
 {
 	return _name;

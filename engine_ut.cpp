@@ -13,7 +13,7 @@ int main(void)
 		return 0;
 	}
 
-	if (!engine.run())
+	if (!engine.run(pvs))
 		std::cout << "Runtime error..." << std::endl;
 
 	return 0;

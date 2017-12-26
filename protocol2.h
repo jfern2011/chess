@@ -33,6 +33,10 @@ public:
 	virtual bool sniff() = 0;
 
 
+	/**
+	 * Stuff user inputs here, which will be consumed by the
+	 * search algorithm
+	 */
 	EngineInputs& inputs;
 
 protected:
@@ -110,12 +114,10 @@ class UCI : public Protocol
 		std::string type;
 
 		/**
-		 * The number of inputs passed to the constructor. This is
-		 * how we know which members are undefined; e.g. if only
-		 * two arguments were passed to the constructor, then only
-		 * \ref vars is defined
+		 * The display type. This is purely used to respond
+		 * to the "uci" command
 		 */
-		size_t inputs;
+		int display_type;
 	};
 
 	/**
@@ -152,8 +154,7 @@ class UCI : public Protocol
 			  max(_max),
 			  vars()
 		{
-			// Identify which constructor was used
-			inputs = 5;
+			display_type = 5;
 		}
 
 		/**
@@ -175,8 +176,7 @@ class UCI : public Protocol
 			  max(),
 			  vars()
 		{
-			// Identify which constructor was used
-			inputs = 3;
+			display_type = 3;
 		}
 
 		/**
@@ -196,8 +196,7 @@ class UCI : public Protocol
 			  max(),
 			  vars()
 		{
-			// Identify which constructor was used
-			inputs = 2;
+			display_type = 2;
 		}
 
 		/**
@@ -282,13 +281,13 @@ class UCI : public Protocol
 		/**
 		 * Get the set of predefined values for this option
 		 *
-		 * @param[in] strs The predefined values
+		 * @param[in] vals The predefined values
 		 *
 		 * @return True on success
 		 */
-		bool predefs_to_string(Util::str_v& strs) const
+		bool predefs_to_string(Util::str_v& vals) const
 		{
-			strs.clear();
+			vals.clear();
 
 			for (auto iter = vars.begin(), end = vars.end();
 				 iter != end; ++iter)
@@ -297,7 +296,7 @@ class UCI : public Protocol
 				AbortIfNot(Util::to_string(*iter, str),
 					false);
 
-				strs.push_back(str);
+				vals.push_back(str);
 			}
 
 			return true;
@@ -408,7 +407,7 @@ public:
 
 	bool isready(const std::string&) const;
 
-	bool position(const std::string& _args) const;
+	bool position(const std::string& _args)  const;
 
 	bool quit(const std::string&);
 
@@ -465,6 +464,15 @@ private:
 	Logger& _logger;
 };
 
+/**
+ **********************************************************************
+ *
+ * @class Console
+ *
+ * Used for interfacing via a terminal
+ *
+ **********************************************************************
+ */
 class Console : public Protocol
 {
 
