@@ -117,10 +117,10 @@ bool Logger::write(const std::string& _source,
 	if (!is_registered(source))
 	{
 		/*
-		 * Deny this stranger access:
+		 * Deny strangers access:
 		 */
 		nchars = std::snprintf(buf, buf_size,
-			"%s: unknown source '%s' attempted to access the log!\n",
+			"%s: unknown source '%s' attempted to access the log.\n",
 			_name.c_str(), _source.c_str());
 	}
 	else

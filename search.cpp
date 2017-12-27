@@ -42,12 +42,12 @@ const Search::SearchData& Search::get_search_data() const
  *
  * @param[in] movegen A MoveGen, which generates moves at
  *                    each tree node
- * @param[in] cmd     The user command interface
+ * @param[in] sm      The chess engine state machine
  * @param[in] logger  The logger for writing diagnostics
  * @param[in] tables  The global pre-computed tables
  */
 PvSearch::PvSearch(const MoveGen& movegen,
-				   CommandInterface& cmd,
+				   StateMachine& sm,
 				   Logger& logger,
 				   const DataTables& tables)
 	: Search("PvSearch", movegen),
@@ -55,7 +55,7 @@ PvSearch::PvSearch(const MoveGen& movegen,
 	  _best_move(0),
 	  _depth(1),
 	  _input_check_delay(100000),
-	  _interrupt_handler(cmd),
+	  _interrupt_handler(sm),
 	  _is_init(false),
 	  _logger(logger),
 	  _next_input_check(0),
@@ -105,7 +105,7 @@ bool PvSearch::is_mated(int to_move) const
 }
 
 /**
- * Run a new search. This is the top-level search routine
+ * Run a new search
  *
  * @param [in] inputs Configure the search with these parameters
  *
@@ -114,6 +114,12 @@ bool PvSearch::is_mated(int to_move) const
 bool PvSearch::search(const EngineInputs& inputs)
 {
 	AbortIfNot(_is_init, false);
+
+	AbortIfNot(transition_sig.is_connected(),
+		false);
+
+	AbortIfNot(transition_sig.raise(_name, StateMachine::searching,
+		false), false);
 
 	_abort_requested  = false;
 	_next_input_check = _input_check_delay;

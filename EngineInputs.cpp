@@ -196,6 +196,8 @@ bool EngineInputs::searchmoves(const std::string& moves)
 		for (size_t i = 0; i < n_moves; i++)
 			_search_moves.assign(moves, moves + n_moves);
 
+		_logger.write( _name, "searching all moves.\n" );
+
 		return true;
 	}
 
@@ -209,10 +211,10 @@ bool EngineInputs::searchmoves(const std::string& moves)
 
 		if (!_is_legal(move))
 		{
-			BUFFER(char, msg, 128);
-			std::snprintf(
-				msg, 128, "Illegal move: '%s' \n", list[ i ].c_str() );
-			Abort(false, msg);
+			_logger.write(_name, "Illegal move: '%s' \n",
+				list[i].c_str());
+			
+			return false;
 		}
 
 		AbortIfNot(_position->make_move(move),
@@ -252,7 +254,13 @@ void EngineInputs::set_debug(bool debug)
  */
 bool EngineInputs::set_depth(int depth)
 {
-	AbortIf(depth < 0, false);
+	if (depth < 0)
+	{
+		_logger.write(
+			_name, "invalid search depth = %d\n", depth);
+
+		return false;
+	}
 
 	_depth = depth;
 
@@ -269,11 +277,16 @@ bool EngineInputs::set_depth(int depth)
  */
 void EngineInputs::set_hash_size(int size)
 {
-	std::string val;
-	Util::to_string<int>(size, val);
+	if (size < 0)
+	{
+		_logger.write(
+			_name, "invalid hash table size = %d\n", size);
 
-	_logger.write(_name, "setting hash tables to %s MB.\n",
-		val.c_str());
+		return;
+	}
+
+	_logger.write(_name, "setting hash tables to %d MB.\n",
+		size);
 
 	_hash_size = size;
 }
@@ -288,9 +301,19 @@ void EngineInputs::set_hash_size(int size)
  */
 bool EngineInputs::set_increment(int ms, int side)
 {
-	AbortIf(side != WHITE && side != BLACK, false);
+	if (ms < 0)
+	{
+		_logger.write(_name, "[%s] invalid increment = %d\n",
+			__FUNCTION__, ms  );
+		return false;
+	}
 
-	AbortIf(ms < 0, false);
+	if (side != WHITE && side != BLACK)
+	{
+		_logger.write(_name, "[%s] invalid player    = %d\n",
+			__FUNCTION__, side);
+		return false;
+	}
 
 	if (side == WHITE)
 	{
@@ -317,7 +340,12 @@ bool EngineInputs::set_increment(int ms, int side)
  */
 bool EngineInputs::set_mate_depth(int moves)
 {
-	AbortIf(moves < 0, false);
+	if (moves < 0)
+	{
+		_logger.write(_name, "cannot set mate depth to %d\n",
+			moves);
+		return false;
+	}
 
 	_mate = moves;
 
@@ -336,7 +364,12 @@ bool EngineInputs::set_mate_depth(int moves)
  */
 bool EngineInputs::set_movestogo(int moves)
 {
-	AbortIf(moves < 0, false);
+	if (moves < 0)
+	{
+		_logger.write(_name, "[%s] invalid # of moves = %d. \n",
+			__FUNCTION__, moves);
+		return false;
+	}
 
 	_movestogo = moves;
 
@@ -355,7 +388,13 @@ bool EngineInputs::set_movestogo(int moves)
  */
 bool EngineInputs::set_movetime(int ms)
 {
-	AbortIf(ms < 0, false);
+	if (ms < 0)
+	{
+		_logger.write(_name,
+			"[%s] invalid search time = %d\n",__FUNCTION__,
+			ms);
+		return false;
+	}
 
 	_movetime = ms;
 
@@ -374,10 +413,17 @@ bool EngineInputs::set_movetime(int ms)
  */
 bool EngineInputs::set_node_limit(int64 max)
 {
-	AbortIf(max < 0, false);
+	if (max < 0)
+	{
+		_logger.write(_name,
+			"[%s] invalid node limit = %lld\n",__FUNCTION__,
+			max);
+		return false;
+	}
+
 	_nodes = max;
 
-	_logger.write(_name, "limiting search to %d nodes.\n",
+	_logger.write( _name, "limiting search to %d nodes. \n",
 		_nodes);
 
 	return true;
@@ -428,10 +474,19 @@ bool EngineInputs::set_position( const Position& pos )
  */
 bool EngineInputs::set_time(int ms, int side)
 {
-	AbortIf(side != WHITE && side != BLACK,
-		false);
+	if (ms < 0)
+	{
+		_logger.write(_name, "[%s] invalid clock  = %d\n",
+			__FUNCTION__, ms  );
+		return false;
+	}
 
-	AbortIf(ms < 0, false);
+	if (side != WHITE && side != BLACK)
+	{
+		_logger.write(_name, "[%s] invalid player = %d\n",
+			__FUNCTION__, side);
+		return false;
+	}
 
 	if (side == WHITE)
 	{

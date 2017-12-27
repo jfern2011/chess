@@ -4,9 +4,12 @@
 #include "util.h"
 
 /**
+ * @class Logger
+ *
  * A simple class used for logging activity. Any modules
- * that wish to write to the log must register with
- * \ref register_source
+ * that wish to write to the log register with \ref
+ * register_source so that if something erroneous occurs
+ * we'll know the source
  */
 class Logger
 {

@@ -37,7 +37,7 @@ private:
 	bool _is_init;
 
 	/**
-	 * Used for logging activity. Mostly for debugging
+	 * Used for logging activity
 	 */
 	Logger _logger;
 

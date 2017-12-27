@@ -1,4 +1,5 @@
 #include "engine.h"
+#include "output.h"
 
 /**
  * Constructor
@@ -93,13 +94,16 @@ bool ChessEngine::run(algorithm_t algorithm)
 {
 	AbortIfNot(_is_init, false);
 
+	/*
+	 * 'search' allows us to easily experiment with different algorithms
+	 * without changing the external behavior
+	 */
 	Search* search = nullptr;
 
 	if (algorithm == pvs)
 	{
-		MoveGen movegen(_tables);
-		search = new PvSearch(
-			movegen, _protocol->get_cmd_interface(), _logger, _tables);
+		static MoveGen movegen(_tables);
+		search = new PvSearch(movegen,*_state_machine,_logger, _tables);
 	}
 	else
 	{
@@ -109,40 +113,36 @@ bool ChessEngine::run(algorithm_t algorithm)
 	AbortIfNot(search->init(), false);
 
 	/*
-	 * Register the algorithm with the state machine:
+	 * Register the search algorithm with the state machine:
 	 */
-	AbortIfNot(_state_machine->register_client(search->get_name(),
-		search), false);
+	AbortIfNot(_state_machine->register_client(
+		search->get_name(), search), false);
 
 	/*
-	 * Check every 100 ms for user input when idle (i.e. not searching)
+	 * Poll for input every 100 ms when idle (not searching)
 	 */
 	const int sleep_time = 100000;
 
-	bool exit_now = false;
-	while (!exit_now)
+	auto update = [&]() { return _state_machine->get_current_state(); };
+
+	while (update() != StateMachine::exiting)
 	{
-		::usleep(sleep_time);
-
-		const StateMachine::state_t state
-			= _state_machine->get_current_state();
-
-		AbortIf(state == StateMachine::none,
-			false);
+		const auto state = update();
+		const std::string state_name = _state_machine->to_string(state);
 
 		switch (state)
 		{
 		case StateMachine::idle:
 			AbortIfNot(_protocol->sniff(), false);
+			::usleep(sleep_time);
 			break;
-		case StateMachine::searching:
-			AbortIfNot(search->search( *_inputs ),
-				false);
-			break;
-		case StateMachine::exiting:
-			exit_now = true;
+		case StateMachine::init_search:
+			AbortIfNot(search->search(*_inputs), false);
 			break;
 		default:
+			Output::to_stdout("unexpected state '%s'\n",
+				state_name.c_str());
+
 			Abort(false);
 		}
 	}

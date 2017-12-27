@@ -66,8 +66,8 @@ class PvSearch : public Search
 
 	public:
 
-		InterruptHandler(CommandInterface& cmd)
-			: _cmd(cmd)
+		InterruptHandler(StateMachine& state_machine)
+			: _state_machine(state_machine)
 		{
 		}
 
@@ -83,20 +83,26 @@ class PvSearch : public Search
 			 * machine. Don't print abort messages on error; doing so 
 			 * may just send high-rate spam to standard output
 			 */
-			return _cmd.poll();
+			if (_state_machine.poll())
+			{
+				return StateMachine::searching
+						!= _state_machine.get_current_state();
+			}
+
+			return false;
 		}
 
 	private:
 
-		CommandInterface&
-			_cmd;
+		StateMachine&
+			_state_machine;
 
 	};
 
 public:
 
 	PvSearch(const MoveGen& movegen,
-		     CommandInterface& cmd,
+		     StateMachine& sm,
 		     Logger& logger,
 		     const DataTables& tables);
 

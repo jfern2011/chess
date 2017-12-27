@@ -9,10 +9,10 @@ class StateMachineClient;
  * @class StateMachine
  *
  * The state machine determines what the engine is doing at any given
- * time. The list of available states are listed in the \ref state_t
+ * time. The list of available states is given in the \ref state_t
  * enumerated type definition. State transitions are generally driven
- * by user inputs, except for the search algorithm which requests
- * a state transition whenever it completes a computation
+ * by user inputs, except for the search algorithm, which requests
+ * a state transition whenever it finishes a computation
  */
 class StateMachine
 {
@@ -24,34 +24,39 @@ public:
 		/**
 		 * The default pre-initialized state
 		 */
-		none      = 0,
+		none        = 0,
 
 		/**
-		 * Indicates the engine isn't doing anything but waiting for
+		 * Indicates the engine isn't doing anything and waiting for
 		 * user inputs
 		 */
-		idle      = 1,
+		idle        = 1,
+
+		/**
+		 * Initializing for a new search
+		 */
+		init_search = 2,
 
 		/**
 		 * Indicates that a search is in progress. This also applies
 		 * when pondering
 		 */
-		searching = 2,
+		searching   = 3,
 
 		/**
-		 * Indicates we are exiting
+		 * Indicates the engine is exiting
 		 */
-		exiting   = 3,
+		exiting     = 4,
 
 		/**
 		 * The number of states
 		 */
-		n_states  = 4
+		n_states    = 5
 
 	} state_t;
 
 	/**
-	 * Storage type for \ref state_t items
+	 * A container for \ref state_t items
 	 */
 	typedef std::vector<state_t> state_v;
 
@@ -71,17 +76,21 @@ public:
 
 	bool pending_request() const;
 
+	bool poll() const;
+
 	bool register_client(const std::string& _name,
 		StateMachineClient* client);
 
 	bool request_transition(const std::string& _client,
 		state_t state, bool defer=false);
 
+	std::string to_string(state_t state) const;
+
 private:
 
 	/**
-	 * A record that keeps track of all components registered
-	 * with the state machine
+	 * A record of all components registered with
+	 * the state machine
 	 */
 	Util::str_v _clients;
 

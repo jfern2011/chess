@@ -419,7 +419,7 @@ public:
 
 	bool uci(const std::string&) const;
 
-	bool ucinewgame(const std::string&) const;
+	bool ucinewgame(const std::string&);
 
 private:
 

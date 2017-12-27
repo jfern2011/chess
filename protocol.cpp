@@ -223,6 +223,8 @@ bool UCI::go(const std::string& _args)
 	for (auto iter = args.begin(), end = args.end(); iter != end;
 		 ++iter)
 	{
+		bool parse_error = false;
+
 		if (*iter == "searchmoves")
 		{
 			searchmoves = true;
@@ -239,97 +241,112 @@ bool UCI::go(const std::string& _args)
 			searchmoves = false;
 
 			int ms;
-			AbortIfNot(Util::str_to_i32(*(iter+1), 10, ms), false);
-
-			AbortIfNot(inputs.set_time(ms, WHITE),
-				false);
+			if (iter + 1 == end || !Util::str_to_i32(*(iter+1), 10, ms)
+				|| !inputs.set_time(ms, WHITE))
+			{
+				parse_error = true;
+			}
 		}
 		else if (*iter == "btime")
 		{
 			searchmoves = false;
 
 			int ms;
-			AbortIfNot(Util::str_to_i32(*(iter+1), 10, ms), false);
-
-			AbortIfNot(inputs.set_time(ms, BLACK),
-				false);
+			if (iter + 1 == end || !Util::str_to_i32(*(iter+1), 10, ms)
+				|| !inputs.set_time(ms, BLACK))
+			{
+				parse_error = true;
+			}
 		}
 		else if (*iter == "winc")
 		{
 			searchmoves = false;
 
 			int ms;
-			AbortIfNot(Util::str_to_i32(*(iter+1), 10, ms), false);
-
-			AbortIfNot(inputs.set_increment(ms, WHITE),
-				false);
+			if (iter + 1 == end || !Util::str_to_i32(*(iter+1), 10, ms)
+				|| !inputs.set_increment(ms, WHITE))
+			{
+				parse_error = true;
+			}
 		}
 		else if (*iter == "binc")
 		{
 			searchmoves = false;
 
 			int ms;
-			AbortIfNot(Util::str_to_i32(*(iter+1), 10, ms), false);
-
-			AbortIfNot(inputs.set_increment(ms, BLACK),
-				false);
+			if (iter + 1 == end || !Util::str_to_i32(*(iter+1), 10, ms)
+				|| !inputs.set_increment(ms, BLACK))
+			{
+				parse_error = true;
+			}
 		}
 		else if (*iter == "movestogo")
 		{
 			searchmoves = false;
 
 			int n;
-			AbortIfNot(Util::str_to_i32(*(iter+1), 10, n ), false);
-
-			AbortIfNot(inputs.set_movestogo(n),
-				false);
+			if (iter + 1 == end || !Util::str_to_i32(*(iter+1), 10, n )
+				|| !inputs.set_movestogo(n))
+			{
+				parse_error = true;
+			}
 		}
 		else if (*iter == "depth")
 		{
 			searchmoves = false;
 
 			int n;
-			AbortIfNot(Util::str_to_i32(*(iter+1), 10, n ), false);
-
-			AbortIfNot(inputs.set_depth(n),
-				false);
+			if (iter + 1 == end || !Util::str_to_i32(*(iter+1), 10, n )
+				|| !inputs.set_depth(n))
+			{
+				parse_error = true;
+			}
 		}
 		else if (*iter == "nodes")
 		{
 			searchmoves = false;
 
 			int n;
-			AbortIfNot(Util::str_to_i32(*(iter+1), 10, n ), false);
-
-			AbortIfNot(inputs.set_node_limit(n),
-				false);
+			if (iter + 1 == end || !Util::str_to_i32(*(iter+1), 10, n )
+				|| !inputs.set_node_limit(n))
+			{
+				parse_error = true;
+			}
 		}
 		else if (*iter == "mate")
 		{
 			searchmoves = false;
 
 			int n;
-			AbortIfNot(Util::str_to_i32(*(iter+1), 10, n ), false);
-
-			AbortIfNot(inputs.set_mate_depth(n),
-				false);
+			if (iter + 1 == end || !Util::str_to_i32(*(iter+1), 10, n )
+				|| !inputs.set_mate_depth(n))
+			{
+				parse_error = true;
+			}
 		}
 		else if (*iter == "movetime")
 		{
 			searchmoves = false;
 
 			int ms;
-			AbortIfNot(Util::str_to_i32(*(iter+1), 10, ms), false);
-
-			AbortIfNot(inputs.set_movetime(ms),
-				false);
+			if (iter + 1 == end || !Util::str_to_i32(*(iter+1), 10, ms)
+				|| !inputs.set_movetime(ms))
+			{
+				parse_error = true;
+			}
 		}
 		else if (*iter == "infinite")
 		{
 			searchmoves = false;
 
-			AbortIfNot(inputs.set_depth(MAX_PLY),
-				false);
+			parse_error = !inputs.set_depth(MAX_PLY);
+		}
+
+		if (parse_error)
+		{
+			_logger.write(_name, "[%s] unable to set parameter '%s'\n",
+				__FUNCTION__, iter->c_str());
+			return false;
 		}
 
 		if (searchmoves)
@@ -338,16 +355,22 @@ bool UCI::go(const std::string& _args)
 		}
 	}
 
-	AbortIfNot(inputs.searchmoves(moves),
-		false);
+	if (!inputs.searchmoves(moves))
+	{
+		moves = Util::trim( moves );
+		_logger.write(_name,"[%s] unable to set searchmoves to '%s'\n",
+			__FUNCTION__, moves.c_str());
+		return false;
+	}
 
 	/*
-	 * Request a state transition to StateMachine::searching
+	 * Request a state transition to StateMachine::init_search
 	 */
-	AbortIfNot(transition_sig.raise(
-		_name, StateMachine::searching, false), false);
+	AbortIfNot(transition_sig.is_connected(),
+		false);
 
-	return true;
+	return transition_sig.raise(
+		_name, StateMachine::init_search, false);
 }
 
 /**
@@ -395,15 +418,25 @@ bool UCI::isready(const std::string&) const
  */
 bool UCI::position(const std::string& _args) const
 {
-	AbortIf(_args.size() == 0, false);
+	if (_args.empty())
+	{
+		_logger.write(_name, "no arguments passed to [%s]\n",
+			__FUNCTION__);
+		return false;
+	}
 
 	Util::str_v args, parts;
 	Util::split(_args, parts, "moves");
 
 	Util::split(parts[0], args);
 
-	AbortIfNot(args[0] == "startpos" || args[0] == "fen",
-		false);
+	if (args[0] != "startpos" && args[0] != "fen")
+	{
+		_logger.write(_name,
+			"expected \"startpos\" or \"fen\", got \"%s\"\n",
+			args[0].c_str());
+		return false;
+	}
 
 	Position pos(*inputs.get_position());
 
@@ -413,34 +446,43 @@ bool UCI::position(const std::string& _args) const
 	}
 	else
 	{
-		AbortIf(args.size() < 2, false);
+		if (args.size() < 2)
+		{
+			_logger.write(_name,"missing FEN string\n");
+			return false;
+		}
 
 		args.erase(args.begin());
 
 		std::string fen = Util::build_string(args, " ");
 
-		AbortIfNot(pos.reset(fen, true),
-			false);
+		if (!pos.reset(fen, true))
+		{
+			_logger.write(_name, "invalid FEN \"%s\"\n",
+				fen.c_str());
+			return false;
+		}
 	}
-
-	AbortIfNot(inputs.set_position(pos),
-		false);
-
-	if (parts.size() < 2)
-		return true;
 
 	/*
 	 * The position was reset, now play any moves passed
 	 * in by the GUI
 	 */
-	Util::str_v moves; Util::split(parts[1], moves);
+	Util::str_v moves;
+
+	if (parts.size() > 1) Util::split(parts[1], moves);
 
 	for (size_t i = 0; i < moves.size(); i++)
 	{
 		const int partial =
 			Util::parse_coordinate(moves[i]);
 
-		AbortIf(partial == 0, false);
+		if (partial == 0)
+		{
+			_logger.write(_name, "invalid move '%s'",
+				moves[i].c_str());
+			return false;
+		}
 
 		const int promote = PROMOTE(partial);
 		const int to = TO(partial);
@@ -449,8 +491,12 @@ bool UCI::position(const std::string& _args) const
 		const piece_t moved =
 			pos.piece_on(FROM(partial));
 
-		AbortIf(moved == INVALID,
-			false);
+		if (moved == INVALID)
+		{
+			_logger.write(_name, "invalid move '%s'",
+				moves[i].c_str());
+			return false;
+		}
 
 		piece_t captured =
 			pos.piece_on( TO(partial) );
@@ -464,9 +510,11 @@ bool UCI::position(const std::string& _args) const
 		int move = pack(captured, from, moved,
 						promote, to);
 
-		AbortIfNot(pos.make_move(move),
-			false);
+		AbortIfNot(pos.make_move(move), false);
 	}
+
+	AbortIfNot(inputs.set_position(pos),
+		false);
 
 	return true;
 }
@@ -648,13 +696,18 @@ bool UCI::uci(const std::string&) const
 }
 
 /**
- * Handles the "ucinewgame" command.
+ * Handles the "ucinewgame" command. This will request a state
+ * transition to \ref StateMachine::idle
  *
  * @return True on success
  */
-bool UCI::ucinewgame(const std::string&) const
+bool UCI::ucinewgame(const std::string&)
 {
-	return true;
+	AbortIfNot( transition_sig.is_connected(),
+		false);
+
+	return transition_sig.raise(
+			_name, StateMachine::idle, false);
 }
 
 xBoard::xBoard(EngineInputs& inputs, Logger& logger)

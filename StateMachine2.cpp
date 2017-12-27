@@ -1,3 +1,4 @@
+#include "output.h"
 #include "StateMachine2.h"
 
 /**
@@ -38,10 +39,20 @@ bool StateMachine::acknowledge_transition()
 {
 	AbortIfNot(_is_init, false);
 
-	AbortIfNot( pending_request(), false );
-
 	const std::string old   = _state_names[_current_state];
 	const std::string young = _state_names[_pending_state];
+
+	if (!pending_request())
+	{
+		if (_logging_enabled)
+		{
+			_logger.write(_name,
+				"ignoring transition request %s -> %s\n",
+				old.c_str(), young.c_str());
+		}
+
+		return true;
+	}
 
 	const state_v& reachables =
 		_transitions[_current_state];
@@ -54,7 +65,7 @@ bool StateMachine::acknowledge_transition()
 			if (_logging_enabled)
 			{
 				_logger.write(_name,
-					"changed states from '%s' to '%s'\n",
+					"changed states from %s to %s.\n",
 					old.c_str(), young.c_str());
 			}
 
@@ -65,7 +76,7 @@ bool StateMachine::acknowledge_transition()
 	if (_logging_enabled)
 	{
 		_logger.write(_name,
-			"unable to change states from '%s' to '%s'\n",
+			"unable to change states from %s to %s.\n",
 			old.c_str(), young.c_str());
 	}
 
@@ -127,13 +138,21 @@ bool StateMachine::init()
 	 */
 	_transitions[idle].push_back(searching);
 	_transitions[idle].push_back(exiting);
+	_transitions[idle].push_back(init_search);
 
 	/*
 	 * Set the state(s) we can transition to from
 	 * 'searching'
 	 */
+	_transitions[searching].push_back(init_search);
 	_transitions[searching].push_back(idle);
 	_transitions[searching].push_back(exiting);
+
+	/*
+	 * Set the state(s) we can transition to from
+	 * 'init_search'
+	 */
+	_transitions[init_search].push_back(searching);
 
 	AbortIfNot(_logger.register_source(_name),
 		false);
@@ -143,10 +162,11 @@ bool StateMachine::init()
 	 */
 	_state_names.resize(n_states);
 
-	_state_names[none]      = "none";
-	_state_names[idle]      = "idle";
-	_state_names[searching] = "searching";
-	_state_names[exiting]   = "exiting";
+	_state_names[none]        = "none";
+	_state_names[idle]        = "idle";
+	_state_names[init_search] = "init_search";
+	_state_names[searching]   = "searching";
+	_state_names[exiting]     = "exiting";
 
 	_is_init = true;
 
@@ -168,6 +188,19 @@ bool StateMachine::init()
 bool StateMachine::pending_request() const
 {
 	return _pending_state != _current_state;
+}
+
+/**
+ * Poll the underlying command interface, which will send state
+ * transition requests to this instance
+ *
+ * @return True on success
+ */
+bool StateMachine::poll() const
+{
+	AbortIfNot(_is_init, false);
+
+	return _cmd.poll();
 }
 
 /**
@@ -193,10 +226,9 @@ bool StateMachine::register_client(const std::string& _name,
 	{
 		if (*iter == name)
 		{
-			char msg[128];
-			std::snprintf(msg,128,"duplicate client '%s'\n",
-						name.c_str());
-			Abort(false, msg);
+			Output::to_stdout("duplicate client '%s'\n",
+				name.c_str());
+			Abort(false);
 		}
 	}
 
@@ -225,7 +257,17 @@ bool StateMachine::request_transition(const std::string& _client,
 	AbortIfNot(_is_init, false);
 
 	const std::string client=Util::trim(_client);
-	AbortIf(client.empty(), false);
+
+	if (client.empty())
+	{
+		if (_logging_enabled)
+		{
+			_logger.write(_name,
+				"unnamed client requested a state change!\n");
+		}
+
+		return false;
+	}
 
 	for ( size_t i = 0; i < _clients.size(); i++)
 	{
@@ -236,7 +278,7 @@ bool StateMachine::request_transition(const std::string& _client,
 				const std::string new_state = _state_names[state];
 
 				_logger.write(_name,
-					"received transition request from '%s': %s -> %s\n",
+					"received transition request from %s: %s -> %s\n",
 					client.c_str(),
 					_state_names[_current_state].c_str(),
 					new_state.c_str());
@@ -245,8 +287,17 @@ bool StateMachine::request_transition(const std::string& _client,
 			_pending_state = state;
 			if (!defer)
 			{
-				AbortIfNot(acknowledge_transition(),
-					false);
+				if (!acknowledge_transition())
+				{
+					if (_logging_enabled)
+					{
+						_logger.write(_name,
+							"failed to complete a request from %s.\n",
+							client.c_str());
+					}
+
+					return false;
+				}
 			}
 
 			return true;
@@ -260,6 +311,18 @@ bool StateMachine::request_transition(const std::string& _client,
 	}
 
 	return false;
+}
+
+/**
+ *   Get the human-readable equivalent of a \ref state_t
+ *
+ * @param[in] state The value to convert
+ *
+ * @return The state name
+ */
+std::string StateMachine::to_string(state_t state) const
+{
+	return _state_names[state];
 }
 
 /**
