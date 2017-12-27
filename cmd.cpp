@@ -169,6 +169,9 @@ bool CommandInterface::handle_command(const char* _input,
 	std::string input =
 		std::move(Util::trim(temp));
 
+	_logger.write(_name,
+		"received input string '%s'\n", input.c_str());
+
 	Util::str_v tokens;
 		Util::split( input,tokens );
 
