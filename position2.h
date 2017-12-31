@@ -215,6 +215,8 @@ public:
 
 	std::string get_fen() const;
 
+	int get_fullmove_number() const;
+
 	uint64 get_hash_key() const;
 
 	uint64 get_hash_key(int ply) const;

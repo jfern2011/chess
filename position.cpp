@@ -357,6 +357,17 @@ std::string Position::get_fen() const
 }
 
 /**
+ * Get the full move number, i.e. from the FEN representation
+ * of this position
+ *
+ * @return The move number
+ */
+int Position::get_fullmove_number() const
+{
+	return _full_move;
+}
+
+/**
  * Display the current position
  */
 void Position::print() const

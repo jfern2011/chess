@@ -1,6 +1,7 @@
 #ifndef __PROTOCOL_H__
 #define __PROTOCOL_H__
 
+#include "EngineOutputs.h"
 #include "EngineInputs.h"
 #include "StateMachine2.h"
 
@@ -29,6 +30,12 @@ public:
 	std::string get_name() const;
 
 	virtual bool init(int fd)  = 0;
+
+	virtual bool postsearch(EngineOutputs& outputs)
+		= 0;
+
+	virtual bool send_periodics(const EngineOutputs& outputs)
+		= 0;
 
 	virtual bool sniff() = 0;
 
@@ -409,9 +416,13 @@ public:
 
 	bool position(const std::string& _args)  const;
 
+	bool postsearch(EngineOutputs& outputs);
+
 	bool quit(const std::string&);
 
 	bool register_engine(const std::string&) const;
+
+	bool send_periodics(const EngineOutputs& outputs);
 
 	bool setoption(const std::string& _args);
 
@@ -454,6 +465,10 @@ public:
 
 	bool init(int fd);
 
+	bool postsearch(EngineOutputs& outputs);
+
+	bool send_periodics(const EngineOutputs& outputs);
+
 	bool sniff();
 
 private:
@@ -483,6 +498,10 @@ public:
 	~Console();
 
 	bool init(int fd);
+
+	bool postsearch(EngineOutputs& outputs);
+
+	bool send_periodics(const EngineOutputs& outputs);
 
 	bool sniff();
 

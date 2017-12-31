@@ -139,6 +139,10 @@ bool ChessEngine::run(algorithm_t algorithm)
 		case StateMachine::init_search:
 			AbortIfNot(search->search(*_inputs), false);
 			break;
+		case StateMachine::postsearch:
+			AbortIfNot(_protocol->postsearch(
+				search->get_outputs()), false );
+			break;
 		default:
 			Output::to_stdout("unexpected state '%s'\n",
 				state_name.c_str());

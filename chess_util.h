@@ -82,6 +82,49 @@ namespace Util
 	/**
 	 ******************************************************************
 	 *
+	 * Format a move in long algebraic notation
+	 *
+	 * @param [in] move     The move to format
+	 * @param [in] in_check If true, append "+"
+	 *
+	 * @return The formatted string
+	 *
+	 ******************************************************************
+	 */
+	inline std::string format_move(int move, bool in_check=false)
+	{
+		const int captured = CAPTURED(move);
+		const int from     = FROM(move);
+		const int moved    = MOVED(move);
+		const int promote  = PROMOTE(move);
+		const int to       = TO(move);
+
+		std::string out = "";
+
+		if (moved == KING && _abs(from-to) == 2)
+		{
+			if (to > from) return "O-O-O";
+			return "O-O";
+		}
+		else if (moved == PAWN
+				 && captured != INVALID)
+			out += SQUARE_STR[from][0];
+		else
+			out += enum2piece( static_cast<piece_t>(moved) )
+				+ SQUARE_STR[from];
+
+		if (captured != INVALID) out += "x";
+
+		out += SQUARE_STR[to];
+
+		if (in_check) out += "+";
+
+		return out;
+	}
+
+	/**
+	 ******************************************************************
+	 *
 	 * Gets the least significant bit set in a 64-bit word in constant
 	 * time
 	 *

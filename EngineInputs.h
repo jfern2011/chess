@@ -25,7 +25,9 @@ public:
 
 	int get_increment(int side) const;
 
-	int get_mate_depth() const;
+	int get_mate_depth()   const;
+
+	bool get_mate_search() const;
 
 	int get_movestogo() const;
 
@@ -47,15 +49,25 @@ public:
 
 	bool set_depth(int depth);
 
+	void set_fixed_searchdepth(bool val);
+
+	void set_fixed_searchnodes(bool val);
+
+	void set_fixed_searchtime(bool val);
+
 	void set_hash_size(int size);
 
 	bool set_increment(int ms, int side);
 
 	bool set_mate_depth(int moves);
 
+	void set_mate_search(bool val);
+
 	bool set_movestogo(int moves);
 
 	bool set_movetime(int ms);
+
+	void set_multipv(int lines);
 
 	bool set_node_limit(int64 max);
 
@@ -64,6 +76,12 @@ public:
 	bool set_position(const Position& pos);
 
 	bool set_time(int ms, int side);
+
+	bool use_fixed_searchdepth() const;
+
+	bool use_fixed_searchnodes() const;
+
+	bool use_fixed_searchtime()  const;
 
 private:
 
@@ -90,6 +108,22 @@ private:
 	int _depth;
 
 	/**
+	 * If true, search for \ref _depth plies
+	 */
+	bool _fixed_searchdepth;
+
+	/**
+	 * If true, search \ref _nodes nodes
+	 */
+	bool _fixed_searchnodes;
+
+	/**
+	 *  If true, search for exactly \ref _movetime
+	 *  milliseconds
+	 */
+	bool _fixed_searchtime;
+
+	/**
 	 * Size of the hash tables, in MB
 	 */
 	int _hash_size;
@@ -105,6 +139,11 @@ private:
 	int _mate;
 
 	/**
+	 * If true, the engine will run a mate search
+	 */
+	bool _mate_search;
+
+	/**
 	 * The number of moves left in the current time
 	 * control
 	 */
@@ -114,6 +153,11 @@ private:
 	 * Search for exactly this many milliseconds
 	 */
 	int _movetime;
+
+	/**
+	 * Display this many best lines
+	 */
+	int _multipv;
 
 	/**
 	 * Used for logging activity

@@ -8,7 +8,8 @@ int main(void)
 {
 	ChessEngine engine(tables);
 
-	const int logfd = ::open("log", O_CREAT | O_RDWR);
+	//const int logfd = ::open("log", O_CREAT | O_RDWR);
+	const int logfd = STDERR_FILENO;
 	AbortIf(logfd < 0, false);
 
 	if (!engine.init(STDIN_FILENO, logfd,
@@ -21,6 +22,6 @@ int main(void)
 	if (!engine.run(pvs))
 		std::cout << "Runtime error..." << std::endl;
 
-	::close(logfd);
+	//::close(logfd);
 	return 0;
 }

@@ -136,23 +136,28 @@ bool StateMachine::init()
 	 * Set the state(s) we can transition to from
 	 * 'idle'
 	 */
-	_transitions[idle].push_back(searching);
-	_transitions[idle].push_back(exiting);
 	_transitions[idle].push_back(init_search);
+	_transitions[idle].push_back(exiting);
 
 	/*
 	 * Set the state(s) we can transition to from
 	 * 'searching'
 	 */
 	_transitions[searching].push_back(init_search);
-	_transitions[searching].push_back(idle);
 	_transitions[searching].push_back(exiting);
+	_transitions[searching].push_back(postsearch);
 
 	/*
 	 * Set the state(s) we can transition to from
 	 * 'init_search'
 	 */
 	_transitions[init_search].push_back(searching);
+
+	/*
+	 * Set the state(s) we can transition to from
+	 * 'postsearch'
+	 */
+	_transitions[postsearch].push_back(idle);
 
 	AbortIfNot(_logger.register_source(_name),
 		false);
@@ -166,6 +171,7 @@ bool StateMachine::init()
 	_state_names[idle]        = "idle";
 	_state_names[init_search] = "init_search";
 	_state_names[searching]   = "searching";
+	_state_names[postsearch]  = "postsearch";
 	_state_names[exiting]     = "exiting";
 
 	_is_init = true;
@@ -235,9 +241,21 @@ bool StateMachine::register_client(const std::string& _name,
 	_clients.push_back(name);
 
 	AbortIfNot(client->transition_sig.attach<StateMachine>(*this,
-		&StateMachine::request_transition), false);
+		&StateMachine::_request_transition), false);
 
 	return true;
+}
+
+/**
+ *   Get the human-readable equivalent of a \ref state_t
+ *
+ * @param[in] state The value to convert
+ *
+ * @return The state name
+ */
+std::string StateMachine::to_string(state_t state) const
+{
+	return _state_names[state];
 }
 
 /**
@@ -251,7 +269,7 @@ bool StateMachine::register_client(const std::string& _name,
  *
  * @return True on success
  */
-bool StateMachine::request_transition(const std::string& _client,
+bool StateMachine::_request_transition(const std::string& _client,
 	state_t state, bool defer)
 {
 	AbortIfNot(_is_init, false);
@@ -311,18 +329,6 @@ bool StateMachine::request_transition(const std::string& _client,
 	}
 
 	return false;
-}
-
-/**
- *   Get the human-readable equivalent of a \ref state_t
- *
- * @param[in] state The value to convert
- *
- * @return The state name
- */
-std::string StateMachine::to_string(state_t state) const
-{
-	return _state_names[state];
 }
 
 /**

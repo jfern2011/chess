@@ -151,6 +151,21 @@ bool UCI::_init_options()
 		_options.push_back(opt);
 	}
 
+	{
+		/*
+	 	 * Multi PV
+	 	 */
+		auto opt = new option<int>("MultiPV",
+								   "spin",
+								   1, 1, MAX_PV);
+
+		AbortIfNot(opt, false);
+		AbortIfNot(opt->assign_updater(
+			   inputs, &EngineInputs::set_multipv), false);
+
+		_options.push_back(opt);
+	}
+
 	return true;
 }
 
@@ -520,12 +535,37 @@ bool UCI::position(const std::string& _args) const
 }
 
 /**
- * The handler for the "register" command
+ * Send UCI-specific messages to the GUI that signal the end of
+ * a search
+ *
+ * @param[in] outputs Send from these outputs
  *
  * @return True on success
  */
-bool UCI::register_engine(const std::string&) const
+bool UCI::postsearch(EngineOutputs& outputs)
 {
+	AbortIfNot(transition_sig.is_connected(),
+		false);
+
+	outputs.update();
+
+	auto bestmove = outputs["bestmove"];
+	AbortIfNot(bestmove, false);
+
+	auto ponder   = outputs["ponder"];
+	AbortIfNot(ponder, false);
+
+	std::string out = "bestmove " + bestmove->get();
+	if (inputs.get_ponder())
+		out += " ponder " + ponder->get();
+
+	Output::to_stdout("%s\n", out.c_str());
+
+	transition_sig.raise( _name, StateMachine::idle,
+		false);
+
+	outputs.mark_stale();
+
 	return true;
 }
 
@@ -538,6 +578,33 @@ bool UCI::quit(const std::string&)
 {
 	AbortIfNot(transition_sig.raise(_name, StateMachine::exiting,
 		false), false);
+
+	return true;
+}
+
+/**
+ * The handler for the "register" command
+ *
+ * @return True on success
+ */
+bool UCI::register_engine(const std::string&) const
+{
+	return true;
+}
+
+/**
+ * Send periodic info from the currently running search
+ * to the GUI
+ *
+ * @param[in] outputs Send these outputs as a string
+ *
+ * @return True on success
+ */
+bool UCI::send_periodics(const EngineOutputs& outputs)
+{
+	std::string output = "info ";
+
+	
 
 	return true;
 }
@@ -733,6 +800,16 @@ bool xBoard::init(int fd)
 	return true;
 }
 
+bool xBoard::postsearch(EngineOutputs& outputs)
+{
+	return true;
+}
+
+bool xBoard::send_periodics(const EngineOutputs& outputs)
+{
+	return true;
+}
+
 bool xBoard::sniff()
 {
 	return true;
@@ -758,6 +835,16 @@ bool Console::init(int fd)
 		false);
 
 	_is_init = true;
+	return true;
+}
+
+bool Console::postsearch(EngineOutputs& outputs)
+{
+	return true;
+}
+
+bool Console::send_periodics(const EngineOutputs& outputs)
+{
 	return true;
 }
 

@@ -1,7 +1,9 @@
 #ifndef __SEARCH_H__
 #define __SEARCH_H__
 
+#include "clock.h"
 #include "EngineInputs.h"
+#include "EngineOutputs.h"
 #include "movegen2.h"
 #include "StateMachine2.h"
 
@@ -14,7 +16,7 @@ typedef enum
 	 * Principal Variation Search
 	 */
 	pvs
-	
+
 } algorithm_t;
 
 /**
@@ -27,26 +29,12 @@ class Search : public StateMachineClient
 
 public:
 
-	/**
-	 * Stores the results of the previous search
-	 */
-	struct SearchData
-	{
-		SearchData()
-			: best_move(0), score(0)
-		{
-		}
-
-		int best_move;
-		int score;
-	};
-
 	Search(const std::string& name,
 		   const MoveGen& movegen);
 
 	virtual ~Search();
 
-	const SearchData& get_search_data() const;
+	EngineOutputs& get_outputs();
 
 	virtual bool init();
 
@@ -54,9 +42,9 @@ public:
 
 protected:
 
-	SearchData _data;
-
 	const MoveGen& _movegen;
+
+	EngineOutputs _outputs;
 };
 
 class PvSearch : public Search
@@ -88,8 +76,8 @@ class PvSearch : public Search
 				return StateMachine::searching
 						!= _state_machine.get_current_state();
 			}
-
-			return false;
+			else
+				return false;
 		}
 
 	private:
@@ -108,17 +96,31 @@ public:
 
 	~PvSearch();
 
+	int get_best_move()   const;
+
+	int get_ponder_move() const;
+
+	std::string get_pv(Position& pos) const;
+
 	bool init();
 
 	bool is_mated(int to_move) const;
 
 	int quiesce(Position& pos, int depth, int alpha, int beta);
 
+	void save_pv(int depth, int move);
+
 	bool search(const EngineInputs& inputs);
 
 	int see(Position& pos, int square, int to_move, int move=0) const;
 
+	void set_inputs(const EngineInputs& inputs);
+
 private:
+
+	bool _check_limits(int64 t_now) const;
+
+	void _clear_pv();
 
 	int _search(Position& pos, int depth, int alpha, int beta,
 				bool do_null);
@@ -147,8 +149,15 @@ private:
 
 	Logger& _logger;
 
+	bool _mate_search;
+
 	int64 _next_input_check;
 	int64 _node_count;
+	int64 _node_limit;
+
+	int64 _nps;
+
+	int _ponder_move;
 
 	BUFFER(int, _pv, MAX_PLY, MAX_PLY);
 
@@ -158,6 +167,10 @@ private:
 	 * The optimal score returned by the last search iteration
 	 */
 	int _search_score;
+
+	int64 _start_time;
+
+	int64 _stop_time;
 
 	const DataTables&
 		_tables;
@@ -177,12 +190,19 @@ inline int PvSearch::quiesce(Position& pos, int depth, int alpha,
 		n_moves =
 		   _movegen.generate_check_evasions(pos, to_move, moves);
 
-		/*
-		 * Add a penalty to the mate score the encourage
-		 * mates closer to the root:
-		 */
 		if (n_moves == 0)
+		{
+			/*
+			 * Mark the end of this variation:
+			 */
+			save_pv(depth, 0);
+
+			/*
+		 	 * Add a penalty to the mate score the encourage
+		 	 * mates closer to the root:
+		 	 */
 			return depth - MATE_SCORE;
+		}
 	}
 
 	/*
@@ -210,7 +230,10 @@ inline int PvSearch::quiesce(Position& pos, int depth, int alpha,
 	 * no captures are left:
 	 */
 	if (n_moves == 0 || MAX_PLY <= depth)
+	{
+		save_pv(depth, 0);
 		return score;
+	}
 
 	/*
 	 * Sort the capture list. Captures are generated starting with
@@ -260,18 +283,39 @@ inline int PvSearch::quiesce(Position& pos, int depth, int alpha,
 		}
 	}
 
-	/*
-	 * Save the principal variation up to this node:
-	 *
-	if (_save_pv && raised_alpha)
-	{
-		if (0 <= best_index)
-			savePV(depth, moves[best_index]);
-		else
-			savePV(depth, 0);
-	}*/
+	if (0 <= best_index)
+		save_pv(depth, moves[best_index]);
+	else
+		save_pv(depth, 0);
 
 	return alpha;
+}
+
+/**
+ * Back up the principal variation from the given depth
+ *
+ * @param [in] depth The starting depth
+ * @param [in] move  The move to save at depth \a depth
+ */
+inline void PvSearch::save_pv(int depth, int move)
+{
+	if (depth < MAX_PLY)
+	{
+		_pv[depth][depth] = move;
+
+		// Null move signals the end of a variation:
+		if (move == 0)
+			return;
+	}
+
+	if (depth+1 < MAX_PLY)
+	{
+		for (register int i= depth+1; i < MAX_PLY; i++)
+		{
+			if ((_pv[depth][i] = _pv[depth+1][i]) == 0)
+				break;
+		}
+	}
 }
 
 /**
@@ -556,6 +600,20 @@ inline int PvSearch::see(Position& pos, int square, int to_move,
 }
 
 /**
+ * Check if the node or time limits are exceeded, which
+ * indicates we need to stop searching
+ *
+ * @return t_now The current monotonic time
+ *
+ * @return True if either limit is exceeded
+ */
+inline bool PvSearch::_check_limits(int64 t_now) const
+{
+	return _node_limit <= _node_count ||
+		   _stop_time <= t_now;
+}
+
+/**
  * To do:
  *
  * 1. repetitions
@@ -578,8 +636,25 @@ inline int PvSearch::_search(Position& pos, int depth, int alpha,
 			return beta;
 		}
 
-		_next_input_check = _node_count
-			+ _input_check_delay;
+		const int64 t_now = Clock::get_monotonic_time();
+
+		if (_check_limits(t_now))
+		{
+			_abort_requested = true;
+			return beta;
+		}
+
+		int64 dt = (t_now - _start_time) / NS_PER_SEC;
+		if (dt > 0)
+			_nps = _node_count / dt;
+
+		/*
+		 * Schedule the next input check for 1/2 second later
+		 */
+		_input_check_delay = _nps / 2;
+
+		_next_input_check =
+			_node_count + _input_check_delay;
 	}
 
 	/*
@@ -606,8 +681,13 @@ inline int PvSearch::_search(Position& pos, int depth, int alpha,
 		if (n_moves == 0)
 		{
 			/*
-			 * Add a penalty to the mate score the encourage
-			 * mates closer to the root:
+			 * Mark the end of this variation:
+			 */
+			save_pv(depth, 0);
+
+			/*
+			 * Add a penalty to the mate score the encourage mates
+			 * closer to the root:
 			 */
 			return depth - MATE_SCORE;
 		}
@@ -631,7 +711,10 @@ inline int PvSearch::_search(Position& pos, int depth, int alpha,
 	}
 
 	if (in_check)
+	{
+		save_pv(depth, best_move);
 		return alpha;
+	}
 
 	/*
 	 * Search the remaining moves (non-captures):
@@ -644,7 +727,10 @@ inline int PvSearch::_search(Position& pos, int depth, int alpha,
 		non_captures);
 
 	if (n_moves == 0 && !captures)
+	{
+		save_pv(depth, 0);
 		return 0;
+	}
 
 	const int score =
 		_search_moves(pos, non_captures,
@@ -653,6 +739,7 @@ inline int PvSearch::_search(Position& pos, int depth, int alpha,
 	if (beta <= score)
 		return beta;
 
+	save_pv(depth, best_move);
 	return alpha;
 }
 

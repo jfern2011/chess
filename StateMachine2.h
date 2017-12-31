@@ -44,14 +44,19 @@ public:
 		searching   = 3,
 
 		/**
+		 * Indicates a search has finished
+		 */
+		postsearch  = 4,
+
+		/**
 		 * Indicates the engine is exiting
 		 */
-		exiting     = 4,
+		exiting     = 5,
 
 		/**
 		 * The number of states
 		 */
-		n_states    = 5
+		n_states    = 6
 
 	} state_t;
 
@@ -81,12 +86,12 @@ public:
 	bool register_client(const std::string& _name,
 		StateMachineClient* client);
 
-	bool request_transition(const std::string& _client,
-		state_t state, bool defer=false);
-
 	std::string to_string(state_t state) const;
 
 private:
+
+	bool _request_transition(const std::string& _client,
+		state_t state, bool defer=false);
 
 	/**
 	 * A record of all components registered with

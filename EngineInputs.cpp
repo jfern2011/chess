@@ -9,15 +9,21 @@
  *                   diagnostics to
  */
 EngineInputs::EngineInputs(const DataTables& tables, Logger& logger)
-	: _binc(-1), _btime(-1),
+	: _binc(-1),
+	  _btime(1000),
 	  _debug(false),
 	  _depth(-1),
+	  _fixed_searchdepth(false),
+	  _fixed_searchnodes(false),
+	  _fixed_searchtime(false),
 	  _hash_size(0),
 	  _is_init(false),
 	  _logger(logger),
 	  _mate(-1),
+	  _mate_search(false),
 	  _movestogo(MAX_MOVES),
 	  _movetime(-1),
+	  _multipv(1),
 	  _name("EngineInputs"),
 	  _nodes(-1),
 	  _ponder(false),
@@ -25,7 +31,7 @@ EngineInputs::EngineInputs(const DataTables& tables, Logger& logger)
 	  _search_moves(),
 	  _tables(tables),
 	  _winc(-1),
-	  _wtime(-1)
+	  _wtime(1000)
 {
 }
 
@@ -89,6 +95,16 @@ int EngineInputs::get_increment(int side) const
 int EngineInputs::get_mate_depth() const
 {
 	return _mate;
+}
+
+/**
+ * Check whether or not to run a mate search
+ *
+ * @return True to search for a mate
+ */
+bool EngineInputs::get_mate_search() const
+{
+	return _mate_search;
 }
 
 /**
@@ -193,8 +209,10 @@ bool EngineInputs::searchmoves(const std::string& moves)
 		movegen.generate_legal_moves(*_position, _position->get_turn(),
 			moves);
 
+		_search_moves.resize(n_moves);
+
 		for (size_t i = 0; i < n_moves; i++)
-			_search_moves.assign(moves, moves + n_moves);
+			_search_moves[i] = moves[i];
 
 		_logger.write( _name, "searching all moves.\n" );
 
@@ -267,7 +285,41 @@ bool EngineInputs::set_depth(int depth)
 	_logger.write(_name, "new search depth = %d plies\n",
 		_depth);
 
+	_fixed_searchdepth = true;
 	return true;
+}
+
+/**
+ * Tell the engine if it should search until depth \ref
+ * _depth is reached
+ *
+ * @param[in] val If true, search for \ref _depth plies
+ */
+void EngineInputs::set_fixed_searchdepth(bool val)
+{
+	_fixed_searchdepth = val;
+}
+
+/**
+ * Tell the engine if it should search only \ref _nodes
+ * nodes before stopping
+ *
+ * @param[in] val If true, search for \ref _nodes nodes
+ */
+void EngineInputs::set_fixed_searchnodes(bool val)
+{
+	_fixed_searchnodes = val;
+}
+
+/**
+ * Tell the engine if it should search for a fixed amount
+ * of time
+ *
+ * @param[in] val If true, search for \ref _movetime ms
+ */
+void EngineInputs::set_fixed_searchtime(bool val)
+{
+	_fixed_searchtime = val;
 }
 
 /**
@@ -352,7 +404,18 @@ bool EngineInputs::set_mate_depth(int moves)
 	_logger.write(_name,
 		"searching for a mate in %d...\n", _mate);
 
+	_mate_search = true;
 	return true;
+}
+
+/**
+ * Tell the engine whether or not to run a mate search
+ *
+ * @param[in] val True to search for a mate
+ */
+void EngineInputs::set_mate_search(bool val)
+{
+	_mate_search = val;
 }
 
 /**
@@ -401,7 +464,29 @@ bool EngineInputs::set_movetime(int ms)
 	_logger.write(_name, "setting search time to %d ms.\n",
 		_movetime);
 
+	_fixed_searchtime = true;
 	return true;
+}
+
+/**
+ * Set the number of best lines (principal variations) to
+ * display
+ *
+ * @param[in] lines The number of lines to print
+ */
+void EngineInputs::set_multipv(int lines)
+{
+	if (lines < 0)
+	{
+		_logger.write(_name, "invalid number of PVs = %d\n",
+			lines);
+		return;
+	}
+
+	_logger.write( _name , "displaying %d best line(s). \n",
+		lines);
+
+	_multipv = lines;
 }
 
 /**
@@ -426,6 +511,7 @@ bool EngineInputs::set_node_limit(int64 max)
 	_logger.write( _name, "limiting search to %d nodes. \n",
 		_nodes);
 
+	_fixed_searchnodes = true;
 	return true;
 }
 
@@ -502,6 +588,39 @@ bool EngineInputs::set_time(int ms, int side)
 	}
 
 	return true;
+}
+
+/**
+ * Check whether the engine needs to search until \ref _depth
+ * plies rather than maxing out
+ *
+ * @return True if the engine should search \ref _depth plies
+ */
+bool EngineInputs::use_fixed_searchdepth() const
+{
+	return _fixed_searchdepth;
+}
+
+/**
+ * Check whether the engine needs to search until \ref _nodes
+ * nodes before stopping
+ *
+ * @return True if the engine should search \ref _nodes nodes
+ */
+bool EngineInputs::use_fixed_searchnodes() const
+{
+	return _fixed_searchnodes;
+}
+
+/**
+ * Check whether the engine needs to search for \ref _movetime
+ * ms rather than figure out how to budget its time
+ *
+ * @return True if the engine should use \ref _movetime
+ */
+bool EngineInputs::use_fixed_searchtime() const
+{
+	return _fixed_searchtime;
 }
 
 /**

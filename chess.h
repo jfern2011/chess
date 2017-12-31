@@ -26,6 +26,7 @@
 
 #define MAX_MOVES 256
 #define MAX_PLY   (MAX_MOVES * 2)
+#define MAX_PV    10
 
 #define RANK(a) ((a) >> 3)
 #define FILE(a) ((a) &  7)
@@ -70,6 +71,7 @@
 	  ((to) << 6))
 
 #define MATE_SCORE 22000
+#define MILLION    1000000
 
 /*
  * Bit masks for determining castling rights:
