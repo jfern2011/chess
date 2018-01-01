@@ -48,6 +48,11 @@ private:
 	MoveGen _movegen;
 
 	/**
+	 * The name of this software component
+	 */
+	const std::string _name;
+
+	/**
 	 * A communication protocol, used to send/receive outputs/inputs
 	 * from the GUI. See \ref Protocol for details
 	 */

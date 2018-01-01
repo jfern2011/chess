@@ -1,4 +1,3 @@
-#include "output.h"
 #include "protocol2.h"
 
 /**
@@ -12,12 +11,12 @@
  */
 Protocol::Protocol(const std::string& name, EngineInputs& _inputs,
 		Logger& logger)
-	: StateMachineClient(name),
+	: StateMachineClient(name), OutputWriter(name, logger),
 	  inputs(_inputs),
 	  _cmd(logger),
 	  _is_init(false),
 	  _logger(logger),
-	  _name(name)
+	  _myname(name)
 {
 }
 
@@ -46,7 +45,7 @@ CommandInterface& Protocol::get_cmd_interface()
  */
 std::string Protocol::get_name() const
 {
-	return _name;
+	return _myname;
 }
 
 /**
@@ -209,7 +208,7 @@ bool UCI::debug(const std::string& _state)
 
 	if (state != "on" && state != "off")
 	{
-		_logger.write(_name,
+		_logger.write(_myname,
 			"unable to set debug state to '%s'", state.c_str());
 		return true;
 	}
@@ -384,7 +383,8 @@ bool UCI::go(const std::string& _args)
 
 		if (parse_error)
 		{
-			_logger.write(_name, "[%s] unable to set parameter '%s'\n",
+			_logger.write(_myname,
+				"[%s] unable to set parameter '%s'\n",
 				__FUNCTION__, iter->c_str());
 			return false;
 		}
@@ -398,7 +398,8 @@ bool UCI::go(const std::string& _args)
 	if (!inputs.searchmoves(moves))
 	{
 		moves = Util::trim( moves );
-		_logger.write(_name,"[%s] unable to set searchmoves to '%s'\n",
+		_logger.write(_myname,
+			"[%s] unable to set searchmoves to '%s'\n",
 			__FUNCTION__, moves.c_str());
 		return false;
 	}
@@ -409,8 +410,8 @@ bool UCI::go(const std::string& _args)
 	AbortIfNot(transition_sig.is_connected(),
 		false);
 
-	return transition_sig.raise(
-		_name, StateMachine::init_search, false);
+	return transition_sig.raise(_myname,
+		StateMachine::init_search, false );
 }
 
 /**
@@ -428,7 +429,7 @@ bool UCI::init(int fd, const Search* search)
 	AbortIfNot(_init_commands(), false);
 	AbortIfNot(_init_options(),  false);
 
-	AbortIfNot(_logger.register_source(_name),
+	AbortIfNot(_logger.register_source(_myname),
 		false);
 
 	_is_init = true;
@@ -442,7 +443,7 @@ bool UCI::init(int fd, const Search* search)
  */
 bool UCI::isready(const std::string&) const
 {
-	AbortIfNot(Output::to_stdout("readyok\n"),
+	AbortIfNot(write("readyok\n"),
 		false);
 
 	return true;
@@ -460,7 +461,7 @@ bool UCI::position(const std::string& _args) const
 {
 	if (_args.empty())
 	{
-		_logger.write(_name, "no arguments passed to [%s]\n",
+		_logger.write(_myname, "no arguments passed to [%s]\n",
 			__FUNCTION__);
 		return false;
 	}
@@ -472,7 +473,7 @@ bool UCI::position(const std::string& _args) const
 
 	if (args[0] != "startpos" && args[0] != "fen")
 	{
-		_logger.write(_name,
+		_logger.write(_myname,
 			"expected \"startpos\" or \"fen\", got \"%s\"\n",
 			args[0].c_str());
 		return false;
@@ -488,7 +489,7 @@ bool UCI::position(const std::string& _args) const
 	{
 		if (args.size() < 2)
 		{
-			_logger.write(_name,"missing FEN string\n");
+			_logger.write(_myname,"missing FEN string\n");
 			return false;
 		}
 
@@ -498,7 +499,7 @@ bool UCI::position(const std::string& _args) const
 
 		if (!pos.reset(fen, true))
 		{
-			_logger.write(_name, "invalid FEN \"%s\"\n",
+			_logger.write(_myname, "invalid FEN \"%s\"\n",
 				fen.c_str());
 			return false;
 		}
@@ -519,7 +520,7 @@ bool UCI::position(const std::string& _args) const
 
 		if (partial == 0)
 		{
-			_logger.write(_name, "invalid move '%s'",
+			_logger.write(_myname, "invalid move '%s'",
 				moves[i].c_str());
 			return false;
 		}
@@ -533,7 +534,7 @@ bool UCI::position(const std::string& _args) const
 
 		if (moved == INVALID)
 		{
-			_logger.write(_name, "invalid move '%s'",
+			_logger.write(_myname, "invalid move '%s'",
 				moves[i].c_str());
 			return false;
 		}
@@ -588,10 +589,10 @@ bool UCI::postsearch(EngineOutputs& outputs)
 	if (inputs.get_ponder())
 		out += " ponder " + ponder_s;
 
-	Output::to_stdout("%s\n", out.c_str());
+	write("%s\n", out.c_str());
 
-	transition_sig.raise(_name,
-		StateMachine::idle, false);
+	transition_sig.raise(_myname,
+		StateMachine::idle, false );
 
 	return true;
 }
@@ -603,7 +604,7 @@ bool UCI::postsearch(EngineOutputs& outputs)
  */
 bool UCI::quit(const std::string&)
 {
-	AbortIfNot(transition_sig.raise(_name, StateMachine::exiting,
+	AbortIfNot(transition_sig.raise(_myname, StateMachine::exiting,
 		false), false);
 
 	return true;
@@ -648,7 +649,7 @@ bool UCI::setoption(const std::string& _args)
 
 	if (args.size() < 2)
 	{
-		_logger.write(_name, "too few inputs '%s'\n",  _args.c_str() );
+		_logger.write(_myname, "too few inputs '%s'\n",  _args.c_str() );
 
 		return false;
 	}
@@ -657,7 +658,7 @@ bool UCI::setoption(const std::string& _args)
 
 	if (iter == _options.end())
 	{
-		_logger.write(_name, "unknown option '%s'\n", args[1].c_str());
+		_logger.write(_myname, "unknown option '%s'\n", args[1].c_str());
 
 		return false;
 	}
@@ -678,7 +679,7 @@ bool UCI::setoption(const std::string& _args)
 		|| Util::to_lower(Util::trim(args[0])) != "name"
 		|| Util::to_lower(Util::trim(args[2])) != "value")
 	{
-		_logger.write(_name, "invalid command syntax '%s'\n",
+		_logger.write(_myname, "invalid command syntax '%s'\n",
 					  _args.c_str());
 		return false;
 	}
@@ -686,7 +687,7 @@ bool UCI::setoption(const std::string& _args)
 	if (!option->update(args[3]))
 	{
 		_logger.write(
-				_name, "failed to set option '%s' to '%s'\n",
+				_myname, "failed to set option '%s' to '%s'\n",
 				option->name.c_str(),
 				args[3].c_str());
 
@@ -723,9 +724,9 @@ bool UCI::uci(const std::string&) const
 
 	static const std::string name("Bender");
 
-	AbortIfNot(Output::to_stdout("id name %s\n" , name.c_str()),
+	AbortIfNot(write("id name %s\n" , name.c_str()),
 		false);
-	AbortIfNot(Output::to_stdout("id author Jason Fernandez\n"),
+	AbortIfNot(write("id author Jason Fernandez\n"),
 		false);
 
 	for (auto iter = _options.begin(), end = _options.end();
@@ -736,7 +737,7 @@ bool UCI::uci(const std::string&) const
 		switch (ptr->display_type)
 		{
 		case 5:
-			AbortIfNot(Output::to_stdout(
+			AbortIfNot(write(
 				"option name %s type %s default %s min %s max %s",
 				ptr->name.c_str(),
 				ptr->type.c_str(),
@@ -745,14 +746,14 @@ bool UCI::uci(const std::string&) const
 				ptr->max_to_string().c_str()), false);
 			break;
 		case 3:
-			AbortIfNot(Output::to_stdout(
+			AbortIfNot(write(
 				"option name %s type %s default %s",
 				ptr->name.c_str(),
 				ptr->type.c_str(),
 				ptr->default_to_string().c_str()), false);
 			break;
 		case 2:
-			AbortIfNot(Output::to_stdout(
+			AbortIfNot(write(
 				"option name %s type %s default %s",
 				ptr->name.c_str(),
 				ptr->type.c_str()), false);
@@ -776,14 +777,14 @@ bool UCI::uci(const std::string&) const
 			predefs += " var " + vars[i];
 		}
 
-		AbortIfNot(Output::to_stdout("%s\n",
+		AbortIfNot(write("%s\n",
 			predefs.c_str()), false);
 	}
 
 	/*
 	 * Send the "uciok" footer:
 	 */
-	AbortIfNot(Output::to_stdout("uciok\n"),
+	AbortIfNot(write("uciok\n"),
 		false);
 
 	return true;
@@ -800,8 +801,8 @@ bool UCI::ucinewgame(const std::string&)
 	AbortIfNot( transition_sig.is_connected(),
 		false);
 
-	return transition_sig.raise(
-			_name, StateMachine::idle, false);
+	return transition_sig.raise(_myname,
+		StateMachine::idle, false);
 }
 
 xBoard::xBoard(EngineInputs& inputs, Logger& logger)
@@ -820,7 +821,7 @@ bool xBoard::init(int fd, const Search* search)
 	AbortIfNot(_cmd.init(fd),
 		false);
 
-	AbortIfNot(_logger.register_source(_name),
+	AbortIfNot(_logger.register_source(_myname),
 		false);
 
 	_is_init = true;
@@ -858,7 +859,7 @@ bool Console::init(int fd, const Search* search)
 	AbortIfNot(_cmd.init(fd),
 		false);
 
-	AbortIfNot(_logger.register_source(_name),
+	AbortIfNot(_logger.register_source(_myname),
 		false);
 
 	_is_init = true;

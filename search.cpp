@@ -1,4 +1,3 @@
-#include "output.h"
 #include "search2.h"
 
 /**

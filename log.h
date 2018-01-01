@@ -27,7 +27,7 @@ public:
 	bool register_source(const std::string& name);
 
 	bool write(const std::string& _source,
-			   const char* format, ...);
+			   const char* format, ...) const;
 
 private:
 

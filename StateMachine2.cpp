@@ -1,4 +1,3 @@
-#include "output.h"
 #include "StateMachine2.h"
 
 /**
@@ -232,9 +231,11 @@ bool StateMachine::register_client(const std::string& _name,
 	{
 		if (*iter == name)
 		{
-			Output::to_stdout("duplicate client '%s'\n",
+			char msg[128];
+			std::snprintf(msg,128,"duplicate client '%s'\n",
 				name.c_str());
-			Abort(false);
+
+			Abort(false,msg);
 		}
 	}
 

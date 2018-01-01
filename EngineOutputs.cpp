@@ -1,5 +1,4 @@
 #include "EngineOutputs.h"
-#include "output.h"
 
 /**
  * Constructor
@@ -104,10 +103,11 @@ const element_base*
 			return elem;
 	}
 
-	Output::to_stdout("no such element '%s'\n",
+	char msg[128];
+	std::snprintf(msg, 128, "no such element '%s'\n",
 		name.c_str());
 
-	Abort(nullptr);
+	Abort(nullptr, msg);
 }
 
 /**

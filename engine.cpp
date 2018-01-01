@@ -1,5 +1,4 @@
 #include "engine.h"
-#include "output.h"
 
 /**
  * Constructor
@@ -11,6 +10,7 @@ ChessEngine::ChessEngine(const DataTables& tables)
 	  _is_init(false),
 	  _logger(),
 	  _movegen(tables),
+	  _name("ChessEngine"),
 	  _protocol(nullptr),
 	  _search(nullptr),
 	  _state_machine(nullptr),
@@ -118,6 +118,8 @@ bool ChessEngine::run()
 {
 	AbortIfNot(_is_init, false);
 
+	char err_msg[128];
+
 	/*
 	 * Poll for input every 100 ms when idle (not searching)
 	 */
@@ -144,10 +146,12 @@ bool ChessEngine::run()
 				_search->get_outputs()), false );
 			break;
 		default:
-			Output::to_stdout("unexpected state: '%s'\n",
+			std::snprintf(err_msg,
+				128, "[%s] unexpected state: '%s'\n",
+				_name.c_str(),
 				state_name.c_str());
 
-			Abort(false);
+			Abort(false, err_msg);
 		}
 	}
 

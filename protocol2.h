@@ -1,6 +1,7 @@
 #ifndef __PROTOCOL_H__
 #define __PROTOCOL_H__
 
+#include "output2.h"
 #include "search2.h"
 
 /**
@@ -19,7 +20,7 @@
  *
  **********************************************************************
  */
-class Protocol : public StateMachineClient
+class Protocol : public StateMachineClient, public OutputWriter
 {
 
 public:
@@ -35,8 +36,7 @@ public:
 
 	virtual bool init(int fd, const Search* search) = 0;
 
-	virtual bool postsearch(EngineOutputs& outputs)
-		= 0;
+	virtual bool postsearch(EngineOutputs& outputs) = 0;
 
 	virtual bool send_periodics(const EngineOutputs& outputs)
 		= 0;
@@ -45,7 +45,7 @@ public:
 
 
 	/**
-	 * Stuff user inputs here, which will be consumed by
+	 * Stuff user inputs here to be consumed by
 	 * the search algorithm
 	 */
 	EngineInputs& inputs;
@@ -72,7 +72,8 @@ protected:
 	 * The name of this class for
 	 * logging purposes
 	 */
-	const std::string _name;
+	const std::string
+		_myname;
 };
 
 /**
@@ -219,7 +220,8 @@ class UCI : public Protocol
 		 */
 		~option()
 		{
-			if (_update_sig) delete _update_sig;
+			if (_update_sig)
+				delete _update_sig;
 		}
 
 		/**

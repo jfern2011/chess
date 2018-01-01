@@ -5,7 +5,6 @@
 
 #include "Buffer.h"
 #include "log.h"
-#include "output.h"
 
 /**
  * Constructor
@@ -84,9 +83,11 @@ bool Logger::register_source(const std::string& name)
 
 	if (is_registered(source))
 	{
-		Output::to_stdout("duplicate source '%s' \n",
-						  name.c_str());
-		Abort(false);
+		char msg[128];
+		std::snprintf(msg, 128, "duplicate source '%s'\n",
+			name.c_str());
+
+		Abort(false,msg);
 	}
 
 	_sources.push_back(source);
@@ -104,7 +105,7 @@ bool Logger::register_source(const std::string& name)
  * @return True on success
  */
 bool Logger::write(const std::string& _source,
-				   const char* format, ...)
+				   const char* format, ...) const
 {
 	AbortIf(_fd == -1, false);
 
