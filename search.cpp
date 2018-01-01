@@ -38,6 +38,11 @@ EngineOutputs& Search::get_outputs()
 	return _outputs;
 }
 
+const EngineOutputs& Search::get_outputs() const
+{
+	return _outputs;
+}
+
 /**
  * Constructor
  *

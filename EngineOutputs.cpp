@@ -42,17 +42,28 @@ EngineOutputs::EngineOutputs()
 EngineOutputs::~EngineOutputs()
 {
 	for (size_t i = 0; i < _elements.size(); i++)
+	{
 		delete _elements[i];
+	}
 }
 
 /**
- * Designate all outputs as stale. \ref update()
- * will refresh them
+ * Get the unique ID of an output element
+ *
+ * @param[in] name The element name
+ *
+ * @return The element ID, or -1 on error
  */
-void EngineOutputs::mark_stale()
+int EngineOutputs::get_id(const std::string& name) const
 {
 	for (size_t i = 0; i < _elements.size(); i++)
-		_elements[i]->mark_stale();
+	{
+		auto elem = _elements[i];
+		if (elem->get_name() == name)
+			return i;
+	}
+
+	return -1;
 }
 
 /**

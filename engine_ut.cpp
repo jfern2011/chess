@@ -12,14 +12,14 @@ int main(void)
 	const int logfd = STDERR_FILENO;
 	AbortIf(logfd < 0, false);
 
-	if (!engine.init(STDIN_FILENO, logfd,
+	if (!engine.init(pvs, STDIN_FILENO, logfd,
 		uci_protocol))
 	{
 		std::cout << "Error..." << std::endl;
 		return 0;
 	}
 
-	if (!engine.run(pvs))
+	if (!engine.run())
 		std::cout << "Runtime error..." << std::endl;
 
 	//::close(logfd);

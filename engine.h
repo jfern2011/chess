@@ -2,9 +2,10 @@
 #define __ENGINE_H__
 
 #include "protocol2.h"
-#include "search2.h"
 
 /**
+ * @class ChessEngine
+ *
  * The main chess engine class. This runs through initialization and
  * determines what tasks to execute, which depends on the current
  * state machine state
@@ -18,10 +19,10 @@ public:
 
 	~ChessEngine();
 
-	bool init(int cmd_fd, int log_fd,
-			  protocol_t protocol=console_mode);
+	bool init(algorithm_t algorithm, int cmd_fd, int log_fd,
+		protocol_t protocol);
 
-	bool run(algorithm_t algorithm);
+	bool run();
 
 private:
 
@@ -42,10 +43,20 @@ private:
 	Logger _logger;
 
 	/**
-	 * The communication protocol used to send/receive inputs from
-	 * the GUI
+	 * Generates captures, non-captures, checks, etc.
+	 */
+	MoveGen _movegen;
+
+	/**
+	 * A communication protocol, used to send/receive outputs/inputs
+	 * from the GUI. See \ref Protocol for details
 	 */
 	Protocol* _protocol;
+
+	/**
+	 * The search algorithm being used
+	 */
+	Search* _search;
 
 	/**
 	 * The state machine, which determines execution flow

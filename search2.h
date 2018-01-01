@@ -36,6 +36,8 @@ public:
 
 	EngineOutputs& get_outputs();
 
+	const EngineOutputs& get_outputs() const;
+
 	virtual bool init();
 
 	virtual bool search(const EngineInputs& inputs) = 0;

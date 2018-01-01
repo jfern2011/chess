@@ -16,8 +16,6 @@ public:
 
 	virtual ~element_base();
 
-	virtual std::string get()  const = 0;
-
 	std::string get_name() const;
 
 	virtual bool has_updated() const = 0;
@@ -118,18 +116,13 @@ public:
 	}
 
 	/**
-	 * Get the value of this element as a std::string
+	 * Get the current value of this element
 	 *
-	 * @return The string representation of this element's value
+	 * @return The element's value
 	 */
-	std::string get() const
+	T& get()
 	{
-		std::string str;
-
-		AbortIfNot(Util::to_string<T>(_value, str),
-			str);
-
-		return str;
+		return _value;
 	}
 
 	/**
@@ -251,7 +244,7 @@ public:
 	{
 		auto element = _create_common<T>(_name);
 
-			AbortIfNot(element->assign_updater(obj, func), -1);
+		AbortIfNot(element->assign_updater(obj, func), -1);
 
 		const int id = _elements.size();
 
@@ -259,14 +252,37 @@ public:
 		return id;
 	}
 
-	void mark_stale();
+	/**
+	 * Get the output element at the specified index
+	 *
+	 * @tparam The data storage type
+	 *
+	 * @param[in] index Get the element located here
+	 * @param[out] value The element's value
+	 *
+	 * @return True on success
+	 */
+	template < typename T > bool get( size_t index, T& value )
+	{
+		AbortIf(size() <= index, false);
+
+		auto element =
+			dynamic_cast<OutputElement<T>*>(_elements[index]);
+
+		element->mark_stale();
+
+		value = element->get();
+		return true;
+	}
+
+	int get_id(const std::string& name) const;
 
 	size_t size() const;
 
 	void update();
 
 	const element_base*
-		operator[](const std::string& name) const;
+		operator[]( const std::string& name ) const;
 
 	const element_base*
 		operator[](size_t index) const;

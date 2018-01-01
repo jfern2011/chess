@@ -1,17 +1,21 @@
 #ifndef __PROTOCOL_H__
 #define __PROTOCOL_H__
 
-#include "EngineOutputs.h"
-#include "EngineInputs.h"
-#include "StateMachine2.h"
+#include "search2.h"
 
 /**
  **********************************************************************
  *
  * @class Protocol
  *
- * A generic chess engine communication protocol, the details of which
- * are implemented by derived classes
+ * A Protocol interacts with an external GUI via a pair of anonymous
+ * pipes, one for chess engine's standard input and one for its
+ * standard output. The pipes themselves are set up by the GUI so
+ * that we only need to send and receive via standard output and
+ * standard input, respectively. What exactly gets communicated is
+ * protocol-specific, so this class represents a generic chess engine
+ * communication protocol whose details are implemented by derived
+ * classes
  *
  **********************************************************************
  */
@@ -29,7 +33,7 @@ public:
 
 	std::string get_name() const;
 
-	virtual bool init(int fd)  = 0;
+	virtual bool init(int fd, const Search* search) = 0;
 
 	virtual bool postsearch(EngineOutputs& outputs)
 		= 0;
@@ -41,8 +45,8 @@ public:
 
 
 	/**
-	 * Stuff user inputs here, which will be consumed by the
-	 * search algorithm
+	 * Stuff user inputs here, which will be consumed by
+	 * the search algorithm
 	 */
 	EngineInputs& inputs;
 
@@ -50,7 +54,7 @@ protected:
 
 	/**
 	 * The commanding interface which dispatches
-	 * command handlers
+	 * handlers for user commands
 	 */
 	CommandInterface _cmd;
 
@@ -83,7 +87,8 @@ protected:
 class UCI : public Protocol
 {
 	/**
-	 * Base class for engine-specific options
+	 * Base class for engine-specific options, which we send
+	 * to the GUI via the "option" command
 	 */
 	struct option_base
 	{
@@ -116,13 +121,16 @@ class UCI : public Protocol
 		std::string name;
 
 		/**
-		 * One of the UCI option types
+		 * One of the UCI option types ("check", "spin", etc.)
 		 */
 		std::string type;
 
 		/**
-		 * The display type. This is purely used to respond
-		 * to the "uci" command
+		 * The display type. This is purely used to respond to
+		 * the "uci" command. For example, in some cases we
+		 * display the range of possible values for an option,
+		 * but if the option is a boolean, we only show its
+		 * default value
 		 */
 		int display_type;
 	};
@@ -288,7 +296,7 @@ class UCI : public Protocol
 		/**
 		 * Get the set of predefined values for this option
 		 *
-		 * @param[in] vals The predefined values
+		 * @param[out] vals The predefined values
 		 *
 		 * @return True on success
 		 */
@@ -322,7 +330,7 @@ class UCI : public Protocol
 			AbortIfNot(_update_sig, false);
 
 			T val;
-			if (!Util::from_string(value, val))
+			if (!Util::from_string<T>(value, val))
 				return false;
 
 			/*
@@ -354,7 +362,8 @@ class UCI : public Protocol
 			}
 
 			/*
-			 * Otherwise, saturate the input value if needed:
+			 * Otherwise, saturate the input value if
+			 * needed:
 			 */
 			if (val > max)
 				_update_sig->raise(max);
@@ -392,7 +401,8 @@ class UCI : public Protocol
 		const T max;
 
 		/**
-		 * A set of pre-defined values
+		 * Pre-defined values. This option can only
+		 * take on one of these
 		 */
 		std::vector<T> vars;
 	};
@@ -410,7 +420,7 @@ public:
 
 	bool go(const std::string& _args);
 
-	bool init(int fd);
+	bool init(int fd, const Search* search);
 
 	bool isready(const std::string&) const;
 
@@ -434,15 +444,31 @@ public:
 
 private:
 
+	bool _init_commands();
+
 	bool _init_options();
 
-	bool _init_commands();
+	bool _init_outputs(const Search* search);
+
+	/**
+	 * The token used to look up the "bestmove" search
+	 * output, which we send to the GUI at the end
+	 * of every search
+	 */
+	int _bestmove_token;
 
 	/**
 	 * Options settable by the GUI
 	 */
 	std::vector<option_base*>
 		_options;
+
+	/**
+	 * The token used to look up the "ponder" search
+	 * output, which we send at the end of every
+	 * search if pondering is enabled
+	 */
+	int _ponder_token;
 };
 
 /**
@@ -463,7 +489,7 @@ public:
 
 	~xBoard();
 
-	bool init(int fd);
+	bool init(int fd, const Search* search);
 
 	bool postsearch(EngineOutputs& outputs);
 
@@ -497,7 +523,7 @@ public:
 
 	~Console();
 
-	bool init(int fd);
+	bool init(int fd, const Search* search);
 
 	bool postsearch(EngineOutputs& outputs);
 

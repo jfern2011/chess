@@ -58,7 +58,9 @@ std::string Protocol::get_name() const
  */
 UCI::UCI(EngineInputs& inputs, Logger& logger)
 	: Protocol("UCI", inputs, logger),
-	  _options()
+	  _bestmove_token(-1),
+	  _options(),
+	  _ponder_token(-1)
 {
 }
 
@@ -165,6 +167,29 @@ bool UCI::_init_options()
 
 		_options.push_back(opt);
 	}
+
+	return true;
+}
+
+/**
+ * Initialize post-search outputs that we'll send to the GUI
+ *
+ * @param[in] search The source of our outputs
+ *
+ * @return True on success
+ */
+bool UCI::_init_outputs(const Search* search)
+{
+	AbortIfNot(search, false);
+
+	auto& outputs =
+		search->get_outputs();
+
+	_bestmove_token = outputs.get_id("bestmove");
+	AbortIf(_bestmove_token < 0, false);
+
+	_ponder_token   = outputs.get_id( "ponder" );
+	AbortIf(_ponder_token   < 0, false);
 
 	return true;
 }
@@ -391,15 +416,15 @@ bool UCI::go(const std::string& _args)
 /**
  * Initialize this interface
  *
- * @param[in] fd The file descriptor on which to read user commands
+ * @param[in] fd The file descriptor from which to read user commands
  *
  * @return True on success
  */
-bool UCI::init(int fd)
+bool UCI::init(int fd, const Search* search)
 {
-	AbortIfNot(_cmd.init(fd),
-		false);
+	AbortIfNot(_cmd.init(fd), false);
 
+	AbortIfNot(_init_outputs(search), false);
 	AbortIfNot(_init_commands(), false);
 	AbortIfNot(_init_options(),  false);
 
@@ -549,22 +574,24 @@ bool UCI::postsearch(EngineOutputs& outputs)
 
 	outputs.update();
 
-	auto bestmove = outputs["bestmove"];
-	AbortIfNot(bestmove, false);
+	int bestmove, ponder;
+	AbortIfNot(outputs.get<int>(_bestmove_token, bestmove), false);
 
-	auto ponder   = outputs["ponder"];
-	AbortIfNot(ponder, false);
+	AbortIfNot(outputs.get<int>(_ponder_token, ponder), false);
 
-	std::string out = "bestmove " + bestmove->get();
+	const std::string bestmove_s = Util::printCoordinate(bestmove);
+	const std::string ponder_s   =
+		Util::printCoordinate( ponder );
+
+	std::string out = "bestmove " + bestmove_s;
+
 	if (inputs.get_ponder())
-		out += " ponder " + ponder->get();
+		out += " ponder " + ponder_s;
 
 	Output::to_stdout("%s\n", out.c_str());
 
-	transition_sig.raise( _name, StateMachine::idle,
-		false);
-
-	outputs.mark_stale();
+	transition_sig.raise(_name,
+		StateMachine::idle, false);
 
 	return true;
 }
@@ -788,7 +815,7 @@ xBoard::~xBoard()
 {
 }
 
-bool xBoard::init(int fd)
+bool xBoard::init(int fd, const Search* search)
 {
 	AbortIfNot(_cmd.init(fd),
 		false);
@@ -826,7 +853,7 @@ Console::~Console()
 {
 }
 
-bool Console::init(int fd)
+bool Console::init(int fd, const Search* search)
 {
 	AbortIfNot(_cmd.init(fd),
 		false);
