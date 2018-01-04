@@ -101,127 +101,55 @@ class UCI : public Protocol
 		 *                   protocol
 		 */
 		option_base(const std::string& _name, const std::string& _type)
-			: name(_name),
-			  type(_type)
+			: name(_name), type(_type)
 		{
 		}
 
+		/**
+		 * Destructor
+		 */
 		virtual ~option_base() {}
 
-		virtual std::string default_to_string() const = 0;
-		virtual std::string min_to_string() const = 0;
-		virtual std::string max_to_string() const = 0;
-		virtual bool predefs_to_string (Util::str_v& strs)
-			const = 0;
-		virtual bool update(const std::string& value)
+		virtual bool update(const std::string& args)
 			const = 0;
 
 		/**
 		 * The name of this option
 		 */
-		std::string name;
+		const std::string name;
 
 		/**
-		 * One of the UCI option types ("check", "spin", etc.)
+		 * The option's UCI type
 		 */
-		std::string type;
-
-		/**
-		 * The display type. This is purely used to respond to
-		 * the "uci" command. For example, in some cases we
-		 * display the range of possible values for an option,
-		 * but if the option is a boolean, we only show its
-		 * default value
-		 */
-		int display_type;
+		const std::string type;
 	};
 
-	/**
-	 * Represents a single option
-	 *
-	 * @tparam T The data type used to store values for the option, not
-	 *           to be confused with the five UCI types
-	 */
 	template <typename T>
 	struct option : public option_base
 	{
 		typedef Signal::signal_t<void,T> signal_t;
 
 		/**
-		 * Constructor (1)
+		 * Constructor
 		 *
-		 * @param[in] name     The name of this option
-		 * @param[in] type     One of the five types defined by the UCI
-		 *                     protocol
-		 * @param[in] _default The default value for this option
-		 * @param[in] _min     The minimum value
-		 * @param[in] _max     The maximum value
+		 * @param[in] name  The name of this option
+		 * @param[in] type  One of the five types described in the UCI
+		 *                  protocol
+		 * @param[in] init  The option's default value
 		 */
-		option(const std::string& name,
-			   const std::string& type,
-			   const T& _default,
-			   const T& _min,
-			   const T& _max)
-
-			: option_base(name, type),
-			  _update_sig(nullptr),
-			  default_value(_default),
-			  min(_min),
-			  max(_max),
-			  vars()
+		option(const std::string& name, const std::string& type,
+			   const T& init)
+			: option_base(name, type), default_value(init),
+			  _update_sig(nullptr)
 		{
-			display_type = 5;
-		}
-
-		/**
-		 * Constructor (2)
-		 *
-		 * @param[in] name     The name of this option
-		 * @param[in] type     One of the five types defined by the UCI
-		 *                     protocol
-		 * @param[in] _default The default value for this option
-		 */
-		option(const std::string& name,
-			   const std::string& type,
-			   const T& _default)
-
-			: option_base(name, type),
-			  _update_sig(nullptr),
-			  default_value(_default),
-			  min(),
-			  max(),
-			  vars()
-		{
-			display_type = 3;
-		}
-
-		/**
-		 * Constructor (3)
-		 *
-		 * @param[in] name     The name of this option
-		 * @param[in] type     One of the five types defined by the UCI
-		 *                     protocol
-		 */
-		option(const std::string& name,
-			   const std::string& type)
-
-			: option_base(name, type),
-			  _update_sig(nullptr),
-			  default_value(),
-			  min(),
-			  max(),
-			  vars()
-		{
-			display_type = 2;
 		}
 
 		/**
 		 * Destructor
 		 */
-		~option()
+		virtual ~option()
 		{
-			if (_update_sig)
-				delete _update_sig;
+			if (_update_sig) delete _update_sig;
 		}
 
 		/**
@@ -254,159 +182,189 @@ class UCI : public Protocol
 		}
 
 		/**
-		 * Get the default value for this option as a string
-		 *
-		 * @return The default for this option
+		 * The option's default value
 		 */
-		std::string default_to_string() const
-		{
-			std::string out;
-			AbortIfNot(Util::to_string(default_value, out),
-				"");
+		T default_value;
 
-			return out;
+	protected:
+
+		/**
+		 * The callback that will update the engine after
+		 * the "setoption" command is received
+		 */
+		signal_t* _update_sig;
+	};
+
+	struct Button : public option_base
+	{
+		typedef Signal::signal_t<void> signal_t;
+
+		Button(const std::string& _name)
+			: option_base(_name, "button"), _update_sig(nullptr)
+		{
+		}
+
+		~Button()
+		{
+			if (_update_sig) delete _update_sig;
 		}
 
 		/**
-		 * Get the minimum value for this option as a string
+		 * Assign a callback that will do the actual processing
+		 * whenever this button is pushed
 		 *
-		 * @return The minimum for this option
-		 */
-		std::string min_to_string() const
-		{
-			std::string out;
-			AbortIfNot(Util::to_string(min, out),
-				"");
-			
-			return out;
-		}
-
-		/**
-		 * Get the maximum value for this option as a string
+		 * @tparam C The class that implements the callback
 		 *
-		 * @return The maximum for this option
-		 */
-		std::string max_to_string() const
-		{
-			std::string out;
-			AbortIfNot(Util::to_string(max, out),
-				"");
-			
-			return out;
-		}
-
-		/**
-		 * Get the set of predefined values for this option
-		 *
-		 * @param[out] vals The predefined values
+		 * @param[in] obj  The object through which to call the
+		 *                 callback
+		 * @param[in] func The callback itself
 		 *
 		 * @return True on success
 		 */
-		bool predefs_to_string(Util::str_v& vals) const
+		template <typename C>
+		bool assign_callback(C& obj, void(C::*func)())
 		{
-			vals.clear();
+			AbortIf(_update_sig, false);
 
-			for (auto iter = vars.begin(), end = vars.end();
-				 iter != end; ++iter)
-			{
-				std::string str;
-				AbortIfNot(Util::to_string(*iter, str),
-					false);
-
-				vals.push_back(str);
-			}
+			_update_sig =
+				new Signal::mem_ptr<void,C>(obj, func);
+			AbortIfNot(_update_sig->is_connected(),
+				false);
 
 			return true;
 		}
 
 		/**
-		 * Updates the engine with the current value of this
-		 * option
-		 *
-		 * @param [in] value The value passed in by the user
+		 * Execute the callback. This should be called whenever
+		 * the GUI issues the "setoption" command for this
+		 * button
 		 *
 		 * @return True on success
 		 */
-		bool update(const std::string& value) const
+		bool execute() const
 		{
 			AbortIfNot(_update_sig, false);
+			AbortIfNot(_update_sig->is_connected(), false);
 
-			T val;
-			if (!Util::from_string<T>(value, val))
-				return false;
-
-			/*
-			 * Attempt to match the input value against one of the
-			 * predefined ones:
-			 */
-			if (!vars.empty())
-			{
-				for (size_t i = 0; i < vars.size(); i++)
-				{
-					if (vars[i] == val)
-					{
-						_update_sig->raise(val);
-						return true;
-					}
-				}
-
-				return false;
-			}
-
-			/*
-			 * If this is a boolean option, then it makes no sense
-			 * for us to perform bounds checking:
-			 */
-			if (Util::is_bool<T>::value)
-			{
-				_update_sig->raise(val);
-				return true;
-			}
-
-			/*
-			 * Otherwise, saturate the input value if
-			 * needed:
-			 */
-			if (val > max)
-				_update_sig->raise(max);
-			else if (val < min)
-				_update_sig->raise(min);
-			else
-				_update_sig->raise(val);
-
+			_update_sig->raise();
 			return true;
 		}
 
 	private:
 
 		/**
-		 * The handler that will update the engine after
-		 * the "setoption" command is sent
+		 * The callback that will be dispatched whenever
+		 * the "setoption" command is received
 		 */
 		signal_t* _update_sig;
+	};
 
-	public:
+	struct Check : public option<bool>
+	{
 
-		/**
-		 * The default value for this option
-		 */
-		const T default_value;
+		Check(const std::string& _name, bool init)
+			: option(_name, "check", init)
+		{
+		}
 
-		/**
-		 * The minimum value for the option
-		 */
-		const T min;
+		~Check() {}
 
-		/**
-		 * The maximum value for the option
-		 */
-		const T max;
+		bool update(const std::string& args) const
+		{
+			AbortIfNot(_update_sig, false);
+			AbortIfNot(_update_sig->is_connected(), false);
 
-		/**
-		 * Pre-defined values. This option can only
-		 * take on one of these
-		 */
-		std::vector<T> vars;
+			bool value;
+			if (!Util::from_string<bool>(args, value))
+				return false;
+
+			_update_sig->raise(value);
+			return true;
+		}
+	};
+
+	struct Combo : public option<std::string>
+	{
+		Combo(const std::string& _name, const std::string& init)
+			: option(_name, "combo", init)
+		{
+		}
+
+		virtual ~Combo() {}
+
+		bool update(const std::string& args) const
+		{
+			AbortIfNot(_update_sig, false);
+			AbortIfNot(_update_sig->is_connected(),
+				false);
+
+			for (auto iter = vars.begin(), end = vars.end();
+				 iter != end; ++iter)
+			{
+				if (*iter == args)
+				{
+					_update_sig->raise(args);
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		Util::str_v vars;
+	};
+
+	struct Spin : public option<int>
+	{
+		Spin(const std::string& _name, int init, int _min, int _max)
+			: option(_name, "spin", init),
+			  min(_min), max(_max)
+		{
+		}
+
+		~Spin() {}
+
+		bool update(const std::string& args) const
+		{
+			AbortIfNot(_update_sig, false);
+			AbortIfNot(_update_sig->is_connected(),
+				false);
+
+			int value;
+			if (!Util::from_string<int>(args, value))
+				return false;
+
+
+			if (value > max || value < min)
+				return false;
+
+			_update_sig->raise(value);
+			return true;
+		}
+
+		int min;
+		int max;
+	};
+
+	struct String : public option<std::string>
+	{
+		String(const std::string& _name,
+			   const std::string& init="<empty>")
+			: option(_name, "string", init)
+		{
+		}
+
+		~String() {}
+
+		bool update(const std::string& args) const
+		{
+			AbortIfNot(_update_sig, false);
+			AbortIfNot(_update_sig->is_connected(),
+				false);
+
+			_update_sig->raise(args);
+			return true;
+		}
 	};
 
 public:

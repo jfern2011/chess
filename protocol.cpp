@@ -102,6 +102,9 @@ bool UCI::_init_commands()
 	AbortIfNot(_cmd.install<UCI>("quit", *this, &UCI::quit),
 		false);
 
+	AbortIfNot(_cmd.install<UCI>("setoption", *this,
+		&UCI::setoption), false);
+
 	return true;
 }
 
@@ -125,11 +128,11 @@ bool UCI::_init_options()
 		/*
 	 	 * Hash table size
 	 	 */
-		auto opt = new option<int>("Hash", // Name
-								   "spin", // Type
-								   16,     // Default (MB)
-								   0,      // Min
-								   65536); // Max
+		auto opt = new Spin("Hash", // Name
+							16,     // Default (MB)
+							0,      // Min
+							65536); // Max
+
 		AbortIfNot(opt, false);
 		AbortIfNot(opt->assign_updater(
 			inputs, &EngineInputs::set_hash_size), false);
@@ -141,9 +144,7 @@ bool UCI::_init_options()
 		/*
 	 	 * Pondering
 	 	 */
-		auto opt = new option<bool>("Ponder",
-									"check",
-									false);
+		auto opt = new Check("Ponder", false);
 
 		AbortIfNot(opt, false);
 		AbortIfNot(opt->assign_updater(
@@ -156,9 +157,7 @@ bool UCI::_init_options()
 		/*
 	 	 * Multi PV
 	 	 */
-		auto opt = new option<int>("MultiPV",
-								   "spin",
-								   1, 1, MAX_PV);
+		auto opt = new Spin("MultiPV", 1, 1, MAX_PV);
 
 		AbortIfNot(opt, false);
 		AbortIfNot(opt->assign_updater(
@@ -667,8 +666,8 @@ bool UCI::setoption(const std::string& _args)
 
 	if (option->type == "button")
 	{
-		// code for button options
-		return true;
+		auto button = dynamic_cast<const Button*>(option);
+		return button->execute();
 	}
 
 	/*
@@ -729,56 +728,59 @@ bool UCI::uci(const std::string&) const
 	AbortIfNot(write("id author Jason Fernandez\n"),
 		false);
 
-	for (auto iter = _options.begin(), end = _options.end();
-		 iter != end; ++iter)
+	for (auto iter=_options.begin(), end= _options.end(); iter != end;
+		 ++iter)
 	{
 		const auto& ptr = *iter;
 
-		switch (ptr->display_type)
+		std::string output = "option name " + ptr->name
+			+ " type " + ptr->type;
+
+		if (ptr->type == "check")
 		{
-		case 5:
-			AbortIfNot(write(
-				"option name %s type %s default %s min %s max %s",
-				ptr->name.c_str(),
-				ptr->type.c_str(),
-				ptr->default_to_string().c_str(),
-				ptr->min_to_string().c_str(),
-				ptr->max_to_string().c_str()), false);
-			break;
-		case 3:
-			AbortIfNot(write(
-				"option name %s type %s default %s",
-				ptr->name.c_str(),
-				ptr->type.c_str(),
-				ptr->default_to_string().c_str()), false);
-			break;
-		case 2:
-			AbortIfNot(write(
-				"option name %s type %s default %s",
-				ptr->name.c_str(),
-				ptr->type.c_str()), false);
-			break;
-		default:
-			// We should never get here:
-			Abort(false);
+			auto opt = dynamic_cast<const Check*>(ptr);
+			std::string str;
+			AbortIfNot(Util::to_string<bool>(opt->default_value, str),
+				false);
+			output += " default " + str;
 		}
-
-		/*
-		 * Send the predefined values (if any) to standard
-		 * output:
-		 */
-		Util::str_v vars;
-		AbortIfNot( ptr->predefs_to_string(vars),
-			false);
-
-		std::string predefs = "";
-		for (size_t i = 0; i < vars.size(); i++)
+		else if (ptr->type == "combo")
 		{
-			predefs += " var " + vars[i];
+			auto opt = dynamic_cast<const Combo*>(ptr);
+			output +=
+				" default " + opt->default_value;
+
+			for (auto i = 0; i < opt->vars.size(); i++)
+			{
+				output += " var " + opt->vars[i];
+			}
+		}
+		else if (ptr->type == "spin")
+		{
+			auto opt = dynamic_cast<const Spin*>(ptr);
+			std::string str;
+			AbortIfNot(Util::to_string<int >(opt->default_value, str),
+				false);
+
+			output += " default " + str;
+
+			AbortIfNot(Util::to_string<int >(opt->min, str),
+				false);
+			output += " min " + str;
+
+			AbortIfNot(Util::to_string<int >(opt->max, str),
+				false);
+			output += " max " + str;
+		}
+		else if (ptr->type == "string")
+		{
+			auto opt = dynamic_cast<const Check*>(ptr);
+			output +=
+				" default " + opt->default_value;
 		}
 
 		AbortIfNot(write("%s\n",
-			predefs.c_str()), false);
+			output.c_str()), false);
 	}
 
 	/*
