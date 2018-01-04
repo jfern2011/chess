@@ -290,6 +290,14 @@ class UCI : public Protocol
 		{
 		}
 
+		template <class T1, class... T2>
+		Combo(const std::string& _name, const std::string& init,
+			  T1&& value, T2&&... values)
+			: Combo( _name, init, std::forward< T2 >(values)...)
+		{
+			vars.push_back(value);
+		}
+
 		virtual ~Combo() {}
 
 		bool update(const std::string& args) const
