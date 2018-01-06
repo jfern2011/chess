@@ -55,13 +55,13 @@ bool ChessEngine::init(algorithm_t algorithm, int cmd_fd, int log_fd,
 	switch (protocol)
 	{
 	case console_mode:
-		_protocol = new Console(*_inputs, _logger);
+		_protocol = new Console(_tables, *_inputs, _logger);
 		break;
 	case uci_protocol:
-		_protocol = new UCI(*_inputs, _logger);
+		_protocol = new UCI(_tables, *_inputs, _logger);
 		break;
 	case xboard_protocol:
-		_protocol = new xBoard(*_inputs, _logger);
+		_protocol = new xBoard(_tables, *_inputs, _logger);
 		break;
 	default:
 		std::snprintf(msg, 128,

@@ -25,8 +25,8 @@ class Protocol : public StateMachineClient, public OutputWriter
 
 public:
 
-	Protocol(const std::string& name, EngineInputs& _inputs,
-			 Logger& logger);
+	Protocol(const std::string& name, const DataTables& tables,
+		     EngineInputs& _inputs, Logger& logger);
 
 	virtual ~Protocol();
 
@@ -64,16 +64,23 @@ protected:
 	bool _is_init;
 
 	/**
-	 * Writes to the chess engine log file
+	 * Writes to the chess engine log
+	 * file
 	 */
 	Logger& _logger;
 
 	/**
-	 * The name of this class for
-	 * logging purposes
+	 * The name of this class
 	 */
 	const std::string
 		_myname;
+
+	/**
+	 * A reference to the global set of
+	 * databases
+	 */
+	const DataTables&
+		_tables;
 };
 
 /**
@@ -506,7 +513,8 @@ class UCI : public Protocol
 
 public:
 
-	UCI(EngineInputs& inputs, Logger& logger);
+	UCI(const DataTables& tables, EngineInputs& inputs,
+		Logger& logger);
 
 	~UCI();
 
@@ -586,7 +594,8 @@ class xBoard : public Protocol
 
 public:
 
-	xBoard(EngineInputs& inputs, Logger& logger);
+	xBoard(const DataTables& tables, EngineInputs& inputs,
+		   Logger& logger);
 
 	~xBoard();
 
@@ -620,7 +629,8 @@ class Console : public Protocol
 
 public:
 
-	Console(EngineInputs& inputs, Logger& logger);
+	Console(const DataTables& tables, EngineInputs& inputs,
+			Logger& logger);
 
 	~Console();
 

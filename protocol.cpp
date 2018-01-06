@@ -4,19 +4,23 @@
  * Constructor
  *
  * @param[in] name    The name of this component
+ * @param[in] tables  The global databases used throughout the
+ *                    engine
  * @param[in] _inputs The EngineInputs that we'll set via user
  *                    commands
  * @param[in] logger  The Logger that this component will send
  *                    diagnostics to
  */
-Protocol::Protocol(const std::string& name, EngineInputs& _inputs,
-		Logger& logger)
+Protocol::Protocol(const std::string& name, const DataTables& tables,
+				   EngineInputs& _inputs, Logger& logger)
+
 	: StateMachineClient(name), OutputWriter(name, logger),
 	  inputs(_inputs),
 	  _cmd(logger),
 	  _is_init(false),
 	  _logger(logger),
-	  _myname(name)
+	  _myname(name),
+	  _tables(tables)
 {
 }
 
@@ -51,12 +55,15 @@ std::string Protocol::get_name() const
 /**
  * Construct a Universal Chess Interface
  *
+ * @param[in] tables A reference to the global DataTables used
+ *                   throughout the engine
  * @param[in] inputs A reference to the user inputs to forward
  *                   to the search algorithm
  * @param[in] logger Log activity to this
  */
-UCI::UCI(EngineInputs& inputs, Logger& logger)
-	: Protocol("UCI", inputs, logger),
+UCI::UCI(const DataTables& tables, EngineInputs& inputs,
+	     Logger& logger)
+	: Protocol("UCI", tables, inputs, logger),
 	  _bestmove_token(-1),
 	  _options(),
 	  _ponder_token(-1)
@@ -90,8 +97,8 @@ bool UCI::_init_commands()
 	AbortIfNot(_cmd.install<UCI>("debug", *this, &UCI::debug),
 		false);
 
-	AbortIfNot(_cmd.install<UCI>("setoption", *this,
-		&UCI::setoption), false);
+	AbortIfNot(_cmd.install<UCI>("setoption", *this, &UCI::setoption),
+		false);
 
 	AbortIfNot(_cmd.install<UCI>("register", *this,
 		&UCI::register_engine), false);
@@ -118,7 +125,7 @@ bool UCI::_init_commands()
 }
 
 /**
- * Define the parameters that can be set by the user via the GUI
+ * Create the parameters that can be set by the user via the GUI
  *
  * @return True on success
  */
@@ -217,7 +224,7 @@ bool UCI::debug(const std::string& _state)
 	if (state != "on" && state != "off")
 	{
 		_logger.write(_myname,
-			"unable to set debug state to '%s'", state.c_str());
+			"unable to set debug state to '%s'\n", state.c_str());
 		return true;
 	}
 
@@ -531,6 +538,8 @@ bool UCI::position(const std::string& _args) const
 
 	if (parts.size() > 1) Util::split(parts[1], moves);
 
+	MoveGen movegen(_tables);
+
 	for (size_t i = 0; i < moves.size(); i++)
 	{
 		const int partial =
@@ -568,6 +577,30 @@ bool UCI::position(const std::string& _args) const
 
 		int move = pack(captured, from, moved,
 						promote, to);
+
+		/*
+		 * Confirm that this move is legal:
+		 */
+		bool legal = false;
+
+		Buffer<int,MAX_MOVES> buf;
+		const int n_moves =
+			movegen.generate_legal_moves(pos, pos.get_turn(),
+				buf);
+		for (int i = 0; i < n_moves; i++)
+		{
+			if (buf[i] == move)
+			{
+				legal = true; break;
+			}
+		}
+
+		if (!legal)
+		{
+			_logger.write( _myname, "illegal move => '%s'\n",
+				moves[i].c_str());
+			return false;
+		}
 
 		AbortIfNot(pos.make_move(move), false);
 	}
@@ -837,8 +870,9 @@ bool UCI::ucinewgame(const std::string&)
 		StateMachine::idle, false);
 }
 
-xBoard::xBoard(EngineInputs& inputs, Logger& logger)
-	: Protocol("xBoard", inputs, logger),
+xBoard::xBoard(const DataTables& tables, EngineInputs& inputs,
+			   Logger& logger)
+	: Protocol("xBoard", tables, inputs, logger),
 	  _is_init(false),
 	  _logger(logger)
 {
@@ -875,8 +909,9 @@ bool xBoard::sniff()
 	return true;
 }
 
-Console::Console(EngineInputs& inputs, Logger& logger)
-	: Protocol("Console", inputs, logger),
+Console::Console(const DataTables& tables, EngineInputs& inputs,
+				 Logger& logger)
+	: Protocol("Console", tables, inputs, logger),
 	  _is_init(false),
 	  _logger(logger)
 {

@@ -2651,8 +2651,11 @@ inline size_t MoveGen::generate_non_captures(const Position& pos,
  * Verify that the specified move can be played legally from this
  * position
  *
+ * @todo Compare this against the move generators
+ *
  * @param [in] pos   The current position
  * @param [in] move  The move to play
+ * @param [in] check True if the side on move is in check
  *
  * @return True if the move can be played
  */
