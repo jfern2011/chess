@@ -124,9 +124,17 @@ class UCI : public Protocol
 		const std::string type;
 	};
 
+	/**
+	 *  Represents a UCI option that is not a button. Unlike a button,
+	 *  this can store the value of an option
+	 */
 	template <typename T>
 	struct option : public option_base
 	{
+		/**
+		 * A signal that when raised, updates the engine with the
+		 * new value of this option
+		 */
 		typedef Signal::signal_t<void,T> signal_t;
 
 		/**
@@ -195,15 +203,30 @@ class UCI : public Protocol
 		signal_t* _update_sig;
 	};
 
+	/**
+	 * Represents a button option
+	 */
 	struct Button : public option_base
 	{
+		/**
+		 * A signal handled by a callback function whenever this
+		 * button is pushed
+		 */
 		typedef Signal::signal_t<void> signal_t;
 
+		/**
+		 * Constructor
+		 *
+		 * @param[in] _name The name of this option
+		 */
 		Button(const std::string& _name)
 			: option_base(_name, "button"), _update_sig(nullptr)
 		{
 		}
 
+		/**
+		 * Destructor
+		 */
 		~Button()
 		{
 			if (_update_sig) delete _update_sig;
@@ -259,16 +282,35 @@ class UCI : public Protocol
 		signal_t* _update_sig;
 	};
 
+	/**
+	 * Represents a checkbox option
+	 */
 	struct Check : public option<bool>
 	{
-
+		/**
+		 * Constructor
+		 *
+		 * @param[in] _name The name of this option
+		 * @param[in] init  If true, this box is checked by
+		 *                  default
+		 */
 		Check(const std::string& _name, bool init)
 			: option(_name, "check", init)
 		{
 		}
 
+		/**
+		 * Destructor
+		 */
 		~Check() {}
 
+		/**
+		 * Update this option
+		 *
+		 * @param[in] args Set the option to this value
+		 *
+		 * @return True on success
+		 */
 		bool update(const std::string& args) const
 		{
 			AbortIfNot(_update_sig, false);
@@ -283,23 +325,56 @@ class UCI : public Protocol
 		}
 	};
 
+	/**
+	 * Represents a combo box option
+	 */
 	struct Combo : public option<std::string>
 	{
+		/**
+		 * Constructor (1)
+		 *
+		 * @param [in] _name The name of this option
+		 * @param [in] init  The initial (default) value for this
+		 *                   option
+		 */
 		Combo(const std::string& _name, const std::string& init)
 			: option(_name, "combo", init)
 		{
+			vars.push_back(init);
 		}
 
+		/**
+		 * Constructor (2). This lets you specify multiple values
+		 * for the option at once
+		 *
+		 * @param[in] _name  The name of this option
+		 * @param[in] init   The initial (default) value for this
+		 *                   option
+		 *
+		 * @note The arguments after \a init specify values
+		 *       for this option beyond \a init
+		 */
 		template <class T1, class... T2>
 		Combo(const std::string& _name, const std::string& init,
 			  T1&& value, T2&&... values)
-			: Combo( _name, init, std::forward< T2 >(values)...)
+			: Combo(_name, init, std::forward<T2>(values)...)
 		{
 			vars.push_back(value);
 		}
 
-		virtual ~Combo() {}
+		/**
+		 * Destructor
+		 */
+		~Combo() {}
 
+		/**
+		 * Update this option
+		 *
+		 * @param[in] args Set the option to this value. This must
+		 *                 be one of the predefined values
+		 *
+		 * @return True on success
+		 */
 		bool update(const std::string& args) const
 		{
 			AbortIfNot(_update_sig, false);
@@ -319,19 +394,46 @@ class UCI : public Protocol
 			return false;
 		}
 
+		/**
+		 * The set of predefined values this option
+		 * can take
+		 */
 		Util::str_v vars;
 	};
 
+	/**
+	 * Represents a spin wheel option
+	 */
 	struct Spin : public option<int>
 	{
+		/**
+		 * Constructor
+		 *
+		 * @param [in] _name The option name
+		 * @param [in] init  Set the initial (default) value of this
+		 *                   option to this
+		 * @param [in] _min  The minimum value for this option
+		 * @param [in] _max  The maximum value for this option
+		 */
 		Spin(const std::string& _name, int init, int _min, int _max)
 			: option(_name, "spin", init),
 			  min(_min), max(_max)
 		{
 		}
 
+		/**
+		 * Destructor
+		 */
 		~Spin() {}
 
+		/**
+		 * Update this option
+		 *
+		 * @param[in] args Set the option to this value, which must
+		 *                 lie within the spin wheel range
+		 *
+		 * @return True on success
+		 */
 		bool update(const std::string& args) const
 		{
 			AbortIfNot(_update_sig, false);
@@ -350,20 +452,47 @@ class UCI : public Protocol
 			return true;
 		}
 
+		/**
+		 * The option's minimum value
+		 */
 		int min;
+
+		/**
+		 * The option's maximum value
+		 */
 		int max;
 	};
 
+	/**
+	 * Represents a text field option
+	 */
 	struct String : public option<std::string>
 	{
+		/**
+		 * Constructor
+		 *
+		 * @param[in] _name The name of this option
+		 * @param[in] init  The initial value for this option
+		 */
 		String(const std::string& _name,
 			   const std::string& init="<empty>")
 			: option(_name, "string", init)
 		{
 		}
 
+		/**
+		 * Destructor
+		 */
 		~String() {}
 
+		/**
+		 * Update this option
+		 *
+		 * @param [in] args Set the option to this value. Can
+		 *                  be any string
+		 *
+		 * @return True on success
+		 */
 		bool update(const std::string& args) const
 		{
 			AbortIfNot(_update_sig, false);
@@ -390,7 +519,9 @@ public:
 
 	bool init(int fd, const Search* search);
 
-	bool isready(const std::string&) const;
+	bool isready(const std::string&)   const;
+
+	bool ponderhit(const std::string&) const;
 
 	bool position(const std::string& _args)  const;
 
@@ -405,6 +536,8 @@ public:
 	bool setoption(const std::string& _args);
 
 	bool sniff();
+
+	bool stop(const std::string&);
 
 	bool uci(const std::string&) const;
 

@@ -22,7 +22,7 @@ typedef enum
 /**
  * @class Search
  *
- * An class that abstracts the search algorithms being used
+ * An class that abstracts the search algorithm being used
  */
 class Search : public StateMachineClient
 {
@@ -602,7 +602,7 @@ inline int PvSearch::see(Position& pos, int square, int to_move,
 }
 
 /**
- * Check if the node or time limits are exceeded, which
+ * Check if the node or time limit is exceeded, which
  * indicates we need to stop searching
  *
  * @return t_now The current monotonic time
@@ -678,7 +678,7 @@ inline int PvSearch::_search(Position& pos, int depth, int alpha,
 	if (in_check)
 	{
 		n_moves =
-			_movegen.generate_check_evasions(pos, to_move, moves);
+			_movegen.generate_check_evasions(pos, to_move, moves );
 
 		if (n_moves == 0)
 		{
@@ -745,10 +745,14 @@ inline int PvSearch::_search(Position& pos, int depth, int alpha,
 	return alpha;
 }
 
-inline int PvSearch::_search_moves(Position& pos, int* moves,
-								   size_t n_moves, int& alpha,
-								   int beta, int depth,
-								   bool do_null, int& best)
+inline int PvSearch::_search_moves(Position& pos,
+								   int* moves,
+								   size_t n_moves,
+								   int& alpha,
+								   int beta,
+								   int depth,
+								   bool do_null,
+								   int& best)
 {
 	for (register int i = 0; i < n_moves; i++)
 	{

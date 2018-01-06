@@ -254,6 +254,8 @@ bool PvSearch::search(const EngineInputs& inputs)
 	const bool in_check =
 			master.in_check(to_move);
 
+	const int sign = (to_move == WHITE ? 1 : -1);
+
 	if (to_move == WHITE)
 		_search_score = -MATE_SCORE;
 	else
@@ -278,9 +280,9 @@ bool PvSearch::search(const EngineInputs& inputs)
 		Util::bubble_sort(moves, n_moves);
 
 		int best_move;
-		const int score =
-			-_search_moves(pos, moves, n_moves, alpha, beta,
-				depth, !in_check, best_move);
+		const int score = sign * 
+			_search_moves(pos, moves, n_moves, alpha, beta, 0,
+				!in_check, best_move);
 
 		if (depth > 0 && _abort_requested)
 		{

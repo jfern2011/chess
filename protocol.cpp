@@ -6,7 +6,7 @@
  * @param[in] name    The name of this component
  * @param[in] _inputs The EngineInputs that we'll set via user
  *                    commands
- * @param[in] logger  The Logger that this component can write
+ * @param[in] logger  The Logger that this component will send
  *                    diagnostics to
  */
 Protocol::Protocol(const std::string& name, EngineInputs& _inputs,
@@ -81,14 +81,20 @@ bool UCI::_init_commands()
 {
 	AbortIf(_is_init, false);
 
-	AbortIfNot(_cmd.install<UCI>("debug", *this, &UCI::debug),
+	AbortIfNot(_cmd.install<UCI>("isready", *this, &UCI::isready),
 		false);
 
 	AbortIfNot(_cmd.install<UCI>("uci", *this, &UCI::uci),
 		false);
 
-	AbortIfNot(_cmd.install<UCI>("isready", *this, &UCI::isready),
+	AbortIfNot(_cmd.install<UCI>("debug", *this, &UCI::debug),
 		false);
+
+	AbortIfNot(_cmd.install<UCI>("setoption", *this,
+		&UCI::setoption), false);
+
+	AbortIfNot(_cmd.install<UCI>("register", *this,
+		&UCI::register_engine), false);
 
 	AbortIfNot(_cmd.install<UCI>("ucinewgame", *this,
 		&UCI::ucinewgame), false);
@@ -99,11 +105,14 @@ bool UCI::_init_commands()
 	AbortIfNot(_cmd.install<UCI>("go", *this, &UCI::go),
 		false);
 
-	AbortIfNot(_cmd.install<UCI>("quit", *this, &UCI::quit),
+	AbortIfNot(_cmd.install<UCI>("stop", *this, &UCI::stop),
 		false);
 
-	AbortIfNot(_cmd.install<UCI>("setoption", *this,
-		&UCI::setoption), false);
+	AbortIfNot(_cmd.install<UCI>("ponderhit", *this, &UCI::ponderhit),
+		false);
+
+	AbortIfNot(_cmd.install<UCI>("quit", *this, &UCI::quit),
+		false);
 
 	return true;
 }
@@ -449,6 +458,16 @@ bool UCI::isready(const std::string&) const
 }
 
 /**
+ * The handler for the "ponderhit" UCI command
+ *
+ * @return True on success
+ */
+bool UCI::ponderhit(const std::string&) const
+{
+	return true;
+}
+
+/**
  * The handler for the "position" UCI command
  *
  * @param[in] _args The arguments passed in from the command
@@ -707,6 +726,17 @@ bool UCI::sniff()
 	AbortIfNot(_is_init, false);
 
 	return _cmd.poll();
+}
+
+/**
+ * Handles the UCI "stop" command
+ *
+ * @return True on success
+ */
+bool UCI::stop(const std::string&)
+{
+	return transition_sig.raise(_myname, StateMachine::postsearch,
+		false);
 }
 
 /**
