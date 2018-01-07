@@ -65,7 +65,7 @@ bool ChessEngine::init(algorithm_t algorithm, int cmd_fd, int log_fd,
 		break;
 	default:
 		std::snprintf(msg, 128,
-			"Invalid protocol ID: %d\n", protocol);
+			"Invalid protocol ID: %d", protocol);
 		Abort(false, msg);
 	}
 
@@ -147,7 +147,7 @@ bool ChessEngine::run()
 			break;
 		default:
 			std::snprintf(err_msg,
-				128, "[%s] unexpected state: '%s'\n",
+				128 , "[%s] => unexpected state: '%s'\n",
 				_name.c_str(),
 				state_name.c_str());
 

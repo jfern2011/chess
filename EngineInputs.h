@@ -5,8 +5,14 @@
 #include "movegen2.h"
 
 /**
+ * @class EngineInputs
+ *
  * Stores inputs from the GUI for retrieval by the search
- * algorithm
+ * algorithm. Most of these are sent as part of the UCI
+ * "go" command, but a few (e.g. hash table size) are UCI
+ * UCI engine options
+ *
+ * @todo Update for xBoard-specific inputs
  */
 class EngineInputs
 {
@@ -165,7 +171,7 @@ private:
 	Logger& _logger;
 
 	/**
-	 * The name of this module for (logging purposes)
+	 * The name of this module (for logging purposes)
 	 */
 	const std::string _name;
 

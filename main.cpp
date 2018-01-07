@@ -1,46 +1,95 @@
-#include "cmd.h"
+#include "CommandLine.h"
 #include "engine.h"
-#include "util.h"
 
-class Interface
+#include <cstdlib>
+#include <fcntl.h>
+
+/**
+ * The global databases used throughout the engine
+ */
+DataTables tables;
+
+/**
+ * Create command line options here
+ *
+ * @param[in] opts The container that options will be added
+ *                 to
+ *
+ * @return True on success
+ */
+bool create_cmdline_opts(CommandLineOptions& opts)
 {
-	typedef CommandRouter<bool,Engine,const Util::str_v&> router_t;
+	AbortIfNot(opts.add<std::string>("logpath", "engine.log",
+		       "Path to the chess engine log file."),
+		false);
 
-public:
+	AbortIfNot(opts.add<bool>("help", false,
+		       "Print this help message."),
+		false);
 
-	Interface()
-		: _router(_engine)
+	return true;
+}
+
+/**
+ * Parse the command line arguments and start the chess
+ * engine
+ *
+ * @param[in] argc The number of command line arguments
+ * @param[in] argv The arguments themselves
+ *
+ * @return True on success
+ */
+bool go(int argc, char** argv)
+{
+	CommandLineOptions options;
+
+	AbortIfNot( create_cmdline_opts(options),
+		false);
+
+	CommandLine cmd(options);
+	AbortIfNot(cmd.parse(argc, argv), false);
+
+	std::string logpath;
+	bool help;
+
+	AbortIfNot(cmd.get("help", help), false);
+	if (help)
 	{
-	}
-
-	~Interface()
-	{
-	}
-
-	bool init()
-	{
-		AbortIfNot(commandRegistration(), false);
+		options.print(argv[0]);
 		return true;
 	}
+		
+	AbortIfNot(cmd.get( "logpath", logpath ),
+		false);
 
-private:
+	const int logfd =
+			::open(logpath.c_str(),O_CREAT | O_RDWR,
+				   S_IRUSR | S_IWUSR);
+	
+	AbortIf(logfd < 0, false);
 
-	bool commandRegistration()
-	{
-		AbortIfNot(_router.install("force", &Engine::force),
-			       false);
+	ChessEngine engine(tables);
 
-		return true;
-	}
+	AbortIfNot(engine.init(pvs, STDIN_FILENO, logfd,
+		uci_protocol), false);
 
-	Engine   _engine;
-	router_t _router;
-};
+	AbortIfNot(engine.run(), false);
 
+	::close(logfd);
+	return true;
+	
+}
+
+/**
+ * The program's entry point
+ *
+ * @param[in] argc The number of command line arguments
+ * @param[in] argv The arguments themselves
+ *
+ * @return EXIT_SUCCESS or EXIT_FAILURE
+ */
 int main(int argc, char** argv)
 {
-	Interface interface;
-	interface.init();
-
+	AbortIfNot(go(argc, argv), EXIT_FAILURE);
 	return EXIT_SUCCESS;
 }

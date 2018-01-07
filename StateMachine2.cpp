@@ -30,7 +30,8 @@ StateMachine::~StateMachine()
 /**
  * Acknowledge a pending state transition request. This does not
  * need to be called explicitly unless the requestor asked to
- * defer acknowledgement until later in \ref request_transition()
+ * defer acknowledgement until later; \ref _request_transition()
+ * for details
  *
  * @return True on success
  */
@@ -248,7 +249,7 @@ bool StateMachine::register_client(const std::string& _name,
 }
 
 /**
- *   Get the human-readable equivalent of a \ref state_t
+ * Return the human-readable equivalent of a \ref state_t
  *
  * @param[in] state The value to convert
  *

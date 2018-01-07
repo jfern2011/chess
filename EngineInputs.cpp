@@ -200,9 +200,11 @@ bool EngineInputs::init(const Position& pos)
  */
 bool EngineInputs::searchmoves(const std::string& moves)
 {
+	AbortIfNot(_is_init, false);
+
 	if (moves.empty())
 	{
-		BUFFER(int, moves, MAX_MOVES);
+		Buffer<int, MAX_MOVES> moves;
 
 		MoveGen movegen(_tables);
 		size_t n_moves =

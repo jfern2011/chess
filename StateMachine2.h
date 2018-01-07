@@ -8,11 +8,12 @@ class StateMachineClient;
 /**
  * @class StateMachine
  *
- * The state machine determines what the engine is doing at any given
- * time. The list of available states is given in the \ref state_t
- * enumerated type definition. State transitions are generally driven
- * by user inputs, except for the search algorithm, which requests
- * a state transition whenever it finishes a computation
+ * A simple finite state machine used to determine what the engine is
+ * doing at any given time. The list of available states is given
+ * in the \ref state_t enumerated type definition. State transitions
+ * are generally driven by user inputs, except for the search
+ * algorithm, which requests a state transition whenever it begins or
+ * finishes a computation
  */
 class StateMachine
 {
@@ -155,8 +156,8 @@ private:
  * A StateMachineClient is allowed to make transition requests once
  * it has registered with a StateMachine. This allows derived
  * classes alone to drive the state machine while preventing others
- * from changing the engine's behavior by bypassing the state
- * machine
+ * from modifying the engine's behavior by forcing it into an
+ * undesired state
  */
 class StateMachineClient
 {
