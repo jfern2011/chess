@@ -7,56 +7,104 @@ MAKE=make
 #----------------------------------------------------------------------
 # Include directories:
 #----------------------------------------------------------------------
-IDIRS = ../../abort/abort ../../signal/signal ../../types/types \
-        ../../util/util ../../WriteEventSink/Write-Event-Sink/include/
+IDIRS = abort/ signal/ types/ util/
 
 # Object file directory:
-ODIR=../obj
+ODIR=obj
 
 # Assign compiler options:
-CFLAGS=-c -g -Wall -Wall -Wno-unused-function \
-					$(foreach dir, $(IDIRS), -I$(dir)) --std=c++11
+#CFLAGS=-c --std=c++11 -Wall -Wno-unused-function \
+#			$(foreach dir, $(IDIRS), -I$(dir))
+CFLAGS=-c --std=c++11 \
+			$(foreach dir, $(IDIRS), -I$(dir))
 
 #----------------------------------------------------------------------
 # Dynamic library dependencies:
 #----------------------------------------------------------------------
-LIBS=WriteEventSink
-LD_PATH = ../../WriteEventSink/Write-Event-Sink/lib/
+
 
 #----------------------------------------------------------------------
 # Header dependencies:
 #----------------------------------------------------------------------
-_DEPS = abort.h Signal.h types.h util.h WriteEventSink.h
+_DEPS = abort.h Signal.h types.h util.h
 
 DEPS = $(join $(addsuffix /, $(IDIRS)), $(_DEPS))
 
 #----------------------------------------------------------------------
 # Object files:
+#
+# TODO: Move dependency generation to their respective folders
 #----------------------------------------------------------------------
-_OBJ = StateMachine.o cmd.o cmd_ut.o
-OBJ  = $(patsubst %, $(ODIR)/%, $(_OBJ))
 
-# Compile WriteEventSink
-WES_DIR = ../../WriteEventSink/Write-Event-Sink/src/
-wes:
-	@ cd $(WES_DIR) && $(MAKE) shared
+RES_IDIR = ReadEventSink/include/
+RES_DEPS = $(RES_IDIR)/ReadEventSink.h
+RES_ODIR = ReadEventSink/obj
+RES_OBJ  = $(RES_ODIR)/ReadEventSink.o
 
-# Generate object files
-$(ODIR)/%.o: %.cpp $(DEPS)
+CMD_IDIR = CommandLine/
+CMD_DEPS = $(CMD_IDIR)/CommandLine.h
+CMD_ODIR = CommandLine/obj
+CMD_OBJ  = $(CMD_ODIR)/CommandLine.o
+
+CHESS_DEPS = Buffer.h      \
+             chess.h       \
+             chess_util.h  \
+             clock.h
+
+CHESS_SRC = chess.cpp         \
+            cmd.cpp           \
+            DataTables.cpp    \
+            engine.cpp        \
+            EngineInputs.cpp  \
+            EngineOutputs.cpp \
+            log.cpp           \
+            main.cpp          \
+            movegen.cpp       \
+            output2.cpp       \
+            position.cpp      \
+            protocol.cpp      \
+            search.cpp        \
+            StateMachine2.cpp
+
+CHESS_H   = chess.h           \
+			cmd.h             \
+			DataTables.h      \
+			engine.h          \
+			EngineInputs.h    \
+			EngineOutputs.h   \
+			log.h             \
+			movegen2.h        \
+			output2.h         \
+			position2.h       \
+			protocol2.h       \
+			search2.h         \
+			StateMachine2.h
+
+CHESS_OBJ  = $(patsubst %.cpp, $(ODIR)/%.o, $(CHESS_SRC))
+
+$(RES_OBJ): ReadEventSink/src/ReadEventSink.cpp $(DEPS) $(RES_DEPS)
+	@ if ! [ -d $(RES_ODIR) ]; then mkdir $(RES_ODIR); fi
+	$(CC) -o $@ $< $(CFLAGS) -I$(RES_IDIR)
+
+$(CMD_OBJ): CommandLine/CommandLine.cpp $(DEPS) $(CMD_DEPS)
+	@ if ! [ -d $(CMD_ODIR) ]; then mkdir $(CMD_ODIR); fi
+	$(CC) -o $@ $< $(CFLAGS) -I$(CMD_IDIR)
+
+$(ODIR)/%.o: %.cpp
 	@ if ! [ -d $(ODIR) ]; then mkdir $(ODIR); fi
-	$(CC) -c -o $@ $< $(CFLAGS)
+	$(CC) -g -o $@ $< $(CFLAGS) -I$(RES_IDIR) -I$(CMD_IDIR)
 
-# Build the unit test
-test: wes $(OBJ)
-	$(CC) -L$(LD_PATH) -Wl,-rpath=$(LD_PATH) -g -o $@ $(filter-out $<,$^) -l$(LIBS)
+engine: $(CHESS_H) $(CHESS_OBJ) $(RES_OBJ) $(CMD_OBJ)
+	$(CC) -g -o $@ $(CHESS_OBJ) $(RES_OBJ) $(CMD_OBJ)
 
 clean:
-	@ rm $(ODIR)/*.o test
+	@ rm -f $(RES_ODIR)/*.o
+	@ rm -f $(CMD_ODIR)/*.o
+	@ rm -f $(ODIR)/*.o
 
 # This target is always out-of-date
 .PHONY: clean++
 
 clean++:
-	@ cd $(WES_DIR) && $(MAKE) clean++
-	@ rm -rf $(ODIR) *~ core $(IDIR)/*~ test
+	@ rm -rf $(ODIR) $(RES_ODIR) $(CMD_ODIR) *~ core $(IDIR)/*~ engine
 	@ echo clean++: all clean!
