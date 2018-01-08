@@ -257,29 +257,36 @@ bool PvSearch::search(const EngineInputs& inputs)
 	const int sign = (to_move == WHITE ? 1 : -1);
 
 	if (to_move == WHITE)
-		_search_score = -MATE_SCORE;
+		_search_score = -MATE_SCORE * 2;
 	else
-		_search_score =  MATE_SCORE;
+		_search_score =  MATE_SCORE * 2;
 
 	int moves[MAX_MOVES];
 
 	_best_move = _ponder_move = 0;
 
+	Position pos(master);
+
+	size_t n_moves;
+	if (in_check)
+	{
+		n_moves =
+			_movegen.generate_check_evasions(pos, to_move, moves);
+	}
+	else
+	{
+		n_moves =
+			_movegen.generate_legal_moves(pos, to_move, moves);
+	}
+
+	Util::bubble_sort(moves, n_moves);
+
 	for (int depth = 0; depth < _depth; depth++)
 	{
-		Position pos(master);
-
 		int alpha = -MATE_SCORE;
 		int beta  =  MATE_SCORE;
 
-		_clear_pv();
-
-		const size_t n_moves =
-			_movegen.generate_legal_moves(pos, to_move, moves);
-
-		Util::bubble_sort(moves, n_moves);
-
-		int best_move;
+		int best_move = 0;
 		const int score = sign * 
 			_search_moves(pos, moves, n_moves, alpha, beta, 0,
 				!in_check, best_move);
@@ -302,6 +309,9 @@ bool PvSearch::search(const EngineInputs& inputs)
 		if (is_mated(to_move))
 			break;
 	}
+
+	if (!_best_move)
+		_best_move = moves[0];
 
 	/*
 	 * Set the move to ponder on:
