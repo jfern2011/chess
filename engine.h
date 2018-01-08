@@ -26,6 +26,8 @@ public:
 
 private:
 
+	bool _create_state_machine();
+
 	/**
 	 * Inputs received by the GUI, which are forwarded to the search
 	 * algorithm
@@ -64,7 +66,7 @@ private:
 	Search* _search;
 
 	/**
-	 * The state machine, which determines execution flow
+	 * The state machine, which governs execution flow
 	 */
 	StateMachine* _state_machine;
 

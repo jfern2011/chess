@@ -40,7 +40,7 @@ public:
 
 	virtual bool init();
 
-	virtual bool search(const EngineInputs& inputs) = 0;
+	virtual bool search(const EngineInputs* inputs) = 0;
 
 protected:
 
@@ -112,7 +112,7 @@ public:
 
 	void save_pv(int depth, int move);
 
-	bool search(const EngineInputs& inputs);
+	bool search(const EngineInputs* inputs);
 
 	int see(Position& pos, int square, int to_move, int move=0) const;
 

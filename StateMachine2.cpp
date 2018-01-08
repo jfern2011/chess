@@ -16,6 +16,7 @@ StateMachine::StateMachine(CommandInterface& cmd, Logger& logger)
 	  _logging_enabled(true),
 	  _name("StateMachine"),
 	  _pending_state(idle),
+	  _tasks(),
 	  _transitions()
 {
 }
@@ -25,6 +26,13 @@ StateMachine::StateMachine(CommandInterface& cmd, Logger& logger)
  */
 StateMachine::~StateMachine()
 {
+	for (auto iter = _tasks.begin(), end = _tasks.end();
+		 iter != end; ++iter)
+	{
+		auto& state_tasks = iter->second;
+		for (size_t i = 0; i < state_tasks.size(); i++)
+			delete state_tasks[i];
+	}
 }
 
 /**
@@ -88,6 +96,15 @@ bool StateMachine::acknowledge_transition()
 			_current_state;
 
 	return false;
+}
+
+bool StateMachine::add_task(state_t state, Signal::generic* task)
+{
+	AbortIfNot(task, false);
+	AbortIfNot(task->is_connected(), false);
+
+	_tasks[state].push_back(task);
+	return true;
 }
 
 /**
@@ -202,11 +219,19 @@ bool StateMachine::pending_request() const
  *
  * @return True on success
  */
-bool StateMachine::poll() const
+bool StateMachine::poll()
 {
 	AbortIfNot(_is_init, false);
 
-	return _cmd.poll();
+	if (!_cmd.poll())
+		return false;
+
+	task_v& tasks = _tasks[ _current_state ];
+
+	for (size_t i = 0; i < tasks.size(); i++)
+		tasks[i]->v_raise();
+
+	return true;
 }
 
 /**

@@ -3,6 +3,60 @@
 
 #include "cmd.h"
 
+/**
+ * Represents a single task to perform while in a particular
+ * state
+ */
+template <class R, class... T>
+class Task : public Signal::Signal<R,T...>
+{
+
+public:
+
+	/**
+	 * Constructor
+	 *
+	 * @param [in]  name  The name of this task
+	 */
+	Task(const std::string& name)
+		: Signal::Signal<R,T...>(), _name(name)
+	{
+	}
+
+	/**
+	 * Destructor
+	 */
+	~Task()
+	{
+	}
+
+	/**
+	 * Get the name of this task
+	 *
+	 * @return The task name
+	 */
+	inline std::string get_name() const
+	{
+		return _name;
+	}
+
+	/**
+	 * Execute the task. This is generally called repeatedly
+	 * while in a particular state
+	 */
+	inline void run()
+	{
+		this->raise();
+	}
+
+private:
+
+	/**
+	 * The name of this task
+	 */
+	std::string _name;
+};
+
 class StateMachineClient;
 
 /**
@@ -72,6 +126,8 @@ public:
 
 	bool acknowledge_transition();
 
+	bool add_task(state_t state, Signal::generic* task);
+
 	void disable_logging();
 
 	void enable_logging();
@@ -82,7 +138,7 @@ public:
 
 	bool pending_request() const;
 
-	bool poll() const;
+	bool poll();
 
 	bool register_client(const std::string& _name,
 		StateMachineClient* client);
@@ -90,6 +146,8 @@ public:
 	std::string to_string(state_t state) const;
 
 private:
+
+	typedef std::vector<Signal::generic*> task_v;
 
 	bool _request_transition(const std::string& _client,
 		state_t state, bool defer=false);
@@ -141,6 +199,9 @@ private:
 	 */
 	std::vector<std::string>
 		_state_names;
+
+	std::map<StateMachine::state_t, task_v>
+		_tasks;
 
 	/**
 	 * Mapping from state to a set of reachable

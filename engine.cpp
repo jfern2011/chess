@@ -94,6 +94,12 @@ bool ChessEngine::init(algorithm_t algorithm, int cmd_fd, int log_fd,
 		false);
 
 	/*
+	 * TODO: Figure out where to put this
+	 */
+	AbortIfNot(_create_state_machine(),
+		false);
+
+	/*
 	 * Allow the search algorithm to request state transitions:
 	 */
 	AbortIfNot( _state_machine->register_client(
@@ -118,20 +124,12 @@ bool ChessEngine::run()
 {
 	AbortIfNot(_is_init, false);
 
-	char err_msg[128];
-
-	/*
-	 * Poll for input every 100 ms when idle (not searching)
-	 */
-	const int sleep_time = 100000;
-
 	auto update = [&]() { return _state_machine->get_current_state(); };
 
 	while (update() != StateMachine::exiting)
 	{
-		const auto state = update();
-		const std::string state_name = _state_machine->to_string(state);
-
+		AbortIfNot(_state_machine->poll(), false);
+/*
 		switch (state)
 		{
 		case StateMachine::idle:
@@ -139,7 +137,7 @@ bool ChessEngine::run()
 			::usleep(sleep_time);
 			break;
 		case StateMachine::init_search:
-			AbortIfNot(_search->search(*_inputs), false);
+			AbortIfNot(_search->search(_inputs), false);
 			break;
 		case StateMachine::postsearch:
 			AbortIfNot(_protocol->postsearch(
@@ -153,6 +151,77 @@ bool ChessEngine::run()
 
 			Abort(false, err_msg);
 		}
+*/
+	}
+
+	return true;
+}
+
+/**
+ * Note: Ownership of tasks created here is transferred to
+ *       the state machine
+ */
+bool ChessEngine::_create_state_machine()
+{
+	AbortIfNot(_protocol, false);
+	AbortIfNot(_search,   false);
+
+	/*
+	 * Create the task(s) to perform while we're in StateMachine::idle
+	 */
+	{
+		auto task = new Task<bool>("sniff");
+		AbortIfNot(task->attach(*_protocol, &Protocol::sniff),
+			false);
+
+		AbortIfNot(_state_machine->add_task(StateMachine::idle, task),
+			false);
+	}
+
+	{
+		auto task = new Task<int,useconds_t>("usleep");
+		
+		AbortIfNot(task->attach(&::usleep),
+			false);
+
+		/*
+		 * When idle, poll for input every 100 ms to reduce wasted
+		 * CPU time:
+		 */
+		const int sleep_time = 100000;
+		task->bind(sleep_time);
+
+		AbortIfNot(_state_machine->add_task(StateMachine::idle, task),
+			false);
+	}
+
+	/*
+	 * Create the task(s) to perform while in
+	 * StateMachine::init_search
+	 */
+	{
+		auto task = new Task<bool,const EngineInputs*>("search");
+		AbortIfNot(task->attach(*_search, &Search::search),
+			false);
+
+		task->bind(_inputs);
+
+		AbortIfNot(_state_machine->add_task(StateMachine::init_search,
+			task), false);
+	}
+
+	/*
+	 * Create the task(s) to perform while in StateMachine::postsearch
+	 */
+	{
+		auto task = new Task<bool,EngineOutputs&>("postsearch");
+		AbortIfNot(task->attach(*_protocol, &Protocol::postsearch),
+			false);
+
+		task->bind(_search->get_outputs());
+
+		AbortIfNot(_state_machine->add_task(StateMachine::postsearch,
+			task), false);
 	}
 
 	return true;

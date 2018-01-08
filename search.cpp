@@ -228,7 +228,7 @@ bool PvSearch::is_mated(int to_move) const
  *
  * @return True on success
  */
-bool PvSearch::search(const EngineInputs& inputs)
+bool PvSearch::search(const EngineInputs* inputs)
 {
 	AbortIfNot(_is_init, false);
 
@@ -240,7 +240,7 @@ bool PvSearch::search(const EngineInputs& inputs)
 
 	_start_time = Clock::get_monotonic_time();
 
-	set_inputs(inputs);
+	set_inputs(*inputs);
 
 	_abort_requested  = false;
 	_next_input_check = _input_check_delay;
@@ -248,7 +248,7 @@ bool PvSearch::search(const EngineInputs& inputs)
 	_node_count  = 0;
 	_qnode_count = 0;
 
-	const Position& master = *inputs.get_position();
+	const Position& master = *inputs->get_position();
 
 	const int to_move   = master.get_turn();
 	const bool in_check =
