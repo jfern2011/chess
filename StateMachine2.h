@@ -8,9 +8,6 @@
  *
  * Represents a single task to perform while in a particular
  * state
- *
- * @tparam R The Task's return type
- * @tparam T Input types to pass to the Task
  */
 template <class R, class... T>
 class Task : public Signal::Signal<R,T...>
@@ -143,10 +140,10 @@ public:
 
 	bool pending_request() const;
 
-	bool poll(bool run=true);
-
 	bool register_client(const std::string& _name,
 		StateMachineClient* client);
+
+	bool run();
 
 	std::string to_string(state_t state) const;
 

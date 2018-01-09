@@ -223,30 +223,6 @@ bool StateMachine::pending_request() const
 }
 
 /**
- * Poll the underlying command interface, which will send state
- * transition requests to this instance
- *
- * @param [in] run If true, make one pass through all tasks for
- *                 the current state
- *
- * @return True on success
- */
-bool StateMachine::poll(bool run)
-{
-	AbortIfNot(_is_init, false);
-
-	if (!_cmd.poll())
-		return false;
-
-	task_v& tasks = _tasks[ _current_state ];
-
-	for (size_t i = 0; i < tasks.size(); i++)
-		tasks[i]->v_raise();
-
-	return true;
-}
-
-/**
  *  Registers a user with this state machine, allowing it to issue
  *  transition requests
  *
@@ -281,6 +257,31 @@ bool StateMachine::register_client(const std::string& _name,
 
 	AbortIfNot(client->transition_sig.attach<StateMachine>(*this,
 		&StateMachine::_request_transition), false);
+
+	return true;
+}
+
+/**
+ * Run the state machine. This does two things:
+ *
+ * 1. Poll the command interface, which will dispatch handlers
+ *    to update the current state
+ * 2. Make one pass through the list of tasks specific to this
+ *    state
+ *
+ * @return True on success
+ */
+bool StateMachine::run()
+{
+	AbortIfNot(_is_init, false);
+
+	if (!_cmd.poll())
+		return false;
+
+	task_v& tasks = _tasks[ _current_state ];
+
+	for (size_t i = 0; i < tasks.size(); i++)
+		tasks[i]->v_raise();
 
 	return true;
 }
