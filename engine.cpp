@@ -128,7 +128,7 @@ bool ChessEngine::run()
 
 	while (update() != StateMachine::exiting)
 	{
-		AbortIfNot(_state_machine->poll(), false);
+		AbortIfNot(_state_machine->run(), false);
 /*
 		switch (state)
 		{

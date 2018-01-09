@@ -73,7 +73,7 @@ class PvSearch : public Search
 			 * machine. Don't print abort messages on error; doing so 
 			 * may just send high-rate spam to standard output
 			 */
-			if (_state_machine.poll())
+			if (_state_machine.run())
 			{
 				return StateMachine::searching
 						!= _state_machine.get_current_state();
