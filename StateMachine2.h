@@ -4,8 +4,13 @@
 #include "cmd.h"
 
 /**
+ * @class Task
+ *
  * Represents a single task to perform while in a particular
  * state
+ *
+ * @tparam R The Task's return type
+ * @tparam T Input types to pass to the Task
  */
 template <class R, class... T>
 class Task : public Signal::Signal<R,T...>
@@ -138,7 +143,7 @@ public:
 
 	bool pending_request() const;
 
-	bool poll();
+	bool poll(bool run=true);
 
 	bool register_client(const std::string& _name,
 		StateMachineClient* client);
@@ -147,6 +152,10 @@ public:
 
 private:
 
+	/**
+	 * The container we'll use to store tasks particular
+	 * to a state
+	 */
 	typedef std::vector<Signal::generic*> task_v;
 
 	bool _request_transition(const std::string& _client,
@@ -200,6 +209,9 @@ private:
 	std::vector<std::string>
 		_state_names;
 
+	/**
+	 * Used to look up a task list by state
+	 */
 	std::map<StateMachine::state_t, task_v>
 		_tasks;
 

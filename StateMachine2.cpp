@@ -98,6 +98,15 @@ bool StateMachine::acknowledge_transition()
 	return false;
 }
 
+/**
+ * Add a new task for the state machine to run while in
+ * the specified state
+ *
+ * @param[in] state The state in which to run this task
+ * @param[in] task  The task to run
+ *
+ * @return True on success
+ */
 bool StateMachine::add_task(state_t state, Signal::generic* task)
 {
 	AbortIfNot(task, false);
@@ -217,9 +226,12 @@ bool StateMachine::pending_request() const
  * Poll the underlying command interface, which will send state
  * transition requests to this instance
  *
+ * @param [in] run If true, make one pass through all tasks for
+ *                 the current state
+ *
  * @return True on success
  */
-bool StateMachine::poll()
+bool StateMachine::poll(bool run)
 {
 	AbortIfNot(_is_init, false);
 
