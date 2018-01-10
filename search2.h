@@ -34,7 +34,7 @@ public:
 
 	virtual ~Search();
 
-	EngineOutputs& get_outputs();
+	EngineOutputs* get_outputs();
 
 	const EngineOutputs& get_outputs() const;
 

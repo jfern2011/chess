@@ -36,7 +36,7 @@ public:
 
 	virtual bool init(int fd, const Search* search) = 0;
 
-	virtual bool postsearch(EngineOutputs& outputs) = 0;
+	virtual bool postsearch(EngineOutputs* outputs) = 0;
 
 	virtual bool send_periodics(const EngineOutputs& outputs)
 		= 0;
@@ -533,7 +533,7 @@ public:
 
 	bool position(const std::string& _args)  const;
 
-	bool postsearch(EngineOutputs& outputs);
+	bool postsearch(EngineOutputs* outputs);
 
 	bool quit(const std::string&);
 
@@ -601,7 +601,7 @@ public:
 
 	bool init(int fd, const Search* search);
 
-	bool postsearch(EngineOutputs& outputs);
+	bool postsearch(EngineOutputs* outputs);
 
 	bool send_periodics(const EngineOutputs& outputs);
 
@@ -636,7 +636,7 @@ public:
 
 	bool init(int fd, const Search* search);
 
-	bool postsearch(EngineOutputs& outputs);
+	bool postsearch(EngineOutputs* outputs);
 
 	bool send_periodics(const EngineOutputs& outputs);
 

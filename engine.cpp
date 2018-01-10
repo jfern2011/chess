@@ -214,7 +214,7 @@ bool ChessEngine::_create_state_machine()
 	 * Create the task(s) to perform while in StateMachine::postsearch
 	 */
 	{
-		auto task = new Task<bool,EngineOutputs&>("postsearch");
+		auto task = new Task<bool,EngineOutputs*>("postsearch");
 		AbortIfNot(task->attach(*_protocol, &Protocol::postsearch),
 			false);
 

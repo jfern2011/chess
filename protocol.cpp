@@ -619,19 +619,19 @@ bool UCI::position(const std::string& _args) const
  *
  * @return True on success
  */
-bool UCI::postsearch(EngineOutputs& outputs)
+bool UCI::postsearch(EngineOutputs* outputs)
 {
 	AbortIfNot(transition_sig.is_connected(),
 		false);
 
-	outputs.update();
+	outputs->update();
 
 	int bestmove, ponder;
-	AbortIfNot(outputs.get<int>(_bestmove_token, bestmove), false);
+	AbortIfNot(outputs->get<int>(_bestmove_token, bestmove), false);
 
-	AbortIfNot(outputs.get<int>(_ponder_token, ponder), false);
+	AbortIfNot(outputs->get<int>(_ponder_token, ponder), false);
 
-	const std::string bestmove_s = Util::printCoordinate(bestmove);
+	const std::string bestmove_s =  Util::printCoordinate(bestmove);
 	const std::string ponder_s   =
 		Util::printCoordinate( ponder );
 
@@ -894,7 +894,7 @@ bool xBoard::init(int fd, const Search* search)
 	return true;
 }
 
-bool xBoard::postsearch(EngineOutputs& outputs)
+bool xBoard::postsearch(EngineOutputs* outputs)
 {
 	return true;
 }
@@ -933,7 +933,7 @@ bool Console::init(int fd, const Search* search)
 	return true;
 }
 
-bool Console::postsearch(EngineOutputs& outputs)
+bool Console::postsearch(EngineOutputs* outputs)
 {
 	return true;
 }
