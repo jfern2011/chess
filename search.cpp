@@ -58,12 +58,13 @@ PvSearch::PvSearch(const MoveGen& movegen,
 	: Search("PvSearch", movegen),
 	  _abort_requested(false),
 	  _best_move(0),
-	  _depth(1),
+	  _depth(0),
 	  _input_check_delay(100000),
 	  _interrupt_handler(sm),
 	  _is_init(false),
 	  _logger(logger),
 	  _mate_search(false),
+	  _max_depth(1),
 	  _next_input_check(0),
 	  _node_count(0),
 	  _node_limit(0),
@@ -281,7 +282,7 @@ bool PvSearch::search(const EngineInputs* inputs)
 
 	Util::bubble_sort(moves, n_moves);
 
-	for (int depth = 0; depth < _depth; depth++)
+	for (_depth = 0; _depth < _max_depth; _depth++)
 	{
 		int alpha = -MATE_SCORE;
 		int beta  =  MATE_SCORE;
@@ -291,7 +292,7 @@ bool PvSearch::search(const EngineInputs* inputs)
 			_search_moves(pos, moves, n_moves, alpha, beta, 0,
 				!in_check, best_move);
 
-		if (depth > 0 && _abort_requested)
+		if (_depth > 0 && _abort_requested)
 		{
 			break;
 		}
@@ -367,11 +368,11 @@ void PvSearch::set_inputs(const EngineInputs& inputs)
 	if (inputs.get_mate_search())
 	{
 		_mate_search = true;
-		_depth = _max(0, inputs.get_mate_depth() * 2 - 1);
+		_max_depth = _max(0, inputs.get_mate_depth() * 2 - 1);
 	}
 	else
 	{
-		_depth =  inputs.use_fixed_searchdepth() ?
+		_max_depth =  inputs.use_fixed_searchdepth() ?
 			inputs.get_depth() : MAX_PLY/2;
 	}
 
@@ -385,7 +386,7 @@ void PvSearch::set_inputs(const EngineInputs& inputs)
 	_logger.write(_name, "search time  = %d ms\n",
 		time);
 	_logger.write(_name, "search depth = %d plies\n",
-		_depth);
+		_max_depth);
 	_logger.write(_name, "node limit   = %lld\n",
 		_node_limit);
 }

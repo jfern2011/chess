@@ -138,9 +138,9 @@ private:
 	 */
 	int _best_move;
 
-	BUFFER(int, _current_move, MAX_PLY);
-
 	int _depth;
+
+	BUFFER(int, _current_move, MAX_PLY);
 
 	int64 _input_check_delay;
 
@@ -152,6 +152,8 @@ private:
 	Logger& _logger;
 
 	bool _mate_search;
+
+	int _max_depth;
 
 	int64 _next_input_check;
 	int64 _node_count;
