@@ -81,11 +81,15 @@ bool ChessEngine::init(algorithm_t algorithm, int cmd_fd, int log_fd,
 	if (algorithm == pvs)
 	{
 		_search = new PvSearch(
-			_movegen,*_state_machine, _logger, _tables);
+			_movegen,*_state_machine,_logger, _tables);
 	}
 	else
 	{
-		Abort(false, "unsupported search algorithm.\n");
+		std::snprintf(msg,
+			128, "unsupported search algorithm [%d]\n",
+			static_cast<int>(algorithm));
+
+		Abort(false, msg);
 	}
 
 	AbortIfNot(_search->init(), false);
@@ -94,22 +98,11 @@ bool ChessEngine::init(algorithm_t algorithm, int cmd_fd, int log_fd,
 		false);
 
 	/*
-	 * TODO: Figure out where to put this
+	 * Build the state machine. This creates the list of tasks to run
+	 * in each state:
 	 */
-	AbortIfNot(_create_state_machine(),
+	AbortIfNot(_build_state_machine(),
 		false);
-
-	/*
-	 * Allow the search algorithm to request state transitions:
-	 */
-	AbortIfNot( _state_machine->register_client(
-		_search->get_name(), _search), false);
-
-	/*
-	 * Allow the protocol to request state transitions:
-	 */
-	AbortIfNot(_state_machine->register_client(
-		_protocol->get_name(), _protocol), false);
 
 	_is_init = true;
 	return true;
@@ -124,44 +117,27 @@ bool ChessEngine::run()
 {
 	AbortIfNot(_is_init, false);
 
-	auto update = [&]() { return _state_machine->get_current_state(); };
+	auto update = [&]()
+	{
+		return _state_machine->get_current_state();
+	};
 
 	while (update() != StateMachine::exiting)
 	{
-		AbortIfNot(_state_machine->run(), false);
-/*
-		switch (state)
-		{
-		case StateMachine::idle:
-			AbortIfNot(_protocol->sniff(), false);
-			::usleep(sleep_time);
-			break;
-		case StateMachine::init_search:
-			AbortIfNot(_search->search(_inputs), false);
-			break;
-		case StateMachine::postsearch:
-			AbortIfNot(_protocol->postsearch(
-				_search->get_outputs()), false );
-			break;
-		default:
-			std::snprintf(err_msg,
-				128 , "[%s] => unexpected state: '%s'\n",
-				_name.c_str(),
-				state_name.c_str());
-
-			Abort(false, err_msg);
-		}
-*/
+		AbortIfNot( _state_machine->run(), false );
 	}
 
 	return true;
 }
 
 /**
- * Note: Ownership of tasks created here is transferred to
- *       the state machine
+ * Build the state machine. This creates task lists that run depending
+ * on the current state
+ *
+ * Note: Ownership of tasks created here is transferred to the state
+ *       machine
  */
-bool ChessEngine::_create_state_machine()
+bool ChessEngine::_build_state_machine()
 {
 	AbortIfNot(_protocol, false);
 	AbortIfNot(_search,   false);
@@ -196,8 +172,7 @@ bool ChessEngine::_create_state_machine()
 	}
 
 	/*
-	 * Create the task(s) to perform while in
-	 * StateMachine::init_search
+	 * Create the task(s) to perform while in StateMachine::init_search
 	 */
 	{
 		auto task = new Task<bool,const EngineInputs*>("search");
@@ -220,9 +195,21 @@ bool ChessEngine::_create_state_machine()
 
 		task->bind(_search->get_outputs());
 
-		AbortIfNot(_state_machine->add_task(StateMachine::postsearch,
+		AbortIfNot( _state_machine->add_task(StateMachine::postsearch,
 			task), false);
 	}
+
+	/*
+	 * Allow the search algorithm to request state transitions:
+	 */
+	AbortIfNot( _state_machine->register_client( _search->get_name(),
+		_search), false);
+
+	/*
+	 * Allow the protocol to request state transitions:
+	 */
+	AbortIfNot(_state_machine->register_client(_protocol->get_name(),
+		_protocol), false);
 
 	return true;
 }

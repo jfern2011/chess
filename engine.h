@@ -26,7 +26,7 @@ public:
 
 private:
 
-	bool _create_state_machine();
+	bool _build_state_machine();
 
 	/**
 	 * Inputs received by the GUI, which are forwarded to the search
