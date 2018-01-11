@@ -448,6 +448,14 @@ bool UCI::init(int fd, const Search* search)
 		false);
 
 	_is_init = true;
+
+	/*
+	 * Send the "uci" command to the command interface in case it was
+	 * sent by the GUI
+	 */
+	AbortIfNot( _cmd.handle_command("uci\n", 4),
+		false);
+
 	return true;
 }
 

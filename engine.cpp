@@ -98,8 +98,8 @@ bool ChessEngine::init(algorithm_t algorithm, int cmd_fd, int log_fd,
 		false);
 
 	/*
-	 * Build the state machine. This creates the list of tasks to run
-	 * in each state:
+	 * Build the state machine. This creates the list of
+	 * tasks to run in each state:
 	 */
 	AbortIfNot(_build_state_machine(),
 		false);
@@ -134,8 +134,8 @@ bool ChessEngine::run()
  * Build the state machine. This creates task lists that run depending
  * on the current state
  *
- * Note: Ownership of tasks created here is transferred to the state
- *       machine
+ * @note: Ownership of tasks created here is transferred to the state
+ *        machine
  */
 bool ChessEngine::_build_state_machine()
 {

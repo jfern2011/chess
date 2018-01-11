@@ -184,7 +184,7 @@ typedef enum
 	console_mode    = 0,
 	xboard_protocol = 1,
 	uci_protocol    = 2,
-	undefined       = 3
+	none            = 3
 
 } protocol_t;
 

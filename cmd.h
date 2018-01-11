@@ -143,11 +143,11 @@ public:
 
     bool poll();
 
+    bool handle_command( const char* _input, size_t size );
+
 private:
 
 	bool _install(const std::string& _name, signal_t* sig);
-
-	bool handle_command( const char* _input, size_t size );
 
 	/**
 	 * A record of registered commands
