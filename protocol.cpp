@@ -727,7 +727,7 @@ bool UCI::setoption(const std::string& _args)
 	if (option->type == "button")
 	{
 		auto button = dynamic_cast<const Button*>(option);
-		return button->execute();
+		return button->push();
 	}
 
 	/*

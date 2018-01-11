@@ -271,7 +271,7 @@ class UCI : public Protocol
 		 *
 		 * @return True on success
 		 */
-		bool execute() const
+		bool push() const
 		{
 			AbortIfNot(_update_sig, false);
 			AbortIfNot(_update_sig->is_connected(), false);
