@@ -156,6 +156,11 @@ private:
 		_cmds;
 
 	/**
+	 * Initialized flag
+	 */
+	bool _is_init;
+
+	/**
 	 * Write diagnostic messages to this
 	 */
 	Logger& _logger;
@@ -164,11 +169,6 @@ private:
 	 * The name of this component
 	 */
 	const std::string _name;
-
-	/**
-	 * Initialized flag
-	 */
-	bool _is_init;
 
 	/**
 	 * Listens for incoming commands

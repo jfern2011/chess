@@ -247,7 +247,7 @@ inline int PvSearch::quiesce(Position& pos, int depth, int alpha,
 
 	int best_index = -1;
 
-	for (register int i = 0; i < n_moves; i++)
+	for (register size_t i = 0; i < n_moves; i++)
 	{
 		if (!in_check)
 		{
@@ -754,7 +754,7 @@ inline int PvSearch::_search_moves(Position& pos,
 								   bool do_null,
 								   int& best)
 {
-	for (register int i = 0; i < n_moves; i++)
+	for (register size_t i = 0; i < n_moves; i++)
 	{
 		const int move = moves[i];
 

@@ -140,6 +140,11 @@ private:
 	bool _is_init;
 
 	/**
+	 * Used for logging activity
+	 */
+	Logger& _logger;
+
+	/**
 	 *  The number of moves to search for a mate in
 	 */
 	int _mate;
@@ -164,11 +169,6 @@ private:
 	 * Display this many best lines
 	 */
 	int _multipv;
-
-	/**
-	 * Used for logging activity
-	 */
-	Logger& _logger;
 
 	/**
 	 * The name of this module (for logging purposes)
@@ -197,6 +197,12 @@ private:
 	std::vector<int> _search_moves;
 
 	/**
+	 * The set of pre-initialized tables
+	 */
+	const DataTables&
+		_tables;
+
+	/**
 	 * White's increment per move, in milliseconds
 	 */
 	int _winc;
@@ -205,12 +211,6 @@ private:
 	 * The number of milliseconds on white's clock
 	 */
 	int _wtime;
-
-	/**
-	 * The set of pre-initialized databases
-	 */
-	const DataTables&
-		_tables;
 };
 
 #endif

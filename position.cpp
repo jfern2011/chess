@@ -402,6 +402,8 @@ void Position::print() const
 					piece = 'Q'; break;
 				case KING:
 					piece = 'K'; break;
+				default:
+					break;
 			}
 
 			if (_occupied[BLACK] & (one << sq))

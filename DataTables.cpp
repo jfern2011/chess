@@ -186,7 +186,7 @@ void DataTables::createDiagAttacksDatabase()
 	{
 		uint64_v occ_set; genOccupanciesDiag(i, occ_set);
 		
-		for (int j = 0; j < occ_set.size(); j++)
+		for (size_t j = 0; j < occ_set.size(); j++)
 		{
 			uint32 index = bishop_offsets[i] +
 				((diag_magics[i] * occ_set[j]) >> bishop_db_shifts[i]);
@@ -245,7 +245,7 @@ void DataTables::createRookAttacksDatabase()
 	{
 		uint64_v occ_set; genOccupanciesRook(i, occ_set);
 		
-		for (int j = 0; j < occ_set.size(); j++)
+		for (size_t j = 0; j < occ_set.size(); j++)
 		{
 			uint32 index = rook_offsets[i] +
 				((rook_magics[i] * occ_set[j]) >> rook_db_shifts[i]);
@@ -371,7 +371,7 @@ void DataTables::genOccupanciesDiag(
 	uint32_v set_bits;
 	Util::getSetBits<uint64>(diag, set_bits);
 
-	for (int i = 0; i < set_bits.size(); i++)
+	for (size_t i = 0; i < set_bits.size(); i++)
 	{
 		bit_masks.push_back(Util::getBit<uint64>(set_bits[i]));
 	}
@@ -382,7 +382,7 @@ void DataTables::genOccupanciesDiag(
 		Util::getSetBits<int>(i, i_bits);
 		uint64 mask = 0;
 
-		for (int j = 0; j < i_bits.size(); j++)
+		for (size_t j = 0; j < i_bits.size(); j++)
 			mask |= bit_masks[i_bits[j]];
 
 		occupancy_set.push_back(mask);
@@ -421,7 +421,7 @@ void DataTables::genOccupanciesRook(int square,
 	uint32_v set_bits;
 	Util::getSetBits<uint64>(range, set_bits);
 
-	for (int i = 0; i < set_bits.size(); i++)
+	for (size_t i = 0; i < set_bits.size(); i++)
 	{
 		bit_masks.push_back(Util::getBit<uint64>(set_bits[i]));
 	}
@@ -432,7 +432,7 @@ void DataTables::genOccupanciesRook(int square,
 		Util::getSetBits<int>(i, i_bits);
 		uint64 mask = 0;
 
-		for (int j = 0; j < i_bits.size(); j++)
+		for (size_t j = 0; j < i_bits.size(); j++)
 			mask |= bit_masks[i_bits[j]];
 
 		occupancy_set.push_back(mask);

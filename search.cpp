@@ -257,9 +257,9 @@ bool PvSearch::search(const EngineInputs* inputs)
 	const int sign = (to_move == WHITE ? 1 : -1);
 
 	if (to_move == WHITE)
-		_search_score = -MATE_SCORE * 2;
+		_search_score = -MATE_SCORE;
 	else
-		_search_score =  MATE_SCORE * 2;
+		_search_score =  MATE_SCORE;
 
 	int moves[MAX_MOVES];
 

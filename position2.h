@@ -638,6 +638,8 @@ inline uint64 Position::get_discover_ready(int to_move) const
 				  & (_bishops[flip(to_move)] |
 				  		 _queens[flip(to_move)])))
 				Util::clear_bit64(sq, pinned);
+		default:
+			break;
 		}
 
 		Util::clear_bit64(sq, temp);
@@ -813,6 +815,8 @@ inline uint64 Position::get_pinned_pieces( int to_move ) const
 				  & (_bishops[flip(to_move)] |
 				  		 _queens[flip(to_move)])))
 				Util::clear_bit64(sq, pinned);
+		default:
+			break;
 		}
 
 		Util::clear_bit64(sq, temp);
@@ -979,6 +983,8 @@ inline direction_t Position::is_pinned(int square, int to_move) const
 				  & (_bishops[flip(to_move)] |
 				  			 _queens[flip(to_move)]))
 				return ALONG_H1A8;
+		default:
+			break;
 		}
 	}
 
@@ -1263,8 +1269,6 @@ inline bool Position::make_move(int move)
 				 */
 				if ((_castle_rights[_ply][flip(_to_move)]))
 				{
-					const int x_side = flip(_to_move);
-
 					/*
 					 * Remove castling rights for the rook that
 					 * was captured:

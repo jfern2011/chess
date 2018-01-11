@@ -821,7 +821,7 @@ bool UCI::uci(const std::string&) const
 			output +=
 				" default " + opt->default_value;
 
-			for (auto i = 0; i < opt->vars.size(); i++)
+			for (size_t i=0; i < opt->vars.size(); i++)
 			{
 				output += " var " + opt->vars[i];
 			}

@@ -378,7 +378,7 @@ bool StateMachine::_request_transition(const std::string& _client,
  *                 component)
  */
 StateMachineClient::StateMachineClient(const std::string& name)
-	: _name(name), transition_sig()
+	: transition_sig(), _name(name)
 {
 }
 

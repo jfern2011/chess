@@ -13,9 +13,7 @@ IDIRS = abort/ signal/ types/ util/
 ODIR=obj
 
 # Assign compiler options:
-#CFLAGS=-c --std=c++11 -Wall -Wno-unused-function \
-#			$(foreach dir, $(IDIRS), -I$(dir))
-CFLAGS=-c --std=c++11 \
+CFLAGS=-c --std=c++11 -Wall \
 			$(foreach dir, $(IDIRS), -I$(dir))
 
 #----------------------------------------------------------------------

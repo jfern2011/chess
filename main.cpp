@@ -140,14 +140,12 @@ bool go(int argc, char** argv)
 	AbortIfNot(cmd.get( "logpath", _logpath),
 		false);
 
-	protocol_t protocol_enum = get_protocol(cmd);
+	protocol_t protocol_enum =
+		get_protocol(cmd);
+		
 	AbortIf(protocol_enum == none,
 		false);
 
-	/*
-	 * Append a unique suffix to the filename instead
-	 * of overwriting an existing file:
-	 */
 	std::string logpath;
 	AbortIfNot(get_unique_filename(_logpath, logpath),
 		false);

@@ -96,7 +96,7 @@ void EngineOutputs::update()
 const element_base*
 	EngineOutputs::operator[](const std::string& name) const
 {
-	for (auto i = 0; i < _elements.size(); i++)
+	for (size_t i = 0; i < _elements.size(); i++)
 	{
 		auto elem = _elements[i];
 		if (elem->get_name() == name)

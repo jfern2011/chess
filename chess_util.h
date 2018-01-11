@@ -119,6 +119,12 @@ namespace Util
 
 		if (in_check) out += "+";
 
+		if (promote != INVALID)
+		{
+			out += "="
+				+ enum2piece( static_cast<piece_t>(moved) );
+		}
+
 		return out;
 	}
 

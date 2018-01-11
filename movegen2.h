@@ -2665,7 +2665,6 @@ inline bool MoveGen::validate_move(const Position& pos, int move,
 	const int captured = CAPTURED(move);
 	const int from     = FROM(move);
 	const int moved    = MOVED(move);
-	const int promote  = PROMOTE(move);
 	const int to       = TO(move);
 
 	const int to_move = pos._to_move;
