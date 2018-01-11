@@ -845,7 +845,7 @@ bool UCI::uci(const std::string&) const
 		}
 		else if (ptr->type == "string")
 		{
-			auto opt = dynamic_cast<const Check*>(ptr);
+			auto opt = dynamic_cast<const String*>(ptr);
 			output +=
 				" default " + opt->default_value;
 		}
