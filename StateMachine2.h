@@ -249,7 +249,7 @@ public:
 	/**
 	 * Transition requests can only be made through this
 	 */
-	sig_t transition_sig;
+	sig_t state_update_sig;
 
 protected:
 

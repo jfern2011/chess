@@ -233,10 +233,10 @@ bool PvSearch::search(const EngineInputs* inputs)
 {
 	AbortIfNot(_is_init, false);
 
-	AbortIfNot(transition_sig.is_connected(),
+	AbortIfNot(state_update_sig.is_connected(),
 		false);
 
-	AbortIfNot(transition_sig.raise(_name, StateMachine::searching,
+	AbortIfNot(state_update_sig.raise(_name, StateMachine::searching,
 		false), false);
 
 	_start_time = Clock::get_monotonic_time();
@@ -288,7 +288,7 @@ bool PvSearch::search(const EngineInputs* inputs)
 		int beta  =  MATE_SCORE;
 
 		int best_move = 0;
-		const int score = sign * 
+		const int score = -sign * 
 			_search_moves(pos, moves, n_moves, alpha, beta, 0,
 				!in_check, best_move);
 
@@ -320,10 +320,10 @@ bool PvSearch::search(const EngineInputs* inputs)
 	_ponder_move = _pv[0][1];
 
 	/*
-	 * Move the engine into the postsearch state:
+	 * Request a transition to the postsearch state:
 	 */
-	AbortIfNot(transition_sig.raise(_name,
-			StateMachine::postsearch, false ),
+	AbortIfNot(state_update_sig.raise(
+			_name, StateMachine::postsearch, false),
 		false);
 
 	return true;

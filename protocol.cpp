@@ -422,11 +422,14 @@ bool UCI::go(const std::string& _args)
 	/*
 	 * Request a state transition to StateMachine::init_search
 	 */
-	AbortIfNot(transition_sig.is_connected(),
+	AbortIfNot(state_update_sig.is_connected(),
 		false);
 
-	return transition_sig.raise(_myname,
-		StateMachine::init_search, false );
+	AbortIfNot(state_update_sig.raise( _myname,
+			StateMachine::init_search, false),
+		false);
+
+	return true;
 }
 
 /**
@@ -629,9 +632,6 @@ bool UCI::position(const std::string& _args) const
  */
 bool UCI::postsearch(EngineOutputs* outputs)
 {
-	AbortIfNot(transition_sig.is_connected(),
-		false);
-
 	outputs->update();
 
 	int bestmove, ponder;
@@ -650,8 +650,11 @@ bool UCI::postsearch(EngineOutputs* outputs)
 
 	write("%s\n", out.c_str());
 
-	transition_sig.raise(_myname,
-		StateMachine::idle, false );
+	AbortIfNot(state_update_sig.is_connected(),
+		false);
+	AbortIfNot(state_update_sig.raise(
+			_myname,StateMachine::idle, false),
+		false);
 
 	return true;
 }
@@ -663,7 +666,10 @@ bool UCI::postsearch(EngineOutputs* outputs)
  */
 bool UCI::quit(const std::string&)
 {
-	AbortIfNot(transition_sig.raise(_myname, StateMachine::exiting,
+	AbortIfNot(state_update_sig.is_connected(),
+		false);
+
+	AbortIfNot(state_update_sig.raise(_myname, StateMachine::exiting,
 		false), false);
 
 	return true;
@@ -776,8 +782,13 @@ bool UCI::sniff()
  */
 bool UCI::stop(const std::string&)
 {
-	return transition_sig.raise(_myname, StateMachine::postsearch,
+	AbortIfNot(state_update_sig.is_connected(), false);
+
+	AbortIfNot(state_update_sig.raise(
+			_myname, StateMachine::postsearch , false),
 		false);
+
+	return true;
 }
 
 /**
@@ -871,11 +882,13 @@ bool UCI::uci(const std::string&) const
  */
 bool UCI::ucinewgame(const std::string&)
 {
-	AbortIfNot( transition_sig.is_connected(),
+	AbortIfNot(state_update_sig.is_connected(),
 		false);
 
-	return transition_sig.raise(_myname,
-		StateMachine::idle, false);
+	AbortIfNot(state_update_sig.raise( _myname,
+		StateMachine::idle, false), false);
+
+	return true;
 }
 
 xBoard::xBoard(const DataTables& tables, EngineInputs& inputs,

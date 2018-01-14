@@ -189,6 +189,8 @@ inline int PvSearch::quiesce(Position& pos, int depth, int alpha,
 	int moves[MAX_MOVES];
 	size_t n_moves;
 
+	const int sign = pos.get_turn() == WHITE ? 1 : -1;
+
 	if (in_check)
 	{
 		n_moves =
@@ -205,14 +207,13 @@ inline int PvSearch::quiesce(Position& pos, int depth, int alpha,
 		 	 * Add a penalty to the mate score the encourage
 		 	 * mates closer to the root:
 		 	 */
-			return depth - MATE_SCORE;
+			return sign * (depth - MATE_SCORE);
 		}
 	}
 
 	/*
 	 * Compute an initial score for this position:
 	 */
-	const int sign = pos.get_turn() == WHITE ? 1 : -1;
 	const int score =
 		sign * pos.get_material();
 
@@ -689,11 +690,13 @@ inline int PvSearch::_search(Position& pos, int depth, int alpha,
 			 */
 			save_pv(depth, 0);
 
+			const int sign = pos.get_turn() == WHITE ? 1 : -1;
+
 			/*
 			 * Add a penalty to the mate score the encourage mates
 			 * closer to the root:
 			 */
-			return depth - MATE_SCORE;
+			return sign * (depth - MATE_SCORE);
 		}
 	}
 	else

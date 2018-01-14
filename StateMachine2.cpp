@@ -255,7 +255,7 @@ bool StateMachine::register_client(const std::string& _name,
 
 	_clients.push_back(name);
 
-	AbortIfNot(client->transition_sig.attach<StateMachine>(*this,
+	AbortIfNot(client->state_update_sig.attach<StateMachine>(*this,
 		&StateMachine::_request_transition), false);
 
 	return true;
@@ -378,7 +378,7 @@ bool StateMachine::_request_transition(const std::string& _client,
  *                 component)
  */
 StateMachineClient::StateMachineClient(const std::string& name)
-	: transition_sig(), _name(name)
+	: state_update_sig(), _name(name)
 {
 }
 
