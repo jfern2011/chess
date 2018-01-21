@@ -93,11 +93,11 @@ private:
 	std::string _name;
 
 	/**
-	 * The task(s) to run when inside of
+	 * The task(s) to run while inside of
 	 * this state
 	 */
 	std::vector<
-		std::unique_ptr<Signal::generic>
+		std::unique_ptr<Signal::generic >
 		> _tasks;
 };
 
@@ -163,7 +163,7 @@ public:
 
 	void disable_logging();
 
-	void enable_logging();
+	void  enable_logging();
 
 	state_t get_current_state() const;
 
