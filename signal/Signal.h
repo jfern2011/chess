@@ -69,6 +69,7 @@ namespace Signal
 
         virtual ~generic() {}
 
+        virtual generic* clone()    const = 0;
         virtual bool is_connected() const = 0;
         virtual void v_raise() = 0;
     };
@@ -94,8 +95,8 @@ namespace Signal
     public:
 
         virtual ~signal_t() {}
-        
-        virtual signal_t<R,A...>* clone() const = 0;
+
+        virtual generic* clone()    const = 0;
         virtual bool detach() = 0;
         virtual R raise(A...) = 0;
     };
@@ -222,12 +223,12 @@ namespace Signal
         }
 
         /**
-         *  A factory method that creates a copy of this object
+         * A factory method that creates a copy of this object
          *
-         * @return A \ref signal_t pointer to the newly created
+         * @return A \ref generic pointer to the newly created
          *         object
          */
-        signal_t<R,A...>* clone() const
+        generic* clone() const
         {
             mem_ptr<R,C,A...>* sig = new mem_ptr<R,C,A...>(_obj);
 
@@ -409,12 +410,12 @@ namespace Signal
         }
 
         /**
-         *  A factory method that creates a copy of this object
+         * A factory method that creates a copy of this object
          *
-         * @return A \ref signal_t pointer to the newly created
+         * @return A \ref generic pointer to the newly created
          *         object
          */
-        signal_t<R,A...>* clone() const
+        generic* clone() const
         {
             fcn_ptr<R,A...>* sig = new fcn_ptr<R,A...>( _func );
 
@@ -623,7 +624,8 @@ namespace Signal
 
                 _is_mem_ptr = rhs._is_mem_ptr;
                 _sargs = rhs._sargs;
-                _sig = rhs._sig->clone();
+                _sig   = dynamic_cast<
+                    signal_t<R,A...>*>( rhs._sig->clone() );
             }
 
             return *this;
@@ -782,6 +784,17 @@ namespace Signal
         {
             _sargs.args =
                 std::make_tuple(std::forward<T>(args)...);
+        }
+
+        /**
+         * A factory method that creates a copy of this object
+         *
+         * @return A \ref generic pointer to the newly created
+         *         object
+         */
+        virtual generic* clone() const
+        {
+            return new Signal(*this);
         }
 
         /**

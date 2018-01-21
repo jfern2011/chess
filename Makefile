@@ -62,7 +62,7 @@ CHESS_SRC = chess.cpp         \
             position.cpp      \
             protocol.cpp      \
             search.cpp        \
-            StateMachine2.cpp
+            StateMachine3.cpp
 
 CHESS_H   = chess.h           \
 			cmd.h             \
@@ -76,7 +76,7 @@ CHESS_H   = chess.h           \
 			position2.h       \
 			protocol2.h       \
 			search2.h         \
-			StateMachine2.h
+			StateMachine3.h
 
 CHESS_OBJ  = $(patsubst %.cpp, $(ODIR)/%.o, $(CHESS_SRC))
 

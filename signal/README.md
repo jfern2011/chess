@@ -1,4 +1,4 @@
-# Signal: A light-weight C++ callback framework
+# Signal: A lightweight C++ callback framework
 
 Create customized "signals" that, when raised, are handled by user-
 defined handlers. Signals can be tailored to run with class

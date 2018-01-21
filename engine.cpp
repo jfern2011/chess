@@ -134,8 +134,7 @@ bool ChessEngine::run()
  * Build the state machine. This creates task lists that run depending
  * on the current state
  *
- * @note: Ownership of tasks created here is transferred to the state
- *        machine
+ * @return True on success
  */
 bool ChessEngine::_build_state_machine()
 {
@@ -147,22 +146,20 @@ bool ChessEngine::_build_state_machine()
 	 */
 	{
 		auto task = new Task<bool>("sniff");
-		AbortIfNot(task->attach(*_protocol, &Protocol::sniff),
+		AbortIfNot(task->attach( *_protocol, &Protocol::sniff ),
 			false);
 
-		AbortIfNot(_state_machine->add_task(StateMachine::idle, task),
-			false);
+		AbortIfNot( _state_machine->add_task(StateMachine::idle,
+			task), false);
 	}
 
 	{
 		auto task = new Task<int,useconds_t>("usleep");
-		
 		AbortIfNot(task->attach(&::usleep),
 			false);
-
 		/*
-		 * When idle, poll for input every 100 ms to reduce wasted
-		 * CPU time:
+		 * When idle, poll for input every 100 ms to reduce wasted CPU
+		 * time:
 		 */
 		const int sleep_time = 100000;
 		task->bind(sleep_time);
@@ -172,7 +169,7 @@ bool ChessEngine::_build_state_machine()
 	}
 
 	/*
-	 * Create the task(s) to perform while in StateMachine::init_search
+	 * Create the task(s) to perform when in StateMachine::init_search
 	 */
 	{
 		auto task = new Task<bool,const EngineInputs*>("search");
@@ -186,30 +183,30 @@ bool ChessEngine::_build_state_machine()
 	}
 
 	/*
-	 * Create the task(s) to perform while in StateMachine::postsearch
+	 * Create the task(s) to perform when in StateMachine::post_search
 	 */
 	{
 		auto task = new Task<bool,EngineOutputs*>("postsearch");
-		AbortIfNot(task->attach(*_protocol, &Protocol::postsearch),
+		AbortIfNot( task->attach( *_protocol, &Protocol::postsearch ),
 			false);
 
 		task->bind(_search->get_outputs());
 
-		AbortIfNot( _state_machine->add_task(StateMachine::postsearch,
+		AbortIfNot(_state_machine->add_task(StateMachine::post_search,
 			task), false);
 	}
 
 	/*
-	 * Allow the search algorithm to request state transitions:
-	 */
-	AbortIfNot( _state_machine->register_client( _search->get_name(),
-		_search), false);
-
-	/*
 	 * Allow the protocol to request state transitions:
 	 */
-	AbortIfNot(_state_machine->register_client(_protocol->get_name(),
-		_protocol), false);
+	AbortIfNot(_state_machine->register_client(_protocol),
+		false);
+
+	/*
+	 * Allow the search algorithm to request state transitions:
+	 */
+	AbortIfNot( _state_machine->register_client(_search ),
+		false);
 
 	return true;
 }

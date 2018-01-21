@@ -422,11 +422,12 @@ bool UCI::go(const std::string& _args)
 	/*
 	 * Request a state transition to StateMachine::init_search
 	 */
-	AbortIfNot(state_update_sig.is_connected(),
+	AbortIfNot(
+			state_update_sig.is_connected(),
 		false);
 
-	AbortIfNot(state_update_sig.raise( _myname,
-			StateMachine::init_search, false),
+	AbortIfNot( state_update_sig.raise(this,
+			StateMachine::init_search),
 		false);
 
 	return true;
@@ -650,10 +651,11 @@ bool UCI::postsearch(EngineOutputs* outputs)
 
 	write("%s\n", out.c_str());
 
-	AbortIfNot(state_update_sig.is_connected(),
+	AbortIfNot(
+			state_update_sig.is_connected(),
 		false);
-	AbortIfNot(state_update_sig.raise(
-			_myname,StateMachine::idle, false),
+	AbortIfNot( state_update_sig.raise(this,
+			StateMachine::idle),
 		false);
 
 	return true;
@@ -669,8 +671,8 @@ bool UCI::quit(const std::string&)
 	AbortIfNot(state_update_sig.is_connected(),
 		false);
 
-	AbortIfNot(state_update_sig.raise(_myname, StateMachine::exiting,
-		false), false);
+	AbortIfNot(state_update_sig.raise(this, StateMachine::exiting),
+		false);
 
 	return true;
 }
@@ -782,10 +784,12 @@ bool UCI::sniff()
  */
 bool UCI::stop(const std::string&)
 {
-	AbortIfNot(state_update_sig.is_connected(), false);
+	AbortIfNot(
+			state_update_sig.is_connected(),
+		false);
 
-	AbortIfNot(state_update_sig.raise(
-			_myname, StateMachine::postsearch , false),
+	AbortIfNot( state_update_sig.raise(this,
+			StateMachine::post_search),
 		false);
 
 	return true;
@@ -882,11 +886,13 @@ bool UCI::uci(const std::string&) const
  */
 bool UCI::ucinewgame(const std::string&)
 {
-	AbortIfNot(state_update_sig.is_connected(),
+	AbortIfNot(
+			state_update_sig.is_connected(),
 		false);
 
-	AbortIfNot(state_update_sig.raise( _myname,
-		StateMachine::idle, false), false);
+	AbortIfNot( state_update_sig.raise(this,
+			StateMachine::idle),
+		false);
 
 	return true;
 }

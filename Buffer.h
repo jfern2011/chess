@@ -110,6 +110,19 @@ public:
 	}
 
 	/**
+	 * Grab the element at the specified index. This is equivalent to
+	 * the indexing operator []
+	 *
+	 * @param[in] index The index to look up
+	 *
+	 * @return The element at \a index, or the first element on error
+	 */
+	inline T& at(uint32 index)
+	{
+		return operator[](index);
+	}
+
+	/**
 	 * Indexing operator. This will return a reference to the element
 	 * at the specified index
 	 *

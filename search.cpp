@@ -233,11 +233,13 @@ bool PvSearch::search(const EngineInputs* inputs)
 {
 	AbortIfNot(_is_init, false);
 
-	AbortIfNot(state_update_sig.is_connected(),
+	AbortIfNot(
+			state_update_sig.is_connected(),
 		false);
 
-	AbortIfNot(state_update_sig.raise(_name, StateMachine::searching,
-		false), false);
+	AbortIfNot( state_update_sig.raise(this,
+			StateMachine::searching),
+		false);
 
 	_start_time = Clock::get_monotonic_time();
 
@@ -320,10 +322,10 @@ bool PvSearch::search(const EngineInputs* inputs)
 	_ponder_move = _pv[0][1];
 
 	/*
-	 * Request a transition to the postsearch state:
+	 * Transition into the post_search state:
 	 */
 	AbortIfNot(state_update_sig.raise(
-			_name, StateMachine::postsearch, false),
+			this, StateMachine::post_search),
 		false);
 
 	return true;

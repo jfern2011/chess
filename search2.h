@@ -5,7 +5,7 @@
 #include "EngineInputs.h"
 #include "EngineOutputs.h"
 #include "movegen2.h"
-#include "StateMachine2.h"
+#include "StateMachine3.h"
 
 /**
  * The type of search algorithm being employed
