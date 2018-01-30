@@ -65,6 +65,8 @@ public:
 
 	bool set_increment(int ms, int side);
 
+	void set_infinite_search(bool value);
+
 	bool set_mate_depth(int moves);
 
 	void set_mate_search(bool val);
@@ -80,6 +82,8 @@ public:
 	void set_ponder(bool on);
 
 	bool set_position(const Position& pos);
+
+	bool run_infinite_search() const;
 
 	bool set_time(int ms, int side);
 
@@ -133,6 +137,11 @@ private:
 	 * Size of the hash tables, in MB
 	 */
 	int _hash_size;
+
+	/**
+	 * True if we're running an infinite search
+	 */
+	bool _infinite_search;
 
 	/**
 	 * True if \ref init() was called

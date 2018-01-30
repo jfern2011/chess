@@ -392,8 +392,8 @@ bool UCI::go(const std::string& _args)
 		else if (*iter == "infinite")
 		{
 			searchmoves = false;
-
-			parse_error = !inputs.set_depth(MAX_PLY);
+			
+			inputs.set_infinite_search(true);
 		}
 
 		if (parse_error)

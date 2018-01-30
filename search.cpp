@@ -59,6 +59,7 @@ PvSearch::PvSearch(const MoveGen& movegen,
 	  _abort_requested(false),
 	  _best_move(0),
 	  _depth(0),
+	  _infinite(false),
 	  _input_check_delay(100000),
 	  _interrupt_handler(sm),
 	  _is_init(false),
@@ -284,10 +285,13 @@ bool PvSearch::search(const EngineInputs* inputs)
 
 	Util::bubble_sort(moves, n_moves);
 
-	for (_depth = 0; _depth < _max_depth; _depth++)
+	for (_depth = 0; _depth < _max_depth || _infinite; _depth++)
 	{
 		int alpha = -MATE_SCORE;
 		int beta  =  MATE_SCORE;
+
+		std::printf("searching depth = %d.\n", _depth);
+		std::fflush(stdout);
 
 		int best_move = 0;
 		const int score = -sign * 
@@ -342,6 +346,13 @@ void PvSearch::set_inputs(const EngineInputs& inputs)
 
 	const int total_time = inputs.get_time( to_move );
 
+	_infinite = inputs.run_infinite_search();
+	if (_infinite)
+	{
+		_logger.write( _name, "infinite search mode.\n" );
+		return;
+	}
+
 	/*
 	 *  1. Limit the search time (milliseconds). We always
 	 *     give ourselves at least 1 second
@@ -357,6 +368,9 @@ void PvSearch::set_inputs(const EngineInputs& inputs)
 		const int moves_left = inputs.get_movestogo();
 		if (moves_left != 0)
 		{
+			// TODO: What if we aren't told how many moves
+			//       are left?
+
 			time = _max(1000,total_time / moves_left);
 		}
 	}

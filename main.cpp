@@ -35,8 +35,8 @@ bool create_cmdline_opts(CommandLineOptions& opts)
 }
 
 /**
- * Get the type of protocol to use. This step is done prior
- * to initialization
+ * Get the protocol to use. This step is done prior to
+ * initialization
  *
  * @return The protocol enumerated value
  */

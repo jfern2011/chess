@@ -142,6 +142,11 @@ private:
 
 	BUFFER(int, _current_move, MAX_PLY);
 
+	/**
+	 * True if we're running an infinite search
+	 */
+	bool _infinite;
+
 	int64 _input_check_delay;
 
 	InterruptHandler
@@ -643,7 +648,7 @@ inline int PvSearch::_search(Position& pos, int depth, int alpha,
 
 		const int64 t_now = Clock::get_monotonic_time();
 
-		if (_check_limits(t_now))
+		if (!_infinite && _check_limits(t_now))
 		{
 			_abort_requested = true;
 			return beta;
@@ -663,15 +668,17 @@ inline int PvSearch::_search(Position& pos, int depth, int alpha,
 	}
 
 	/*
+	 * Don't quiece() if we need to get out of check:
+	 */
+	const int to_move   = pos.get_turn();
+	const bool in_check = pos.in_check(to_move);
+
+	/*
 	 * Forward this position to quiesce() after we have hit our
 	 * search limit:
 	 */
-	if (_depth <= depth)
+	if (_depth <= depth && !in_check)
 		return quiesce(pos, depth, alpha, beta);
-
-
-	const int to_move   = pos.get_turn();
-	const bool in_check = pos.in_check(to_move);
 
 	int moves[MAX_MOVES];
 

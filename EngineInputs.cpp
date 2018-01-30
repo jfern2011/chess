@@ -17,6 +17,7 @@ EngineInputs::EngineInputs(const DataTables& tables, Logger& logger)
 	  _fixed_searchnodes(false),
 	  _fixed_searchtime(false),
 	  _hash_size(0),
+	  _infinite_search( false ),
 	  _is_init(false),
 	  _logger(logger),
 	  _mate(-1),
@@ -187,6 +188,18 @@ bool EngineInputs::init(const Position& pos)
 
 	_is_init = true;
 	return true;
+}
+
+/**
+ * Get the infinite search flag. If true, the search
+ * will continue until the user commands a state
+ * change
+ *
+ * @return True to run an infinite search
+ */
+bool EngineInputs::run_infinite_search() const
+{
+	return _infinite_search;
 }
 
 /**
@@ -383,6 +396,15 @@ bool EngineInputs::set_increment(int ms, int side)
 	}
 
 	return true;
+}
+
+/**
+ * Set the infinite search flag. This will cause the engine to ignore
+ * time and depth constraints
+ */
+void EngineInputs::set_infinite_search(bool value)
+{
+	_infinite_search = value;
 }
 
 /**
