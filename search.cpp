@@ -467,9 +467,9 @@ bool PvSearch::is_upper_bound() const
  */
 int PvSearch::mate_in() const
 {
-	if (_abs(_search_score - MATE_SCORE) <= MAX_PLY)
+	if (MATE_SCORE - _abs(_search_score) <= MAX_PLY)
 	{
-		int depth = _abs(MATE_SCORE - _search_score);
+		int depth = MATE_SCORE - _abs(_search_score);
 		if (depth % 2 == 0) return depth / 2;
 		else return (depth+1)/2;
 	}

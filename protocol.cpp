@@ -792,10 +792,12 @@ bool UCI::send_periodics(EngineOutputs& outputs) const
 	
 	/* pv or multipv */
 
-	output += " score cp " + score_s;
+	output += " score ";
 
 	if (0 <= mate_in)
-		output += " mate " + mate_in_s;
+		output += "mate " + mate_in_s;
+	else
+		output += "cp "   + score_s;
 
 	if (fail_hi)
 		output += " lowerbound";
