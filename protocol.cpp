@@ -199,20 +199,36 @@ bool UCI::_init_outputs(const Search* search)
 	auto& outputs =
 		search->get_outputs();
 
-	_bestmove_token = outputs.get_id("bestmove");
-	AbortIf(_bestmove_token < 0, false);
-
-	_ponder_token   = outputs.get_id( "ponder" );
-	AbortIf(_ponder_token   < 0, false);
-
-	for (int i = 0; i < MAX_PV; i++)
-	{
-		std::string in;
-		AbortIfNot( Util::to_string(i,in), false );
-
-		_pv_tokens[i] = outputs.get_id("pv_" + in);
-		AbortIf(_pv_tokens[i] < 0, false);
-	}
+	AbortIf((_bestmove_token = outputs.get_id("bestmove")) < 0,
+		false);
+	AbortIf((_ponder_token = outputs.get_id("ponder")) < 0,
+		false);
+	AbortIf((_pv_token = outputs.get_id("pv")) < 0,
+		false);
+	AbortIf((_search_depth_token = outputs.get_id("search_depth")) < 0,
+		false);
+	AbortIf((_nodes_searched_token = outputs.get_id("nodes_searched")) < 0,
+		false);
+	AbortIf((_search_time_token = outputs.get_id("search_time")) < 0,
+		false);
+	AbortIf((_num_lines_token = outputs.get_id("nlines")) < 0,
+		false);
+	AbortIf((_search_score_token = outputs.get_id("search_score")) < 0,
+		false);
+	AbortIf((_mate_in_token = outputs.get_id("mate_in")) < 0,
+		false);
+	AbortIf((_fail_hi_token = outputs.get_id("fail_hi")) < 0,
+		false);
+	AbortIf((_fail_lo_token = outputs.get_id("fail_lo")) < 0,
+		false);
+	AbortIf((_current_move_token = outputs.get_id("current_move")) < 0,
+		false);
+	AbortIf((_current_movenumber_token = outputs.get_id("current_move_number")) < 0,
+		false);
+	AbortIf((_hash_usage_token = outputs.get_id("hash_usage")) < 0,
+		false);
+	AbortIf((_nps_token = outputs.get_id("nps")) < 0,
+		false);
 
 	return true;
 }
@@ -704,12 +720,94 @@ bool UCI::register_engine(const std::string&) const
  *
  * @return True on success
  */
-bool UCI::send_periodics(const EngineOutputs& outputs)
+bool UCI::send_periodics(EngineOutputs& outputs) const
 {
-	std::string output = "info ";
+	outputs.update();
 
+	std::string output = "info";
+
+	std::string depth_s,
+				nodes_s,
+				time_s,
+				score_s,
+				mate_in_s,
+				node_type_s,
+				current_move_s,
+				move_number_s,
+				hash_permill_s,
+				nps_s,
+				pv;
+
+	int depth;
+	int64 nodes, time;
+	int score, mate_in;
+	bool fail_lo, fail_hi;
+	int current_move, move_number;
+	double hash_permill;
+	int64 nps;
+
+	AbortIfNot(outputs.get(_search_depth_token, depth), false);
+	AbortIfNot(outputs.get(_nodes_searched_token, nodes), false);
+	AbortIfNot(outputs.get(_search_time_token, time), false);
+	time /= 1000000; // milliseconds
+
+	AbortIfNot(outputs.get(_search_score_token, score), false);
+	AbortIfNot(outputs.get(_mate_in_token, mate_in), false);
+	AbortIfNot(outputs.get(_fail_hi_token, fail_hi), false);
+	AbortIfNot(outputs.get(_fail_lo_token, fail_lo), false);
+	AbortIfNot(outputs.get(_current_move_token, current_move), false);
+	AbortIfNot(outputs.get(_current_movenumber_token, move_number), false);
+	AbortIfNot(outputs.get(_hash_usage_token, hash_permill), false);
+	hash_permill *= 10; // permill
+
+	AbortIfNot(outputs.get(_nps_token, nps), false);
+	AbortIfNot(outputs.get(_pv_token, pv), false);
+
+	AbortIfNot(Util::to_string(depth, depth_s),
+		false);
+	AbortIfNot(Util::to_string(nodes, nodes_s),
+		false);
+	AbortIfNot(Util::to_string(time, time_s),
+		false);
+	AbortIfNot(Util::to_string(score, score_s),
+		false);
+	AbortIfNot(Util::to_string(mate_in, mate_in_s),
+		false);
+
+	if (fail_lo)
+		node_type_s = "upperbound";
+	if (fail_hi)
+		node_type_s = "lowerbound";
+
+	current_move_s = Util::printCoordinate(current_move);
+
+	AbortIfNot(Util::to_string(move_number, move_number_s), false);
+	AbortIfNot(Util::to_string((int)hash_permill, hash_permill_s), false);
+	AbortIfNot(Util::to_string(nps, nps_s), false);
+
+	output += " depth " + depth_s;
+	output += " time "  + time_s;
+	output += " nodes " + nodes_s;
+	output += " pv "    + pv;
 	
+	/* pv or multipv */
 
+	output += " score cp " + score_s;
+
+	if (0 <= mate_in)
+		output += " mate " + mate_in_s;
+
+	if (fail_hi)
+		output += " lowerbound";
+	else if (fail_lo)
+		output += " upperbound";
+
+	output += " currmove " + current_move_s;
+	output += " currmovenumber " + move_number_s;
+	output += " hashfull " + hash_permill_s;
+	output += " nps " + nps_s;
+
+	write("%s\n", output.c_str());
 	return true;
 }
 
@@ -935,7 +1033,7 @@ bool xBoard::postsearch(EngineOutputs* outputs)
 	return true;
 }
 
-bool xBoard::send_periodics(const EngineOutputs& outputs)
+bool xBoard::send_periodics(EngineOutputs& outputs) const
 {
 	return true;
 }
@@ -974,7 +1072,7 @@ bool Console::postsearch(EngineOutputs* outputs)
 	return true;
 }
 
-bool Console::send_periodics(const EngineOutputs& outputs)
+bool Console::send_periodics(EngineOutputs& outputs) const
 {
 	return true;
 }

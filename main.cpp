@@ -150,7 +150,7 @@ bool go(int argc, char** argv)
 	AbortIfNot(get_unique_filename(_logpath, logpath),
 		false);
 
-#if 1
+#if 0
 	const int logfd = STDERR_FILENO;
 #else
 	const int logfd =

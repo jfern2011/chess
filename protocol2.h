@@ -38,7 +38,7 @@ public:
 
 	virtual bool postsearch(EngineOutputs* outputs) = 0;
 
-	virtual bool send_periodics(const EngineOutputs& outputs)
+	virtual bool send_periodics(EngineOutputs& outputs) const
 		= 0;
 
 	virtual bool sniff() = 0;
@@ -539,7 +539,7 @@ public:
 
 	bool register_engine(const std::string&) const;
 
-	bool send_periodics(const EngineOutputs& outputs);
+	bool send_periodics(EngineOutputs& outputs) const;
 
 	bool setoption(const std::string& _args);
 
@@ -580,10 +580,23 @@ private:
 	int _ponder_token;
 
 	/**
-	 * The tokens used to look up the best N principal
+	 * The token used to look up the best N principal
 	 * variations
 	 */
-	BUFFER(int, _pv_tokens, MAX_PV);
+	int _pv_token;
+
+	int _search_depth_token;
+	int _nodes_searched_token;
+	int _search_time_token;
+	int _num_lines_token;
+	int _search_score_token;
+	int _mate_in_token;
+	int _fail_hi_token;
+	int _fail_lo_token;
+	int _current_move_token;
+	int _current_movenumber_token;
+	int _hash_usage_token;
+	int _nps_token;
 };
 
 /**
@@ -609,7 +622,7 @@ public:
 
 	bool postsearch(EngineOutputs* outputs);
 
-	bool send_periodics(const EngineOutputs& outputs);
+	bool send_periodics(EngineOutputs& outputs) const;
 
 	bool sniff();
 
@@ -644,7 +657,7 @@ public:
 
 	bool postsearch(EngineOutputs* outputs);
 
-	bool send_periodics(const EngineOutputs& outputs);
+	bool send_periodics(EngineOutputs& outputs) const;
 
 	bool sniff();
 

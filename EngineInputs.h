@@ -39,6 +39,8 @@ public:
 
 	int get_movetime() const;
 
+	int get_multipv()  const;
+
 	int64 get_node_limit() const;
 
 	bool get_ponder() const;

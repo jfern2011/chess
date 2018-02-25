@@ -44,12 +44,16 @@ public:
 
 	virtual bool search(const EngineInputs* inputs) = 0;
 
+	virtual bool send_periodics();
+
 protected:
 
 	const MoveGen& _movegen;
 
 	EngineOutputs _outputs;
 };
+
+class Protocol;
 
 class PvSearch : public Search
 {
@@ -96,23 +100,46 @@ public:
 	PvSearch(const MoveGen& movegen,
 		     StateMachine& sm,
 		     Logger& logger,
+		     const Protocol* protocol,
 		     const DataTables& tables);
 
 	~PvSearch();
+
+	int current_depth() const;
+
+	int current_move()  const;
+
+	int current_move_number() const;
 
 	int get_best_move() const;
 
 	std::string get_lines() const;
 
+	int get_num_lines() const;
+
 	int get_ponder_move() const;
 
 	std::string get_pv(Position& pos) const;
+
+	int64 get_search_rate() const;
+
+	int get_search_score()  const;
+
+	double hash_usage() const;
 
 	bool init();
 
 	void insert_pv(const std::string& pv, int score);
 
 	bool is_mated(int to_move) const;
+
+	bool is_lower_bound() const;
+
+	bool is_upper_bound() const;
+
+	int mate_in() const;
+
+	int64 nodes_searched() const;
 
 	int quiesce(Position& pos, int depth, int alpha, int beta);
 
@@ -123,6 +150,10 @@ public:
 	int see(Position& pos, int square, int to_move, int move=0) const;
 
 	void set_inputs(const EngineInputs& inputs);
+
+	bool send_periodics();
+
+	int64 time_used();
 
 private:
 
@@ -148,6 +179,9 @@ private:
 
 	BUFFER(int, _current_move, MAX_PLY);
 
+	bool _fail_high;
+	bool _fail_low;
+
 	/**
 	 * True if we're running an infinite search
 	 */
@@ -166,13 +200,19 @@ private:
 
 	int _max_depth;
 
+	int _movenum;
+
 	int64 _next_input_check;
 	int64 _node_count;
 	int64 _node_limit;
 
 	int64 _nps;
 
+	size_t _num_pv;
+
 	int _ponder_move;
+
+	const Protocol* _protocol;
 
 	BUFFER(int, _pv, MAX_PLY, MAX_PLY);
 
@@ -675,6 +715,10 @@ inline int PvSearch::_search(Position& pos, int depth, int alpha,
 
 		_next_input_check =
 			_node_count + _input_check_delay;
+/*
+		if (_depth > 0)
+			send_periodics();
+ */
 	}
 
 	/*
@@ -689,15 +733,7 @@ inline int PvSearch::_search(Position& pos, int depth, int alpha,
 	 * search limit:
 	 */
 	if (_depth <= depth && !in_check)
-	{
 		return quiesce(pos, depth, alpha, beta);
-/*
-		if (to_move == WHITE)
-			return  0;//pos.get_material();
-		else
-			return -0;//pos.get_material();
- */
-	}
 
 	int moves[MAX_MOVES];
 
@@ -787,6 +823,8 @@ inline int PvSearch::_search_moves(Position& pos,
 {
 	for (register size_t i = 0; i < n_moves; i++)
 	{
+		if (_depth == 0) _movenum = i;
+
 		const int move = moves[i];
 
 		/*

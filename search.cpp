@@ -1,3 +1,4 @@
+#include "protocol2.h"
 #include "search2.h"
 
 // Test position 1: 2q3k1/3p4/4p3/8/4R1B1/8/5P2/4Q1K1 w - - 0 1
@@ -48,22 +49,36 @@ const EngineOutputs& Search::get_outputs() const
 }
 
 /**
+ * Send periodic output to the GUI while a search is running
+ *
+ * @return True on success
+ */
+bool Search::send_periodics()
+{
+	return true;
+}
+
+/**
  * Constructor
  *
- * @param[in] movegen A MoveGen, which generates moves at
- *                    each tree node
- * @param[in] sm      The chess engine state machine
- * @param[in] logger  The logger for writing diagnostics
- * @param[in] tables  The global pre-computed tables
+ * @param[in] movegen  A MoveGen, which generates moves at
+ *                     each tree node
+ * @param[in] sm       The chess engine state machine
+ * @param[in] protocol The GUI interface
+ * @param[in] logger   The logger for writing diagnostics
+ * @param[in] tables   The global pre-computed tables
  */
 PvSearch::PvSearch(const MoveGen& movegen,
 				   StateMachine& sm,
 				   Logger& logger,
+				   const Protocol* protocol,
 				   const DataTables& tables)
 	: Search("PvSearch", movegen),
 	  _abort_requested(false),
 	  _best_move(0),
 	  _depth(0),
+	  _fail_high(false),
+	  _fail_low(false),
 	  _infinite(false),
 	  _input_check_delay(100000),
 	  _interrupt_handler(sm),
@@ -71,11 +86,14 @@ PvSearch::PvSearch(const MoveGen& movegen,
 	  _logger(logger),
 	  _mate_search(false),
 	  _max_depth(1),
+	  _movenum(1),
 	  _next_input_check(0),
 	  _node_count(0),
 	  _node_limit(0),
 	  _nps(0),
+	  _num_pv(1),
 	  _ponder_move(0),
+	  _protocol(protocol),
 	  _pv_stack(),
 	  _qnode_count(0),
 	  _search_score(0),
@@ -90,6 +108,36 @@ PvSearch::PvSearch(const MoveGen& movegen,
  */
 PvSearch::~PvSearch()
 {
+}
+
+/**
+ * Get the current depth being searched to
+ *
+ * @return The search depth
+ */
+int PvSearch::current_depth() const
+{
+	return _depth;
+}
+
+/**
+ * Get the 21-bit representation of the move currently being searched
+ *
+ * @return The move being searched
+ */
+int PvSearch::current_move() const
+{
+	return _current_move[0];
+}
+
+/**
+ * Get current move number of the move being searched
+ *
+ * @return The move number
+ */
+int PvSearch::current_move_number() const
+{
+	return _movenum;
 }
 
 /**
@@ -112,12 +160,25 @@ int PvSearch::get_best_move() const
  */
 std::string PvSearch::get_lines() const
 {
+#if 0
 	Util::str_v lines;
 	for (auto iter = _pv_stack.begin(), end = _pv_stack.end();
 		 iter != end; ++iter)
 		lines.push_back(iter->first);
 
 	return Util::build_string(lines, "\n");
+#endif
+	return _pv_stack.front().first;
+}
+
+/**
+ * Get the number of best lines requested by the user
+ *
+ * @return The number of lines
+ */
+int PvSearch::get_num_lines() const
+{
+	return _num_pv;
 }
 
 /**
@@ -139,6 +200,7 @@ int PvSearch::get_ponder_move() const
  */
 std::string PvSearch::get_pv(Position& pos) const
 {
+#ifdef CONSOLE_MODE
 	int move_number = pos.get_fullmove_number();
 	int to_move = pos.get_turn();
 
@@ -230,8 +292,46 @@ std::string PvSearch::get_pv(Position& pos) const
 
 		pv += move + " ";
 	}
+#else
+	std::string pv = "";
+	for (int ply = 0; _pv[0][ply]; ply++)
+	{
+		auto move = Util::printCoordinate(_pv[0][ply]);
+		pv += move + " ";
+	}
+#endif
 
 	return pv;
+}
+
+/**
+ * Get the current search rate in nodes per second
+ *
+ * @return The search rate
+ */
+int64 PvSearch::get_search_rate() const
+{
+	return _nps;
+}
+
+/**
+ * Get the current (optimal) score produced by this search
+ *
+ * @return The score
+ */
+int PvSearch::get_search_score() const
+{
+	return _search_score;
+}
+
+/**
+ * Get the percentage of the hash table being used
+ *
+ * @return The hash table usage
+ */
+double PvSearch::hash_usage() const
+{
+	return 0;
 }
 
 /**
@@ -254,14 +354,44 @@ bool PvSearch::init()
 	AbortIf(_outputs.create(
 		"bestmove", *this, &PvSearch::get_best_move) < 0, false);
 
-	for (int i = 0; i < MAX_PV; i++)
-	{
-		std::string in;
-		AbortIfNot(Util::to_string(i, in), false);
+	AbortIf(_outputs.create(
+		"pv", *this, &PvSearch::get_lines) < 0, false);
 
-		AbortIf(_outputs.create(
-			"pv_" + in, *this, &PvSearch::get_lines) < 0, false);
-	}
+	AbortIf(_outputs.create(
+		"search_depth", *this, &PvSearch::current_depth) < 0, false);
+
+	AbortIf(_outputs.create(
+		"nodes_searched", *this, &PvSearch::nodes_searched) < 0, false);
+
+	AbortIf(_outputs.create(
+		"search_time", *this, &PvSearch::time_used) < 0, false);
+
+	AbortIf(_outputs.create(
+		"nlines", *this, &PvSearch::get_num_lines) < 0, false);
+
+	AbortIf(_outputs.create(
+		"search_score", *this, &PvSearch::get_search_score) < 0, false);
+
+	AbortIf(_outputs.create(
+		"mate_in", *this, &PvSearch::mate_in) < 0, false);
+
+	AbortIf(_outputs.create(
+		"fail_hi", *this, &PvSearch::is_lower_bound) < 0, false);
+
+	AbortIf(_outputs.create(
+		"fail_lo", *this, &PvSearch::is_upper_bound) < 0, false);
+
+	AbortIf(_outputs.create(
+		"current_move", *this, &PvSearch::current_move) < 0, false);
+
+	AbortIf(_outputs.create(
+		"current_move_number", *this, &PvSearch::current_move_number) < 0, false);
+
+	AbortIf(_outputs.create(
+		"hash_usage", *this, &PvSearch::hash_usage) < 0, false);
+
+	AbortIf(_outputs.create(
+		"nps", *this, &PvSearch::get_search_rate) < 0, false);
 
 	_is_init = true;
 	return true;
@@ -281,7 +411,10 @@ void PvSearch::insert_pv(const std::string& pv, int score)
 
 	_pv_stack.sort([](const pv_score_p& a, const pv_score_p& b) {
 
-					return a.second > b.second;
+					if (a.second == b.second)
+						return a.first.size() > b.first.size();
+					else
+						return a.second > b.second;
 
 					});
 
@@ -303,6 +436,55 @@ bool PvSearch::is_mated(int to_move) const
 		return _search_score == -MATE_SCORE;
 	else
 		return _search_score ==  MATE_SCORE;
+}
+
+/**
+ * Check if the last score returned was only a lower bound
+ *
+ * @return True if the score is a lower bound
+ */
+bool PvSearch::is_lower_bound() const
+{
+	return _fail_high;
+}
+
+/**
+ * Check if the last score returned was only an upper bound
+ *
+ * @return True if the score is an upper bound
+ */
+bool PvSearch::is_upper_bound() const
+{
+	return _fail_low;
+}
+
+/**
+ * If the search found a forced mate, get the number of moves
+ * to checkmate
+ *
+ * @return Y, where Y is the number of moves to checkmate, or
+ *         -1 if no mate was found
+ */
+int PvSearch::mate_in() const
+{
+	if (_abs(_search_score - MATE_SCORE) <= MAX_PLY)
+	{
+		int depth = _abs(MATE_SCORE - _search_score);
+		if (depth % 2 == 0) return depth / 2;
+		else return (depth+1)/2;
+	}
+
+	return -1;
+}
+
+/**
+ * Get the number of nodes visited during this search
+ *
+ * @return The node count
+ */
+int64 PvSearch::nodes_searched() const
+{
+	return _node_count;
 }
 
 /**
@@ -365,9 +547,11 @@ bool PvSearch::search(const EngineInputs* inputs)
 
 	Util::bubble_sort(moves, n_moves);
 
+	_search_score = 0;
+
 	for (_depth = 0; _depth < _max_depth || _infinite; _depth++)
 	{
-		_search_score = -MATE_SCORE;
+		int temp_score = -MATE_SCORE * 2;
 
 		int alpha = -MATE_SCORE;
 		int beta  =  MATE_SCORE;
@@ -384,14 +568,18 @@ bool PvSearch::search(const EngineInputs* inputs)
 		if (_depth > 0 && _abort_requested)
 			break;
 
- 		if (score > _search_score)
+ 		if (score > temp_score)
 		{
 			_best_move    = best_move;
-			_search_score = score;
+			temp_score = score;
 				save_pv(0, best_move);
-
-			insert_pv(get_pv(pos), _search_score);
 		}
+
+		insert_pv(get_pv(pos), temp_score);
+
+		_search_score = temp_score;
+
+		send_periodics();
 	}
 
 	/*
@@ -406,6 +594,19 @@ bool PvSearch::search(const EngineInputs* inputs)
 			this, StateMachine::post_search),
 		false);
 
+	return true;
+}
+
+/**
+ * Send periodic outputs to the GUI while a search
+ * is running
+ *
+ * @return True on success
+ */
+bool PvSearch::send_periodics()
+{
+	AbortIfNot(_protocol->send_periodics(_outputs),
+		false);
 	return true;
 }
 
@@ -479,6 +680,18 @@ void PvSearch::set_inputs(const EngineInputs& inputs)
 		_max_depth);
 	_logger.write(_name, "node limit   = %lld\n",
 		_node_limit);
+
+	_num_pv = inputs.get_multipv();
+}
+
+/**
+ * Get the time elapsed since the start of the search
+ *
+ * @return The search time, in nanoseconds
+ */
+int64 PvSearch::time_used()
+{
+	return Clock::get_monotonic_time() - _start_time;
 }
 
 /**

@@ -80,8 +80,11 @@ bool ChessEngine::init(algorithm_t algorithm, int cmd_fd, int log_fd,
 	 */
 	if (algorithm == pvs)
 	{
-		_search = new PvSearch(
-			_movegen,*_state_machine,_logger, _tables);
+		_search = new PvSearch(_movegen,
+							   *_state_machine,
+							   _logger,
+							   _protocol,
+							   _tables);
 	}
 	else
 	{

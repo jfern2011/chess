@@ -130,6 +130,16 @@ int EngineInputs::get_movetime() const
 }
 
 /**
+ * Get the requested number of best lines to display
+ *
+ * @return The requested number of lines
+ */
+int EngineInputs::get_multipv() const
+{
+	return _multipv;
+}
+
+/**
  * Get the current limit on the number of nodes to search
  *
  * @return The number of nodes to search
