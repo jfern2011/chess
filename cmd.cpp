@@ -100,22 +100,22 @@ bool CommandInterface::is_installed(const std::string& name) const
  */
 bool CommandInterface::poll()
 {
-	ReadEventSink::err_code code
+	ReadEventSink::err_code_t code
 					= _res.read(std::string("\n"));
 
 	/*
 	 * Don't abort if a command handler returned false as it's
 	 * probably only user error
 	 */
-	if (code == ReadEventSink::READER_ERR)
+	if (code == ReadEventSink::RES_READER_ERR)
 	{
 		_logger.write(
 			_name, "a command handler reported an error.\n" );
 		return true;
 	}
 
-	AbortIf(code != ReadEventSink::SUCCESS &&
-			code != ReadEventSink::NO_DATA, false);
+	AbortIf(code != ReadEventSink::RES_SUCCESS &&
+			code != ReadEventSink::RES_NO_DATA, false);
 
 	return true;
 }

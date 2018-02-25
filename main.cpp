@@ -150,8 +150,12 @@ bool go(int argc, char** argv)
 	AbortIfNot(get_unique_filename(_logpath, logpath),
 		false);
 
+#if 1
+	const int logfd = STDERR_FILENO;
+#else
 	const int logfd =
 		::open(logpath.c_str(), O_CREAT | O_RDWR);
+#endif
 	
 	AbortIf(logfd < 0, false);
 
@@ -162,7 +166,9 @@ bool go(int argc, char** argv)
 
 	AbortIfNot(engine.run(), false);
 
+#if 0
 	::close(logfd);
+#endif
 	return true;
 	
 }

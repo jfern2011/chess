@@ -1418,7 +1418,7 @@ inline bool Position::unmake_move(int move)
 		case PAWN:
 			_pawns[_to_move] |= _tables.set_mask[from];
 
-			if (promote)
+			if (promote != INVALID)
 			{
 				delta_material +=
 					piece_value[promote ] - PAWN_VALUE;

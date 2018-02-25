@@ -1,5 +1,10 @@
 #include "search2.h"
 
+// Test position 1: 2q3k1/3p4/4p3/8/4R1B1/8/5P2/4Q1K1 w - - 0 1
+// Test position 2: 4q1k1/5p2/8/4r1b1/8/4P3/5P2/2Q3K1 b - - 0 1
+// Test position 3: r6k/6pp/7N/8/8/1Q6/8/7K w - - 0 1
+// Test position 4: 7k/8/1q6/8/8/7n/6PP/R6K b - - 0 1
+
 /**
  * Constructor
  *
@@ -71,6 +76,7 @@ PvSearch::PvSearch(const MoveGen& movegen,
 	  _node_limit(0),
 	  _nps(0),
 	  _ponder_move(0),
+	  _pv_stack(),
 	  _qnode_count(0),
 	  _search_score(0),
 	  _start_time(0),
@@ -94,6 +100,24 @@ PvSearch::~PvSearch()
 int PvSearch::get_best_move() const
 {
 	return _best_move;
+}
+
+/**
+ * Get the current best lines from a search in progress. Each
+ * line is separated by a '\n'
+ *
+ * @note Assumes the lines are sorted
+ *
+ * @return The best lines
+ */
+std::string PvSearch::get_lines() const
+{
+	Util::str_v lines;
+	for (auto iter = _pv_stack.begin(), end = _pv_stack.end();
+		 iter != end; ++iter)
+		lines.push_back(iter->first);
+
+	return Util::build_string(lines, "\n");
 }
 
 /**
@@ -128,14 +152,15 @@ std::string PvSearch::get_pv(Position& pos) const
 		const int n_moves = 
 			_movegen.generate_legal_moves( pos, to_move, moves );
 
-		int match = -1;
+		int match_ind, match = -1;
 
 		for (int i = 0; i < n_moves; i++)
 		{
-			if (TO(moves[i] == TO(pv_move))
+			if (TO(moves[i]) == TO(pv_move)
 				&& FROM(moves[i]) == FROM(pv_move))
 			{
-				match = moves[i]; break;
+				match = moves[i]; match_ind = i;
+				break;
 			}
 		}
 
@@ -144,6 +169,31 @@ std::string PvSearch::get_pv(Position& pos) const
 			_logger.write( _name, "invalid PV move: %s\n",
 				Util::printCoordinate(pv_move));
 			return "";
+		}
+
+		/*
+		 * If two pieces can move to the same square, specify
+		 * the rank or file:
+		 */
+		std::string file_or_rank;
+		if (MOVED(match) != PAWN && MOVED(match) != KING)
+		{
+			for (int i = 0; i < n_moves; i++)
+			{
+				if (i == match_ind) continue;
+				if (MOVED(match) == MOVED(moves[i]) &&
+					TO(match) == TO(moves[i]))
+				{
+					if (RANK(FROM(match)) == RANK(FROM(moves[i])))
+						file_or_rank = Util::to_file(FILE(match));
+
+					if (FILE(FROM(match)) == FILE(FROM(moves[i])))
+					{
+						Util::to_string(RANK(match)+1,
+							file_or_rank);
+					}
+				}
+			}
 		}
 
 		if (ply == 0 || to_move == WHITE)
@@ -155,24 +205,25 @@ std::string PvSearch::get_pv(Position& pos) const
 		}
 
 		if (to_move == BLACK && ply == 0)
-			pv += " ... ";
-
-		std::string move;
+			pv += "... ";
 
 		pos.make_move(match); to_move = pos.get_turn();
 		const bool in_check= pos.in_check(to_move);
 
+		std::string move = Util::format_move( match, file_or_rank );
+
 		if (in_check)
 		{
 			const int n_moves = 
-				_movegen.generate_check_evasions(pos,
-					to_move, moves);
+				_movegen.generate_check_evasions(pos, to_move,
+					moves);
 
 			if (n_moves > 0)
-				move = Util::format_move(match, in_check);
+			{
+				move = Util::format_move(match, file_or_rank, true);
+			}
 			else
 			{
-				move = Util::format_move(match);
 				move += "#";
 			}
 		}
@@ -203,8 +254,39 @@ bool PvSearch::init()
 	AbortIf(_outputs.create(
 		"bestmove", *this, &PvSearch::get_best_move) < 0, false);
 
+	for (int i = 0; i < MAX_PV; i++)
+	{
+		std::string in;
+		AbortIfNot(Util::to_string(i, in), false);
+
+		AbortIf(_outputs.create(
+			"pv_" + in, *this, &PvSearch::get_lines) < 0, false);
+	}
+
 	_is_init = true;
 	return true;
+}
+
+/**
+ * Push a new PV onto the PV stack unless the stack is full,
+ * in which case the PV is only inserted if it is better than an
+ * existing entry. This also sorts the stack
+ *
+ * @param[in] pv    The principal variation to add
+ * @param[in] score The score associated with this PV
+ */
+void PvSearch::insert_pv(const std::string& pv, int score)
+{
+	_pv_stack.push_back(std::make_pair(pv, score));
+
+	_pv_stack.sort([](const pv_score_p& a, const pv_score_p& b) {
+
+					return a.second > b.second;
+
+					});
+
+	if (_pv_stack.size() > MAX_PV)
+		_pv_stack.pop_back();
 }
 
 /**
@@ -258,67 +340,59 @@ bool PvSearch::search(const EngineInputs* inputs)
 	const bool in_check =
 			master.in_check(to_move);
 
-	const int sign = (to_move == WHITE ? 1 : -1);
-
-	if (to_move == WHITE)
-		_search_score = -MATE_SCORE;
-	else
-		_search_score =  MATE_SCORE;
-
 	int moves[MAX_MOVES];
 
 	_best_move = _ponder_move = 0;
 
-	Position pos(master);
+	/*
+	 * Clear the PVs from the previous search
+	 */
+	_pv_stack.clear();
 
 	size_t n_moves;
 	if (in_check)
 	{
 		n_moves =
-			_movegen.generate_check_evasions(pos, to_move, moves);
+			_movegen.generate_check_evasions(master, to_move, moves);
 	}
 	else
 	{
 		n_moves =
-			_movegen.generate_legal_moves(pos, to_move, moves);
+			_movegen.generate_legal_moves(master, to_move, moves);
 	}
+
+	_best_move = moves[0];
 
 	Util::bubble_sort(moves, n_moves);
 
 	for (_depth = 0; _depth < _max_depth || _infinite; _depth++)
 	{
+		_search_score = -MATE_SCORE;
+
 		int alpha = -MATE_SCORE;
 		int beta  =  MATE_SCORE;
 
-		std::printf("searching depth = %d.\n", _depth);
-		std::fflush(stdout);
+		Position pos = master;
+
+		_clear_pv();
 
 		int best_move = 0;
-		const int score = -sign * 
+		const int score =
 			_search_moves(pos, moves, n_moves, alpha, beta, 0,
 				!in_check, best_move);
 
 		if (_depth > 0 && _abort_requested)
-		{
 			break;
-		}
-		else
-		{
-			if ((to_move == WHITE && score > _search_score)
-				|| (to_move == BLACK && score < _search_score))
-			{
-				_best_move    = best_move;
-				_search_score = score;
-					save_pv(0, best_move);
-			}
-		}
 
-		if (is_mated(to_move))
-			break;
+ 		if (score > _search_score)
+		{
+			_best_move    = best_move;
+			_search_score = score;
+				save_pv(0, best_move);
+
+			insert_pv(get_pv(pos), _search_score);
+		}
 	}
-
-	if (!_best_move)
-		_best_move = moves[0];
 
 	/*
 	 * Set the move to ponder on:

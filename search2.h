@@ -1,6 +1,8 @@
 #ifndef __SEARCH_H__
 #define __SEARCH_H__
 
+#include <list>
+
 #include "clock.h"
 #include "EngineInputs.h"
 #include "EngineOutputs.h"
@@ -98,13 +100,17 @@ public:
 
 	~PvSearch();
 
-	int get_best_move()   const;
+	int get_best_move() const;
+
+	std::string get_lines() const;
 
 	int get_ponder_move() const;
 
 	std::string get_pv(Position& pos) const;
 
 	bool init();
+
+	void insert_pv(const std::string& pv, int score);
 
 	bool is_mated(int to_move) const;
 
@@ -170,6 +176,13 @@ private:
 
 	BUFFER(int, _pv, MAX_PLY, MAX_PLY);
 
+	using pv_score_p = std::pair< std::string, int >;
+
+	/**
+	 * The list of best lines for the current search iteration
+	 */
+	std::list< pv_score_p > _pv_stack;
+
 	int64 _qnode_count;
 
 	/**
@@ -212,7 +225,7 @@ inline int PvSearch::quiesce(Position& pos, int depth, int alpha,
 		 	 * Add a penalty to the mate score the encourage
 		 	 * mates closer to the root:
 		 	 */
-			return sign * (depth - MATE_SCORE);
+			return depth - MATE_SCORE;
 		}
 	}
 
@@ -318,13 +331,10 @@ inline void PvSearch::save_pv(int depth, int move)
 			return;
 	}
 
-	if (depth+1 < MAX_PLY)
+	for (register int i= depth+1; i < MAX_PLY; i++)
 	{
-		for (register int i= depth+1; i < MAX_PLY; i++)
-		{
-			if ((_pv[depth][i] = _pv[depth+1][i]) == 0)
-				break;
-		}
+		if ((_pv[depth][i] = _pv[depth+1][i]) == 0)
+			break;
 	}
 }
 
@@ -670,15 +680,24 @@ inline int PvSearch::_search(Position& pos, int depth, int alpha,
 	/*
 	 * Don't quiece() if we need to get out of check:
 	 */
-	const int to_move   = pos.get_turn();
-	const bool in_check = pos.in_check(to_move);
+	const int to_move    = pos.get_turn();
+	const bool in_check  = pos.in_check(to_move);
+	const int init_alpha = alpha;
 
 	/*
 	 * Forward this position to quiesce() after we have hit our
 	 * search limit:
 	 */
 	if (_depth <= depth && !in_check)
+	{
 		return quiesce(pos, depth, alpha, beta);
+/*
+		if (to_move == WHITE)
+			return  0;//pos.get_material();
+		else
+			return -0;//pos.get_material();
+ */
+	}
 
 	int moves[MAX_MOVES];
 
@@ -697,13 +716,11 @@ inline int PvSearch::_search(Position& pos, int depth, int alpha,
 			 */
 			save_pv(depth, 0);
 
-			const int sign = pos.get_turn() == WHITE ? 1 : -1;
-
 			/*
 			 * Add a penalty to the mate score the encourage mates
 			 * closer to the root:
 			 */
-			return sign * (depth - MATE_SCORE);
+			return depth - MATE_SCORE;
 		}
 	}
 	else
@@ -726,7 +743,8 @@ inline int PvSearch::_search(Position& pos, int depth, int alpha,
 
 	if (in_check)
 	{
-		save_pv(depth, best_move);
+		if (alpha > init_alpha)
+			save_pv(depth, best_move);
 		return alpha;
 	}
 
@@ -753,7 +771,8 @@ inline int PvSearch::_search(Position& pos, int depth, int alpha,
 	if (beta <= score)
 		return beta;
 
-	save_pv(depth, best_move);
+	if (alpha > init_alpha)
+		save_pv(depth, best_move);
 	return alpha;
 }
 
@@ -790,7 +809,7 @@ inline int PvSearch::_search_moves(Position& pos,
 			/*
 			 * Save for the hash table:
 			 */
-			best = move;
+			//best = move;
 			return beta;
 		}
 

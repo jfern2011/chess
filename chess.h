@@ -564,7 +564,9 @@ namespace Util
 
 		std::string out(SQUARE_STR[from]);
 		out += SQUARE_STR[to];
-		out += enum2piece(promote);
+
+		if (promote != INVALID)
+			out += enum2piece ( promote );
 
 		return out;
 	}

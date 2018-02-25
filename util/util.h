@@ -10,6 +10,7 @@
 #define __UTIL__
 
 #include <cstdlib>
+#include <fstream>
 
 #include <sys/stat.h>
 
@@ -670,6 +671,38 @@ namespace Util
 			   (n2 << 32) |
 			   (n3 << 16) |
 			   (n4 << 0 );
+	}
+
+	/**
+	 **********************************************************************
+	 *
+	 * Read all lines in a file, storing them in a vector of strings. Note
+	 * blank (whitespace only) lines are discarded
+	 *
+	 * @param[in]  filename The file to read
+	 * @param[out] lines    All lines in the file
+	 *
+	 * @return True on success
+	 *
+	 **********************************************************************
+	 */
+	inline
+	bool readlines(const std::string& filename, str_v& lines)
+	{
+		lines.clear();
+
+		AbortIfNot(dirExists(filename), false);
+
+		std::ifstream infile(filename);
+		AbortIfNot(  infile.is_open() , false);
+
+		std::string line;
+		while (std::getline(infile, line))
+		{
+			if (trim(line).size() > 0) lines.push_back(line);
+		}
+
+		return true;
 	}
 
 	/**

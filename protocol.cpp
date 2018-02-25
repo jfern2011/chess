@@ -205,6 +205,15 @@ bool UCI::_init_outputs(const Search* search)
 	_ponder_token   = outputs.get_id( "ponder" );
 	AbortIf(_ponder_token   < 0, false);
 
+	for (int i = 0; i < MAX_PV; i++)
+	{
+		std::string in;
+		AbortIfNot( Util::to_string(i,in), false );
+
+		_pv_tokens[i] = outputs.get_id("pv_" + in);
+		AbortIf(_pv_tokens[i] < 0, false);
+	}
+
 	return true;
 }
 

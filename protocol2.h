@@ -578,6 +578,12 @@ private:
 	 * search if pondering is enabled
 	 */
 	int _ponder_token;
+
+	/**
+	 * The tokens used to look up the best N principal
+	 * variations
+	 */
+	BUFFER(int, _pv_tokens, MAX_PV);
 };
 
 /**

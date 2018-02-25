@@ -82,16 +82,21 @@ namespace Util
 	/**
 	 ******************************************************************
 	 *
-	 * Format a move in long algebraic notation
+	 * Format a move in standard algebraic notation
 	 *
-	 * @param [in] move     The move to format
-	 * @param [in] in_check If true, append "+"
+	 * @param [in] move         The move to format
+	 * @param [in] file_or_rank If two pieces of the same type can
+	 *                          move to the same square, this
+	 *                          disambiguates that move, e.g. Ngf3
+	 *                          specifies the file
+	 * @param [in] in_check     If true, then append "+"
 	 *
 	 * @return The formatted string
 	 *
 	 ******************************************************************
 	 */
-	inline std::string format_move(int move, bool in_check=false)
+	inline std::string format_move(int move, std::string file_or_rank,
+								   bool in_check=false)
 	{
 		const int captured = CAPTURED(move);
 		const int from     = FROM(move);
@@ -109,9 +114,11 @@ namespace Util
 		else if (moved == PAWN
 				 && captured != INVALID)
 			out += SQUARE_STR[from][0];
-		else
-			out += enum2piece( static_cast<piece_t>(moved) )
-				+ SQUARE_STR[from];
+		else if (moved != PAWN)
+		{
+			out += enum2piece(static_cast<piece_t>(moved) );
+			out += file_or_rank;
+		}
 
 		if (captured != INVALID) out += "x";
 
@@ -215,6 +222,26 @@ namespace Util
     			data_tables.pop[(qword >> 16) & 0xFFFF] +
     			data_tables.pop[(qword >> 32) & 0xFFFF] +
     					data_tables.pop[(qword >> 48) & 0xFFFF]);
+	}
+
+	/**
+	 ******************************************************************
+	 *
+	 * Convert the numeric representation of a file to its character
+	 * equivalent
+	 *
+	 * @return A value in the range "a" through "h"
+	 *
+	 ******************************************************************
+	 */
+	inline std::string to_file(int i)
+	{
+		if ( i < 0 || i > 7) return "";
+
+		std::string out(SQUARE_STR[i]);
+		out.pop_back();
+
+		return out;
 	}
 }
 

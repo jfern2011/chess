@@ -44,28 +44,28 @@ public:
 	typedef enum
 	{
 		/** New data was read and processed successfully */
-		SUCCESS    = 0,
+		RES_SUCCESS    = 0,
 
 		/** No data available for reading on the
 		    file descriptor */
-		NO_DATA    = 1,
+		RES_NO_DATA    = 1,
 
 		/** An error occured while attempting to read
 		    from the file descriptor */
-		READ_ERR   = 2,
+		RES_READ_ERR   = 2,
 
 		/** Memory allocation error  */
-		MEMORY_ERR = 4,
+		RES_MEMORY_ERR = 4,
 
 		/** The reader returned "false" while processing
 		    the data */
-		READER_ERR = 8,
+		RES_READER_ERR = 8,
 
 		/** Either a reader was not properly attached or
 		    the file descriptor is bad */
-		USIG_ERR   = 16
+		RES_USIG_ERR   = 16
 
-	} err_code;
+	} err_code_t;
 
 	ReadEventSink();
 
@@ -127,27 +127,29 @@ public:
 
 	const char* get_data(int& size) const;
 
-	err_code poll(int64 timeout= 0) const;
+	int get_fd() const;
 
-	err_code read(const std::string& delim = "",
-				  bool clear = false,
-				  int64 timeout = 0);
+	err_code_t poll(int64 timeout= 0) const;
+
+	err_code_t read(const std::string& delim = "",
+					bool clear = false,
+					int64 timeout = 0);
 	
-	err_code read(size_t nbytes,
-				  bool clear = false,
-				  int64 timeout = 0);
+	err_code_t read(size_t nbytes,
+					bool clear = false,
+					int64 timeout = 0);
 
-	err_code read_until(const std::string& delim,
-						bool clear = false,
-						int64 timeout = 0);
+	err_code_t read_until(const std::string& delim,
+						  bool clear = false,
+						  int64 timeout = 0);
 
-	err_code read_until(size_t nbytes,
-						bool clear = false,
-						int64 timeout = 0);
+	err_code_t read_until(size_t nbytes,
+						  bool clear = false,
+						  int64 timeout = 0);
 
 private:
 
-	err_code _read(bool clear, int64 timeout);
+	err_code_t _read(bool clear, int64 timeout);
 
 	char*       _buf;
 	size_t      _buf_len;
@@ -161,6 +163,6 @@ private:
 /**
  * Simplified return code type for convenience
  */
-typedef ReadEventSink::err_code err_code;
+typedef ReadEventSink::err_code_t err_code_t;
 
 #endif

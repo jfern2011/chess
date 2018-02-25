@@ -55,10 +55,10 @@ bool basic_test()
 
 	struct Check
 	{
-    	static bool is_ok(err_code code)
+    	static bool is_ok(err_code_t code)
     	{
-    		return code == ReadEventSink::NO_DATA ||
-    			   code == ReadEventSink::SUCCESS;
+    		return code == ReadEventSink::RES_NO_DATA ||
+    			   code == ReadEventSink::RES_SUCCESS;
     	}
     };
 

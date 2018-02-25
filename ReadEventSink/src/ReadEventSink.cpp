@@ -140,8 +140,11 @@ ReadEventSink& ReadEventSink::operator=( ReadEventSink&& rhs )
  */
 bool ReadEventSink::assign_fd(int fd)
 {
-	if (fd < 0 || _fd == fd)
+	if (fd < 0)
 		return false;
+	
+	if (_fd == fd)
+		return true;
 
 	_fd = fd;
 
@@ -181,6 +184,16 @@ const char* ReadEventSink::get_data(int& size) const
 }
 
 /**
+ * Get the current active file descriptor
+ *
+ * @return   The internal file descriptor
+ */
+int ReadEventSink::get_fd() const
+{
+	return _fd;
+}
+
+/**
  * Poll for new data. Note this isn't necessary before invoking any
  * of the read functions, which indicate whether or not any data
  * is indeed available for reading. See the read* documentation for
@@ -191,10 +204,10 @@ const char* ReadEventSink::get_data(int& size) const
  *
  * @return One of the defined error codes
  */
-err_code ReadEventSink::poll(int64 timeout) const
+err_code_t ReadEventSink::poll(int64 timeout) const
 {
 	if (!_is_init)
-		return USIG_ERR;
+		return RES_USIG_ERR;
 
 	struct pollfd pfd; pfd.events = POLLIN;
 	pfd.fd = _fd;
@@ -220,14 +233,15 @@ err_code ReadEventSink::poll(int64 timeout) const
 	switch (retval)
 	{
 	case  0:
-		return NO_DATA ;
+		return RES_NO_DATA ;
 	case -1:
-		return READ_ERR;
+		return RES_READ_ERR;
 	}
 
-	AbortIf(pfd.revents!=POLLIN, READ_ERR);
+	AbortIf(pfd.revents != POLLIN,
+		RES_READ_ERR);
 
-	return SUCCESS;
+	return RES_SUCCESS;
 }
 
 /**
@@ -257,14 +271,14 @@ err_code ReadEventSink::poll(int64 timeout) const
  *
  * @return One of the defined return codes
  */
-err_code ReadEventSink::read(const std::string& delim, bool clear,
-							 int64 timeout)
+err_code_t ReadEventSink::read(const std::string& delim, bool clear,
+							   int64 timeout)
 {
-	err_code code = _read(clear, timeout);
+	err_code_t code = _read(clear, timeout);
 
-	AbortIf(code != SUCCESS && code != NO_DATA,
+	AbortIf(code != RES_SUCCESS && code != RES_NO_DATA,
 		    code);
-	if (code == NO_DATA) return code;
+	if (code == RES_NO_DATA) return code;
 
 	Util::str_v tokens;
 	std::string data( _buf,_in_use );
@@ -297,10 +311,10 @@ err_code ReadEventSink::read(const std::string& delim, bool clear,
 					                  tokens[i].size());
 	}
 	else
-		return USIG_ERR;
+		return RES_USIG_ERR;
 
 	return success ?
-			SUCCESS : READER_ERR;
+			RES_SUCCESS : RES_READER_ERR;
 }
 
 /**
@@ -319,14 +333,14 @@ err_code ReadEventSink::read(const std::string& delim, bool clear,
  *
  * @return One of the defined return codes
  */
-err_code ReadEventSink::read(size_t nbytes, bool clear,
-							 int64 timeout)
+err_code_t ReadEventSink::read(size_t nbytes, bool clear,
+							   int64 timeout)
 {
-	err_code code = _read(clear, timeout);
+	err_code_t code = _read(clear, timeout);
 
-	AbortIf(code != SUCCESS && code != NO_DATA,
+	AbortIf(code != RES_SUCCESS && code != RES_NO_DATA,
 		    code);
-	if (code == NO_DATA) return code;
+	if (code == RES_NO_DATA) return code;
 
 	std::string data(_buf, _in_use );
 	Util::str_v tokens;
@@ -352,10 +366,10 @@ err_code ReadEventSink::read(size_t nbytes, bool clear,
 					                  tokens[i].size());
 	}
 	else
-		return USIG_ERR;
+		return RES_USIG_ERR;
 
 	return success ?
-			SUCCESS : READER_ERR;
+			RES_SUCCESS : RES_READER_ERR;
 }
 
 /**
@@ -379,15 +393,15 @@ err_code ReadEventSink::read(size_t nbytes, bool clear,
  *
  * @return One of the defined return codes
  */
-err_code ReadEventSink::read_until(const std::string& delim,
-								   bool clear,
-								   int64 timeout)
+err_code_t ReadEventSink::read_until(const std::string& delim,
+									 bool clear,
+									 int64 timeout)
 {
-	err_code code = _read(clear, timeout);
+	err_code_t code = _read(clear, timeout);
 
-	AbortIf(code != SUCCESS && code != NO_DATA,
+	AbortIf(code != RES_SUCCESS && code != RES_NO_DATA,
 		    code);
-	if (code == NO_DATA) return code;
+	if (code == RES_NO_DATA) return code;
 
 	std::string data(_buf, _in_use );
 
@@ -400,16 +414,16 @@ err_code ReadEventSink::read_until(const std::string& delim,
 	if (ind == std::string::npos)
 	{
 		_saved = std::move(data);
-		return SUCCESS;
+		return RES_SUCCESS;
 	}
 	else if ( _sig.is_connected() )
 	{
 		return
 			_sig.raise(data.substr(0,ind).c_str(), ind)
-				? SUCCESS:READER_ERR;
+				? RES_SUCCESS:RES_READER_ERR;
 	}
 
-	return USIG_ERR;
+	return RES_USIG_ERR;
 }
 
 /**
@@ -429,31 +443,31 @@ err_code ReadEventSink::read_until(const std::string& delim,
  *
  * @return One of the defined return codes
  */
-err_code ReadEventSink::read_until(size_t nbytes, bool clear,
-								   int64 timeout)
+err_code_t ReadEventSink::read_until(size_t nbytes, bool clear,
+									 int64 timeout)
 {
-	err_code code = _read(clear, timeout);
+	err_code_t code = _read(clear, timeout);
 
-	AbortIf(code != SUCCESS && code != NO_DATA,
+	AbortIf(code != RES_SUCCESS && code != RES_NO_DATA,
 		    code);
-	if (code == NO_DATA) return code;
+	if (code == RES_NO_DATA) return code;
 
 	std::string data(_buf,_in_use);
 
 	if (nbytes > _in_use)
 	{
 		_saved = std::move(data);
-		return SUCCESS;
+		return RES_SUCCESS;
 	}
 	else if ( _sig.is_connected() )
 	{
 		return
 			_sig.raise(data.substr(0,nbytes).c_str(), nbytes)
-				? SUCCESS:READER_ERR;
+				? RES_SUCCESS:RES_READER_ERR;
 			
 	}
 
-	return USIG_ERR;
+	return RES_USIG_ERR;
 }
 
 /**
@@ -471,13 +485,13 @@ err_code ReadEventSink::read_until(size_t nbytes, bool clear,
  *
  * @return One of the defined return codes
  */
-err_code ReadEventSink::_read(bool clear, int64 timeout)
+err_code_t ReadEventSink::_read(bool clear, int64 timeout)
 {
-	AbortIfNot(_is_init, USIG_ERR );
+	AbortIfNot(_is_init,RES_USIG_ERR);
 
-	err_code code = poll( timeout );
-	if (code != SUCCESS)
-				return code;
+	err_code_t code = poll( timeout );
+	if (code != RES_SUCCESS)
+		return code;
 
 	int fsize;
 	::ioctl(_fd, FIONREAD, &fsize );
@@ -493,8 +507,8 @@ err_code ReadEventSink::_read(bool clear, int64 timeout)
 	if (new_size > _buf_len)
 	{
 		char* tmp = (char*)std::realloc(_buf, new_size);
-		AbortIf( !tmp, MEMORY_ERR );
-		_buf=tmp; _buf_len=new_size;
+		AbortIf(!tmp, RES_MEMORY_ERR);
+		_buf=tmp; _buf_len = new_size;
 	}
 
 	/*
@@ -513,7 +527,9 @@ err_code ReadEventSink::_read(bool clear, int64 timeout)
 	 * Read raw data:
 	 */
 	AbortIf(::read(_fd, _buf + _saved.size(),
-		           fsize) != fsize,READ_ERR);
+		           fsize) != fsize,
+		RES_READ_ERR);
+
 	_saved.clear();
 
 #if defined(CONSOLE_TEST)
@@ -523,5 +539,5 @@ err_code ReadEventSink::_read(bool clear, int64 timeout)
 		_in_use--;
 #endif
 
-	return SUCCESS;
+	return RES_SUCCESS;
 }

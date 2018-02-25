@@ -82,11 +82,11 @@ CHESS_OBJ  = $(patsubst %.cpp, $(ODIR)/%.o, $(CHESS_SRC))
 
 $(RES_OBJ): ReadEventSink/src/ReadEventSink.cpp $(DEPS) $(RES_DEPS)
 	@ if ! [ -d $(RES_ODIR) ]; then mkdir $(RES_ODIR); fi
-	$(CC) -o $@ $< $(CFLAGS) -I$(RES_IDIR)
+	$(CC) -g -o $@ $< $(CFLAGS) -I$(RES_IDIR)
 
 $(CMD_OBJ): CommandLine/CommandLine.cpp $(DEPS) $(CMD_DEPS)
 	@ if ! [ -d $(CMD_ODIR) ]; then mkdir $(CMD_ODIR); fi
-	$(CC) -o $@ $< $(CFLAGS) -I$(CMD_IDIR)
+	$(CC) -g -o $@ $< $(CFLAGS) -I$(CMD_IDIR)
 
 $(ODIR)/%.o: %.cpp
 	@ if ! [ -d $(ODIR) ]; then mkdir $(ODIR); fi
