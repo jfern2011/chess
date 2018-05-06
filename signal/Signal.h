@@ -166,7 +166,7 @@ namespace Signal
         /**
          * Destructor
          */
-        ~mem_ptr()
+        virtual ~mem_ptr()
         {
         }
 
@@ -374,7 +374,7 @@ namespace Signal
         /**
          * Destructor
          */
-        ~fcn_ptr()
+        virtual ~fcn_ptr()
         {
         }
 
@@ -604,7 +604,7 @@ namespace Signal
         /**
          * Destructor
          */
-        ~Signal()
+        virtual ~Signal()
         {
             if (_sig) delete _sig;
         }
@@ -931,7 +931,7 @@ namespace Signal
         /**
          * Destructor
          */
-        ~Callable()
+        virtual ~Callable()
         {
         }
 
