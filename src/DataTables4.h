@@ -2,7 +2,7 @@
 #define __DATA_TABLES_H__
 
 #include "chess4.h"
-#include "types.h"
+#include "types/types.h"
 
 namespace Chess
 {
@@ -55,8 +55,8 @@ namespace Chess
 		/**
 		 *  Bitmasks representing the back rank for each side, namely:
 		 *
-		 * back_rank[white] = Rank::_1
-		 * back_rank[black] = Rank::_8
+		 * back_rank[white] = rank_1
+		 * back_rank[black] = rank_8
 		 */
 		BUFFER(uint64, back_rank, 2);
 
@@ -156,12 +156,12 @@ namespace Chess
 		/**
 		 * Returns the LSB for every possible unsigned 16-bit value
 		 */
-		BUFFER(int, lsb, 65536);
+		BUFFER(uint8, lsb, 65536);
 
 		/**
 		 * Returns the MSB for every possible unsigned 16-bit value
 		 */
-		BUFFER(int, msb, 65536);
+		BUFFER(uint8, msb, 65536);
 
 		/**
 		 * All squares "north" of a particular square, from white's
@@ -201,7 +201,7 @@ namespace Chess
 		 * Returns the population count for every possible unsigned
 		 * 16-bit value
 		 */
-		BUFFER(int, pop, 65536);
+		BUFFER(uint8, pop, 65536);
 
 		/**
 		 * Bitmasks indicating the squares adjacent to each square and

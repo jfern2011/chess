@@ -1,5 +1,5 @@
 #include "DataTables4.h"
-#include "bit_tools.h"
+#include "util/bit_tools.h"
 
 namespace Chess
 {
