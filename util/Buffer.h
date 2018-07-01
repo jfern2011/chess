@@ -1,16 +1,26 @@
+/**
+ *  \file   Buffer.h
+ *  \author Jason Fernandez
+ *  \date   3/17/2018
+ *
+ *  https://github.com/jfern2011/util
+ */
+
 #ifndef __BUFFER_H__
 #define __BUFFER_H__
 
+#include <cstddef>
+#include <cstring>
+
 #include "abort.h"
-#include "types.h"
 
 /**
  **********************************************************************
  *
  * A wrapper for a C++ multi-dimensional array. This implements bounds
  * checking to make it easier to catch buffer overflows at runtime.
- * This class is kept as simple as possible since it's used many times
- * during searches
+ * This class is kept as simple as possible to match the complexity of
+ * accessing raw arrays
  *
  * @tparam T  The type of each element
  * @tparam N1 Number of elements along the 1st dimension
@@ -18,7 +28,7 @@
  *
  **********************************************************************
  */
-template <typename T, int N1, int... N2>
+template <typename T, size_t N1, size_t... N2>
 class Buffer
 {
 	static_assert(N1 > 0, "Dimensions must be greater than zero.");
@@ -40,14 +50,14 @@ public:
 	 * For example, if we have a Buffer<int,2,3>, then we'll get
 	 * back a Buffer<int,3>
 	 *
-	 * @param[in] index The index to look up
+	 * @param [in] index The index to look up. An out of bounds value
+	 *                   produces a warning message
 	 *
-	 * @return The element at \a index, or the first element on error
+	 * @return The element at \a index
 	 */
-	inline Buffer<T,N2...>& operator[](uint32 index)
+	Buffer<T,N2...>& operator[](size_t index)
 	{
-		AbortIf(N1 <= index, data[0]);
-
+		AbortIf(N1 <= index, data[index]);
 		return data[index];
 	}
 
@@ -58,15 +68,14 @@ public:
 	 * For example, if we have a Buffer<int,2,3>, then we'll get
 	 * back a Buffer<int,3>
 	 *
-	 * @param[in] index The index to look up
+	 * @param [in] index The index to look up. An out of bounds value
+	 *                   produces a warning message
 	 *
-	 * @return A *const* reference to the element at \a index, or the
-	 *         first element on error
+	 * @return A *const* reference to the element at \a index
 	 */
-	inline const Buffer<T,N2...>& operator[](uint32 index) const
+	const Buffer<T,N2...>& operator[](size_t index) const
 	{
-		AbortIf(N1 <= index, data[0]);
-
+		AbortIf(N1 <= index, data[index]);
 		return data[index];
 	}
 
@@ -80,15 +89,15 @@ private:
  *
  * A wrapper for a simple C++ array. Aside from behaving like a normal
  * array, this performs bounds checking to make it easier to catch
- * buffer overflows at runtime. Because this is used many times during
- * searches, it is kept as simple as possible
+ * buffer overflows at runtime. The implementation is kept simple with
+ * the goal of matching runtime performance with raw arrays
  *
  * @tparam T The type of each buffer element
  * @tparam N The number of elements
  *
  **********************************************************************
  */
-template <typename T, int N>
+template <typename T, size_t N>
 class Buffer<T,N>
 {
 	static_assert(N > 0, "Buffer must contain at least 1 item.");
@@ -113,27 +122,29 @@ public:
 	 * Grab the element at the specified index. This is equivalent to
 	 * the indexing operator []
 	 *
-	 * @param[in] index The index to look up
+	 * @param [in] index The index to look up. An out of bounds value
+	 *                   produces a warning message
 	 *
-	 * @return The element at \a index, or the first element on error
+	 * @return The element at \a index
 	 */
-	inline T& at(uint32 index)
+	T& at(size_t index)
 	{
-		return operator[](index);
+		AbortIf(N <= index, data[index]);
+		return data[index];
 	}
 
 	/**
 	 * Indexing operator. This will return a reference to the element
 	 * at the specified index
 	 *
-	 * @param[in] index The index to look up
+	 * @param [in] index The index to look up. An out of bounds value
+	 *                   produces a warning message
 	 *
-	 * @return The element at \a index, or the first element on error
+	 * @return The element at \a index
 	 */
-	inline T& operator[](uint32 index)
+	T& operator[](size_t index)
 	{
-		AbortIf(N <= index, data[0]);
-
+		AbortIf(N <= index, data[index]);
 		return data[index];
 	}
 
@@ -141,14 +152,14 @@ public:
 	 * Indexing operator. This will return a *const* reference to the
 	 * element at the specified index
 	 *
-	 * @param[in] index The index to look up
+	 * @param [in] index The index to look up. An out of bounds value
+	 *                   produces a warning message
 	 *
-	 * @return The element at \a index, or the first element on error
+	 * @return The element at \a index
 	 */
-	inline const T& operator[](uint32 index) const
+	const T& operator[](size_t index) const
 	{
-		AbortIf(N <= index, data[0]);
-
+		AbortIf(N <= index, data[index]);
 		return data[index];
 	}
 
@@ -157,7 +168,7 @@ public:
 	 *
 	 * @return The first element in this Buffer
 	 */
-	inline T& operator*()
+	T& operator*()
 	{
 		return data[0];
 	}
@@ -168,7 +179,7 @@ public:
 	 *
 	 * @return A pointer to the data
 	 */
-	inline operator T*()
+	operator T*()
 	{
 		return data;
 	}
@@ -179,7 +190,7 @@ public:
 	 *
 	 * @return A const pointer to the data
 	 */
-	inline operator const T*() const
+	operator const T*() const
 	{
 		return data;
 	}
@@ -192,11 +203,18 @@ public:
 	 * @return  A pointer to the address at offset \a offset from the
 	 *          buffer start, or nullptr on error
 	 */
-	inline T* operator+(uint32 offset)
+	T* operator+(size_t offset)
 	{
 		AbortIf(N <= offset, nullptr);
-
 		return data + offset;
+	}
+
+	/**
+	 * Sets all elements in the buffer to zero
+	 */
+	void zero()
+	{
+		std::memset( data, 0, N * sizeof(T) );
 	}
 
 private:
