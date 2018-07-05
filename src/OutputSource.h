@@ -11,8 +11,8 @@ namespace Chess
 	/**
 	 * @class OutputSource
 	 *
-	 * Individual components (e.g. the search algorithm) act as output
-	 * sources to a single stream object
+	 * Allows individual components (e.g. the search algorithm) to write
+	 * to one or more shared stream objects
 	 */
 	class OutputSource
 	{
@@ -32,13 +32,13 @@ namespace Chess
 	private:
 
 		/**
-		 *  Identifies which module is writing to
-		 *  the the stream
+		 * Name of the component handling this \ref
+		 * OutputSource
 		 */
 		const std::string _name;
 
 		/**
-		 * The stream object to write messages to
+		 * The underlying stream object to write to
 		 */
 		Handle<std::ostream>
 			_stream;

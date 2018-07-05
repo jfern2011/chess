@@ -15,6 +15,8 @@ namespace Chess
 	using uint16 = std::uint16_t;
 	using uint8 = std::uint8_t;
 
+	const int max_ply = 128;
+
 	enum : uint64
 	{
 		rank_1 = 0xFF,
