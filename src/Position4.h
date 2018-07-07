@@ -71,7 +71,7 @@ namespace Chess
 	public:
 
 		Position(Handle<std::ostream> stream,
-				 const std::string& fen = init_fen);
+				 const std::string& fen= init_fen);
 
 		Position(const Position& other);
 
@@ -81,16 +81,19 @@ namespace Chess
 
 		bool operator==(const Position& rhs) const;
 
-		uint64 attacks_from(int square, piece_t piece,
-			int to_move) const;
+		uint64 attacks_from(
+			int square, piece_t piece, int to_move) const;
 
-		uint64 attacks_from_bishop(int square, uint64 occupied) const;
+		static uint64 attacks_from_bishop(int square, uint64 occupied)
+			const;
 
-		uint64 attacks_from_queen( int square, uint64 occupied) const;
+		static uint64 attacks_from_queen( int square, uint64 occupied)
+			const;
 
-		uint64 attacks_from_rook(  int square, uint64 occupied) const;
+		static uint64 attacks_from_rook(  int square, uint64 occupied)
+			const;
 
-		uint64 attacks_to(int square, int to_move) const;
+		uint64 attacks_to( int square, int to_move) const;
 
 		bool can_castle_long( int to_move) const;
 
@@ -386,7 +389,7 @@ namespace Chess
 	 *
 	 * @param[in] square   The square this piece is on
 	 * @param[in] piece    What piece to generate attacked squares for
-	 * @param[in] to_move  Side to move
+	 * @param[in] to_move  The side to move
 	 *
 	 * @return A bitboard specifying all squares attacked by this piece
 	 *         or ~0 on error
@@ -394,26 +397,29 @@ namespace Chess
 	inline uint64 Position::attacks_from(int square, piece_t piece,
 		int to_move) const
 	{
-		uint64 occ = _occupied[WHITE] | _occupied[BLACK];
+		uint64 occ = _occupied[white] | _occupied[black];
+
+		auto& tables = DataTables::get();
+
 		switch (piece)
 		{
-			case ROOK:
+			case rook:
 				return attacks_from_rook(square, occ);
-			case KNIGHT:
-				return _tables.knight_attacks[square];
-			case BISHOP:
+			case knight:
+				return tables.knight_attacks[square];
+			case bishop:
 				return
 					attacks_from_bishop( square, occ);
-			case PAWN:
-				return _tables.pawn_attacks[to_move][square];
-			case KING:
-				return _tables.king_attacks[square];
-			case QUEEN:
+			case pawn:
+				return tables.pawn_attacks[to_move][square];
+			case king:
+				return tables.king_attacks[square];
+			case queen:
 				return attacks_from_rook(square, occ) |
 					   attacks_from_bishop(square, occ);
 			default:
-				AbortIf(true, ~0,
-					"Position::attacks_from(): Invalid piece");
+				Abort(~0, "invalid piece: %d\n",
+					piece);
 		}
 
 		return 0;
@@ -431,9 +437,11 @@ namespace Chess
 	inline uint64 Position::attacks_from_bishop( int square,
 		uint64 occupied ) const
 	{
-		return _tables.bishop_attacks[_tables.bishop_offsets[square] +
-				(((occupied & _tables.bishop_attacks_mask[square])
-					* _tables.diag_magics[square]) >> _tables.bishop_db_shifts[square])];
+		auto& tables = DataTables::get();
+
+		return tables.bishop_attacks[tables.bishop_offsets[square] +
+				(((occupied & tables.bishop_attacks_mask[square])
+					* tables.diag_magics[square]) >> tables.bishop_db_shifts[square])];
 	}
 
 	/**
@@ -464,9 +472,11 @@ namespace Chess
 	inline uint64 Position::attacks_from_rook(int square,
 		uint64 occupied) const
 	{
-		return _tables.rook_attacks[_tables.rook_offsets[square] +
-				(((occupied & _tables.rook_attacks_mask[square])
-					* _tables.rook_magics[square]) >> _tables.rook_db_shifts[square])];
+		auto& tables = DataTables::get();
+
+		return tables.rook_attacks[tables.rook_offsets[square] +
+				(((occupied & tables.rook_attacks_mask[square])
+					* tables.rook_magics[square]) >> tables.rook_db_shifts[square])];
 	}
 
 	/**
