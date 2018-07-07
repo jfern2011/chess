@@ -488,18 +488,16 @@ namespace Chess
 	 */
 	inline uint64 Position::attacks_to(int square, int to_move) const
 	{
-	#if defined(DEBUG)
-		AbortIfNot(_is_init, false);
-	#endif
-
 		uint64 out = 0;
 
 		const uint64 occupied = _occupied[0] | _occupied[1];
 
-		out |= _tables.pawn_attacks[flip(to_move)][square]
+		auto& tables = DataTables::get();
+
+		out |= tables.pawn_attacks[flip(to_move)][square]
 				& _pawns[to_move];
 		
-		out |= _tables.knight_attacks[square]
+		out |= tables.knight_attacks[square]
 				& _knights[to_move];
 
 		out |= attacks_from_rook(square, occupied)
@@ -508,7 +506,7 @@ namespace Chess
 		out |= attacks_from_bishop(square, occupied)
 				& ( _bishops[to_move] | _queens[to_move] );
 
-		out |= _tables.king_attacks[square]
+		out |= tables.king_attacks[square]
 				& _kings[to_move];
 
 		return out;

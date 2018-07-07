@@ -89,6 +89,12 @@ namespace Chess
 		BAD_SQUARE
 	};
 
+	enum
+	{
+		castle_K = 0x1,
+		castle_Q = 0x2
+	};
+
 	inline int get_file(int a) { return a &  7; }
 
 	inline int get_rank(int a) { return a >> 3; }

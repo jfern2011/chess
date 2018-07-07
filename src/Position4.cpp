@@ -158,4 +158,83 @@ namespace Chess
 
 		return same;
 	}
+
+	/**
+	 * Generates a new hash signature for this position. This should
+	 * be called for every reset()
+	 */
+	void Position::generate_hash()
+	{
+		/*
+		 * Generate pseudo-random numbers used for updating the hash
+		 * keys
+		 */
+
+		std::srand(101687);
+
+		for (int i = 0; i < 2; i++)
+		{
+			_hash_input.castle_rights[0][i] = Util::rand64();
+			_hash_input.castle_rights[1][i] = Util::rand64();
+		}
+
+		for (int i = 0; i < 8; i++)
+			_hash_input.en_passant[i] = Util::rand64();
+
+		for (int i = 0; i < 6; i++)
+		{
+			for (int j = 0; j < 64; j++)
+			{
+				_hash_input.piece[0][i][j]  = Util::rand64();
+				_hash_input.piece[1][i][j]  = Util::rand64();
+			}
+		}
+
+		_hash_input.to_move =
+			Util::rand64();
+
+		/*
+		 * Compute the hash signature for this position
+		 */
+
+		uint64& signature  = _save_hash[_ply];
+		signature = 0;
+
+		if (_ep_info[_ply].target != BAD_SQUARE)
+			signature ^=
+				_hash_input.en_passant[get_file(_ep_info[_ply].target)];
+
+		if (_to_move == white)
+			signature ^= _hash_input.to_move;
+
+		if (_castle_rights[_ply][white] & castle_K)
+			signature ^=
+				_hash_input.castle_rights[white][_OO_INDEX];
+		if (_castle_rights[_ply][white] & castle_Q)
+			signature ^=
+				_hash_input.castle_rights[white][OOO_INDEX];
+		if (_castle_rights[_ply][black] & castle_K)
+			signature ^=
+				_hash_input.castle_rights[black][_OO_INDEX];
+		if (_castle_rights[_ply][black] & castle_Q)
+			signature ^=
+				_hash_input.castle_rights[black][OOO_INDEX];
+
+		for (int i = 0; i < 64; i++)
+		{
+			if (_pieces[i] != INVALID)
+			{
+				if (_occupied[black] & _tables.set_mask[i])
+				{
+					signature ^=
+						_hash_input.piece[ black ][ _pieces[i] ][i];
+				}
+				else
+				{
+					signature ^=
+						_hash_input.piece[ white ][ _pieces[i] ][i];
+				}
+			}
+		}
+	}
 }
