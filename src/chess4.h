@@ -17,6 +17,8 @@ namespace Chess
 
 	const int max_ply = 128;
 
+	extern const char* SQUARE_STR[65];
+
 	enum : uint64
 	{
 		rank_1 = 0xFF,
@@ -95,9 +97,118 @@ namespace Chess
 		castle_Q = 0x2
 	};
 
+	enum
+	{
+		castle_K_index = 0,
+		castle_Q_index = 1
+	};
+
+	int abs(int value)
+	{
+		return value > 0 ? value : -value;
+	}
+
+	inline int flip(int to_move) { return to_move ^ 1; }
+
 	inline int get_file(int a) { return a &  7; }
 
 	inline int get_rank(int a) { return a >> 3; }
+
+	/**
+	 * @defgroup move_bits Move bit packing
+	 *
+	 * Moves are packed in 21 bits:
+	 *
+	 * 20...18: promotion piece
+	 * 17...15: captured piece
+	 * 14...12: piece moved
+	 * 11... 6: destination square
+	 *  5... 0: origin square
+	 *
+	 * @{
+	 */
+
+	/**
+	 ******************************************************************
+	 *
+	 * Extract the piece promoted to from the given move bits
+	 *
+	 * @param[in] move The move to decode
+	 *
+	 * @return The piece promoted to
+	 *
+	 ******************************************************************
+	 */
+	inline piece_t extract_promote(uint32 move)
+	{
+		return move >> 18;
+	}
+
+	/**
+	 ******************************************************************
+	 *
+	 * Extract the piece captured from the given move bits
+	 *
+	 * @param[in] move The move to decode
+	 *
+	 * @return The captured piece
+	 *
+	 ******************************************************************
+	 */
+	inline piece_t extract_captured(uint32 move)
+	{
+		return (move >> 15) & 0x07;
+	}
+
+	/**
+	 ******************************************************************
+	 *
+	 * Extract the piece moved from the given move bits
+	 *
+	 * @param[in] move The move to decode
+	 *
+	 * @return The moved piece
+	 *
+	 ******************************************************************
+	 */
+	inline piece_t extract_moved(uint32 move)
+	{
+		return (move >> 12) & 0x07;
+	}
+
+	/**
+	 ******************************************************************
+	 *
+	 * Extract the destination square from the given move bits
+	 *
+	 * @param[in] move The move to decode
+	 *
+	 * @return The destination square
+	 *
+	 ******************************************************************
+	 */
+	inline int extract_to(uint32 move)
+	{
+		return (move >> 6)  & 0x3f;
+	}
+
+	/**
+	 ******************************************************************
+	 *
+	 * Extract the origin square from the given move bits
+	 *
+	 * @param[in] move The move to decode
+	 *
+	 * @return The origin square
+	 *
+	 ******************************************************************
+	 */
+	inline int extract_from(uint32 move)
+	{
+		return move & 0x3f;
+	}
+
+	/** @} */
 
 	/**
 	 * @defgroup SAFE_BUFFER Safe Buffering

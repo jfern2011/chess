@@ -16,66 +16,6 @@ namespace Chess
 	}
 
 	/**
-	 * Get a reference to the global databases
-	 *
-	 * @return The global databases
-	 */
-	const DataTables& DataTables::get()
-	{
-		if (!_tables)
-		{
-			_tables.reset( new DataTables() );
-
-			_tables->_init_magics();
-
-			/*
-			 * Initialize sliding piece attack databases:
-			 */
-			_tables->_create_diag_attacks_database();
-			_tables->_create_rook_attacks_database();
-
-			/*
-			 * Initialize en passant target squares:
-			 */
-			_tables->_init_ep_targets();
-
-			/*
-			 * Initialize king attack database:
-			 */
-			_tables->_init_king_attacks();
-
-			/*
-			 * Initialize knight attack database:
-			 */
-			_tables->_init_knight_attacks();
-
-			/*
-			 * Initialize pawn attack databases:
-			 */
-			_tables->_init_pawn_attacks();
-
-			/*
-			 * Initialize pawn advances databases:
-			 */
-			_tables->_init_pawn_advances();
-
-			/*
-		 	 * Initlialize the bitscan tables:
-		 	 */
-			_tables->_init_xsb();
-
-			_tables->_init_piece_values();
-
-			/*
-		 	 * Initialize general-purpose tables:
-		 	 */
-			_tables->_init_misc_masks();
-		}
-
-		return *_tables;
-	}
-
-	/**
 	 *  Given an occupancy bitboard, computes the squares attacked by a
 	 *  bishop on \a square
 	 *

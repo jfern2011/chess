@@ -98,7 +98,7 @@ namespace Chess
 
 		void generate_hash();
 
-		int get_bishop_mobility(int square, uint64 occupied) const;
+		static int get_bishop_mobility(int square, uint64 occupied);
 
 		uint64 get_bishops(int to_move) const;
 
@@ -130,44 +130,44 @@ namespace Chess
 
 		uint64 get_pinned_pieces(int to_move) const;
 
-		int get_queen_mobility( int square, uint64 occupied) const;
+		static int get_queen_mobility( int square, uint64 occupied);
 
 		uint64 get_queens(int to_move) const;
 
 		uint64 get_queens() const;
 
-		int get_rook_mobility(  int square, uint64 occupied) const;
+		static int get_rook_mobility(  int square, uint64 occupied);
 
 		uint64 get_rooks(int to_move) const;
 
 		uint64 get_rooks() const;
 
-		int32 get_turn() const;
+		int get_turn() const;
 
 		bool in_check(int to_move) const;
 
 		direction_t is_pinned(int square, int to_move) const;
 
-		bool make_move(int move);
+		bool make_move(uint32 move);
 
 		piece_t piece_on(int square) const;
 
 		void print() const;
 
-		bool reset(const std::string& fen, bool xboard);
+		bool reset(const std::string& fen);
 
-		bool reset(bool xboard);
+		bool reset();
 
 		void set_default();
 
 		bool under_attack(int square, int to_move) const;
 
-		bool unmake_move(int move);
+		bool unmake_move(uint32 move);
 
-		void update_hash(int move);
+		void update_hash(uint32 move);
 
-		bool validate(const std::string& fen,
-			bool xboard) const;
+		bool validate(
+			const std::string& fen) const;
 
 	private:
 
@@ -325,8 +325,8 @@ namespace Chess
 		{
 			for (int j = 0; j < 64; j++)
 			{
-				piece[0][i][j] = 0;
-				piece[1][i][j] = 0;
+				piece[black][i][j] = 0;
+				piece[white][i][j] = 0;
 			}
 		}
 
@@ -366,11 +366,11 @@ namespace Chess
 		{
 			for (int j = 0; j < 64; j++)
 			{
-				same = same &&
-					piece[0][i][j] == rhs.piece[0][i][j];
+				same = same && piece[black][i][j] ==
+					rhs.piece[black][i][j];
 
-				same = same &&
-					piece[1][i][j] == rhs.piece[1][i][j];
+				same = same && piece[white][i][j] ==
+					rhs.piece[white][i][j];
 			}
 		}
 
@@ -550,9 +550,11 @@ namespace Chess
 	inline int Position::get_bishop_mobility(int square,
 		uint64 occupied) const
 	{
-		return _tables.bishop_mobility[_tables.bishop_offsets[square] +
-				(((occupied & _tables.bishop_attacks_mask[square])
-					* _tables.diag_magics[square]) >> _tables.bishop_db_shifts[square])];
+		auto& tables = DataTables::get();
+
+		return tables.bishop_mobility[tables.bishop_offsets[square] +
+				(((occupied & tables.bishop_attacks_mask[square])
+					* tables.diag_magics[square]) >> tables.bishop_db_shifts[square])];
 	}
 
 	/**
@@ -576,7 +578,7 @@ namespace Chess
 	 */
 	inline uint64 Position::get_bishops() const
 	{
-		return _bishops[BLACK] | _bishops[WHITE];
+		return _bishops[black] | _bishops[white];
 	}
 
 	/**
@@ -591,50 +593,52 @@ namespace Chess
 	inline uint64 Position::get_discover_ready(int to_move) const
 	{
 		const uint64 occupied =
-			_occupied[0] | _occupied[1];
+			_occupied[black] | _occupied[white];
 
 		uint64 pinned =
 			attacks_from_queen(_king_sq[to_move], occupied)
 				& _occupied[flip(to_move)];
 
+		auto& tables = DataTables::get();
+
 		for (uint64 temp = pinned; temp; )
 		{
-			const int sq = Util::msb64(temp);
+			const int sq = msb64(temp);
 
-			switch (data_tables.directions[sq][_king_sq[to_move]])
+			switch (tables.directions[sq][_king_sq[to_move]])
 			{
-			case ALONG_RANK:
+			case direction_t::along_rank:
 				if (!(attacks_from_rook( sq, occupied)
-						& data_tables.ranks64[sq]
+						& tables.ranks64[sq]
 						& (_rooks[flip(to_move)] |
 							_queens[flip(to_move)])))
-					Util::clear_bit64(sq, pinned);
+					clear_bit64(sq, pinned);
 				break;
-			case ALONG_FILE:
+			case direction_t::along_file:
 				if (!(attacks_from_rook( sq, occupied)
-						& data_tables.files64[sq]
+						& tables.files64[sq]
 						& (_rooks[flip(to_move)] |
 							_queens[flip(to_move)])))
-					Util::clear_bit64(sq, pinned);
+					clear_bit64(sq, pinned);
 				break;
-			case ALONG_A1H8:
+			case direction_t::along_a1h8:
 				if (!(attacks_from_bishop(sq, occupied)
-					  & data_tables.a1h8_64[sq]
+					  & tables.a1h8_64[sq]
 					  & (_bishops[flip(to_move)] |
 					  		 _queens[flip(to_move)])))
-					Util::clear_bit64(sq, pinned);
+					clear_bit64(sq, pinned);
 				break;
-			case ALONG_H1A8:
+			case direction_t::along_h1a8:
 				if (!(attacks_from_bishop(sq, occupied)
-					  & data_tables.h1a8_64[sq]
+					  & tables.h1a8_64[sq]
 					  & (_bishops[flip(to_move)] |
 					  		 _queens[flip(to_move)])))
-					Util::clear_bit64(sq, pinned);
+					clear_bit64(sq, pinned);
 			default:
 				break;
 			}
 
-			Util::clear_bit64(sq, temp);
+			clear_bit64(sq, temp);
 		}
 
 		return pinned;
@@ -647,10 +651,6 @@ namespace Chess
 	 */
 	inline uint64 Position::get_hash_key() const
 	{
-	#if defined(DEBUG)
-		AbortIfNot(_is_init, ~0);
-	#endif
-
 		return(_save_hash[_ply]);
 	}
 
@@ -664,10 +664,6 @@ namespace Chess
 	 */
 	inline uint64 Position::get_hash_key(int ply) const
 	{
-	#if defined(DEBUG)
-		AbortIf(ply < 0 ||  MAX_PLY <= ply, ~0);
-	#endif
-
 		return _save_hash[_ply];
 	}
 
@@ -724,7 +720,7 @@ namespace Chess
 	/**
 	 * Get a bitboard representing all squares occupied by \a to_move
 	 *
-	 * @param[in] to_move Get a bitboard for this guy
+	 * @param[in] to_move Get the squares occupied by this guy
 	 *
 	 * @return A bitboard with 1 bit set for each square containing a
 	 *         piece belonging to \a to_move
@@ -741,7 +737,7 @@ namespace Chess
 	 */
 	inline uint64 Position::get_occupied() const
 	{
-		return _occupied[BLACK] | _occupied[WHITE];
+		return _occupied[black] | _occupied[white];
 	}
 
 	/**
@@ -768,50 +764,52 @@ namespace Chess
 	inline uint64 Position::get_pinned_pieces( int to_move ) const
 	{
 		const uint64 occupied =
-			_occupied[0] | _occupied[1];
+			_occupied[black] | _occupied[white];
 
 		uint64 pinned =
 			attacks_from_queen(_king_sq[to_move], occupied)
 				& _occupied[to_move];
 
+		auto& tables = DataTables::get();
+
 		for (uint64 temp = pinned; temp; )
 		{
-			const int sq = Util::msb64(temp);
+			const int sq = msb64(temp);
 
-			switch (data_tables.directions[sq][_king_sq[to_move]])
+			switch (tables.directions[sq][_king_sq[to_move]])
 			{
-			case ALONG_RANK:
+			case direction_t::along_rank:
 				if (!(attacks_from_rook(sq, occupied)
-						& data_tables.ranks64[sq]
+						& tables.ranks64[sq]
 						& (_rooks[flip(to_move)] |
 							_queens[flip(to_move)])))
-					Util::clear_bit64(sq, pinned);
+					clear_bit64(sq, pinned);
 				break;
-			case ALONG_FILE:
+			case direction_t::along_file:
 				if (!(attacks_from_rook( sq, occupied)
-						& data_tables.files64[sq]
+						& tables.files64[sq]
 						& (_rooks[flip(to_move)] |
 							_queens[flip(to_move)])))
-					Util::clear_bit64(sq, pinned);
+					clear_bit64(sq, pinned);
 				break;
-			case ALONG_A1H8:
+			case direction_t::along_a1h8:
 				if (!(attacks_from_bishop(sq, occupied)
-					  & data_tables.a1h8_64[sq]
+					  & tables.a1h8_64[sq]
 					  & (_bishops[flip(to_move)] |
 					  		 _queens[flip(to_move)])))
-					Util::clear_bit64(sq, pinned);
+					clear_bit64(sq, pinned);
 				break;
-			case ALONG_H1A8:
+			case direction_t::along_h1a8:
 				if (!(attacks_from_bishop(sq, occupied)
-					  & data_tables.h1a8_64[sq]
+					  & tables.h1a8_64[sq]
 					  & (_bishops[flip(to_move)] |
 					  		 _queens[flip(to_move)])))
-					Util::clear_bit64(sq, pinned);
+					clear_bit64(sq, pinned);
 			default:
 				break;
 			}
 
-			Util::clear_bit64(sq, temp);
+			clear_bit64(sq, temp);
 		}
 
 		return pinned;
@@ -827,7 +825,7 @@ namespace Chess
 	 * @return The Hamming weight of \ref attacks_from_queen()
 	 */
 	inline int Position::get_queen_mobility(int square,
-		uint64 occupied) const
+		uint64 occupied)
 	{
 		return get_rook_mobility(square, occupied)
 				+ get_bishop_mobility(square, occupied);
@@ -854,7 +852,7 @@ namespace Chess
 	 */
 	inline uint64 Position::get_queens() const
 	{
-		return _queens[BLACK] | _queens[WHITE];
+		return _queens[black] | _queens[white];
 	}
 
 	/**
@@ -867,11 +865,13 @@ namespace Chess
 	 * @return The Hamming weight of \ref attacks_from_rook()
 	 */
 	inline int Position::get_rook_mobility(int square,
-		uint64 occupied) const
+		uint64 occupied)
 	{
-		return _tables.rook_mobility[_tables.rook_offsets[square] +
-				(((occupied & _tables.rook_attacks_mask[square])
-					* _tables.rook_magics[square]) >> _tables.rook_db_shifts[square])];
+		auto& tables = DataTables::get();
+
+		return tables.rook_mobility[tables.rook_offsets[square] +
+				(((occupied & tables.rook_attacks_mask[square])
+					* tables.rook_magics[square]) >> tables.rook_db_shifts[square])];
 	}
 
 	/**
@@ -895,44 +895,35 @@ namespace Chess
 	 */
 	inline uint64 Position::get_rooks() const
 	{
-		return _rooks[BLACK] | _rooks[WHITE];
+		return _rooks[black] | _rooks[white];
 	}
 
 	/**
 	 * Get the player whose turn it is to move in this position
 	 *
-	 * @return \ref WHITE or \ref BLACK
+	 * @return \ref white or \ref black
 	 */
-	inline int32 Position::get_turn() const
+	inline int Position::get_turn() const
 	{
-	#if defined(DEBUG)
-		AbortIfNot( _is_init, ~0 );
-	#endif
-
 		return _to_move;
 	}
 
 	/**
 	 * Determine if the given side, \a to_move, is in check
 	 *
-	 * @param[in] to_move \ref WHITE or \ref BLACK
+	 * @param[in] to_move \ref white or \ref black
 	 *
 	 * @return True if \a to_move is in check
 	 */
 	inline bool Position::in_check(int to_move) const
 	{
-	#if defined(DEBUG)
-		AbortIf(to_move != WHITE && to_move != BLACK,
-			false);
-	#endif
-
 		return under_attack(_king_sq[to_move],
 			flip(to_move));
 	}
 
 	/**
 	 * Determine whether a piece on a particular square would be pinned
-	 * on the king
+	 * on the king (if that piece were there)
 	 *
 	 * @param[in] square  The square of interest
 	 * @param[in] to_move The player whose piece would be pinned
@@ -942,45 +933,51 @@ namespace Chess
 	inline direction_t Position::is_pinned(int square, int to_move) const
 	{
 		const uint64 occupied =
-			_occupied[0] | _occupied[1];
+			_occupied[black] | _occupied[white];
+
+		auto& tables = DataTables::get();
 
 		if (attacks_from_queen(square,occupied) & _kings[to_move])
 		{
-			switch(data_tables.directions[ square ][_king_sq[ to_move ]])
+			switch(tables.directions[ square ][_king_sq[ to_move ]])
 			{
-			case ALONG_RANK:
+			case direction_t::along_rank:
 				if (attacks_from_rook( square, occupied)
-						& data_tables.ranks64[square]
+						& tables.ranks64[square]
 						& (_rooks[flip(to_move)] |
 							_queens[flip(to_move)]))
-					return ALONG_RANK;
+
+					return direction_t::along_rank;
 				break;
-			case ALONG_FILE:
+			case direction_t::along_file:
 				if (attacks_from_rook( square, occupied)
-						& data_tables.files64[square]
+						& tables.files64[square]
 						& (_rooks[flip(to_move)] |
 							_queens[flip(to_move)]))
-					return ALONG_FILE;
+
+					return direction_t::along_file;
 				break;
-			case ALONG_A1H8:
+			case direction_t::along_a1h8:
 				if (attacks_from_bishop(square, occupied)
-					  & data_tables.a1h8_64[square]
+					  & tables.a1h8_64[square]
 					  & (_bishops[flip(to_move)] |
 					  			 _queens[flip(to_move)]))
-					return ALONG_A1H8;
+
+					return direction_t::along_a1h8;
 				break;
-			case ALONG_H1A8:
+			case direction_t::along_h1a8:
 				if (attacks_from_bishop(square, occupied)
-					  & data_tables.h1a8_64[square]
+					  & tables.h1a8_64[square]
 					  & (_bishops[flip(to_move)] |
 					  			 _queens[flip(to_move)]))
-					return ALONG_H1A8;
+
+					return direction_t::along_h1a8;
 			default:
 				break;
 			}
 		}
 
-		return NONE;
+		return direction_t::none;
 	}
 
 	/**
@@ -991,12 +988,8 @@ namespace Chess
 	 *
 	 * @return True on success
 	 */
-	inline bool Position::make_move(int move)
+	inline bool Position::make_move(uint32 move)
 	{
-	#if defined(DEBUG)
-		AbortIfNot(_is_init, false);
-	#endif
-
 		/*
 		 * Update the position hash signature
 		 */
@@ -1008,10 +1001,10 @@ namespace Chess
 		 * unMakeMove(), we'll have a record of what this
 		 * was prior to making the move: 
 		 */
-		_castle_rights[_ply+1][BLACK] =
-				_castle_rights[_ply][BLACK];
-		_castle_rights[_ply+1][WHITE] = 
-				_castle_rights[_ply][WHITE];
+		_castle_rights[_ply+1][black] =
+				_castle_rights[_ply][black];
+		_castle_rights[_ply+1][white] = 
+				_castle_rights[_ply][white];
 
 		_ply++;
 
@@ -1026,14 +1019,14 @@ namespace Chess
 			return true;
 		}
 
-		const int captured = CAPTURED(move);
-		const int from     = FROM(move);
-		const int moved    = MOVED(move);
-		const int promote  = PROMOTE(move);
-		const int to       = TO(move);
+		const piece_t captured = extract_captured(move);
+		const int from         = extract_from(move);
+		const piece_t moved    = extract_moved(move);
+		const piece_t promote  = extract_promote(move);
+		const int to           = extract_to(move);
 
-		_pieces[from] = INVALID;
-		_pieces[to]   = static_cast<piece_t>(moved);
+		_pieces[from] = piece_t::empty;
+		_pieces[to]   = moved;
 
 		clear_set64(from, to, _occupied[_to_move] );
 
@@ -1045,74 +1038,75 @@ namespace Chess
 
 		int delta_material = 0;
 
+		auto& tables = DataTables::get();
+
 		switch (moved)
 		{
-			case PAWN:
-				_pawns[_to_move] &= _tables.clear_mask[from];
+			case piece_t::pawn:
+				_pawns[_to_move] &= tables.clear_mask[from];
 
-				if (promote != INVALID)
+				if (promote != piece_t::none)
 				{
-					_pieces[to] =
-						static_cast<piece_t>(promote);
+					_pieces[to] = promote;
 
 					delta_material +=
-							piece_value[promote ]-PAWN_VALUE;
+							piece_value[promote ]-pawn_value;
 				}
 
 				switch (promote)
 				{
-					case KNIGHT:
+					case piece_t::knight:
 						_knights[_to_move]
-							|= _tables.set_mask[to];
+							|= tables.set_mask[to];
 						break;
-					case ROOK:
+					case piece_t::rook:
 						_rooks[_to_move]
-							|= _tables.set_mask[to];
+							|= tables.set_mask[to];
 						break;
-					case QUEEN:
+					case piece_t::queen:
 						_queens[_to_move] 
-							|= _tables.set_mask[to];
+							|= tables.set_mask[to];
 						break;
-					case BISHOP:
+					case piece_t::bishop:
 						_bishops[_to_move]
-							|= _tables.set_mask[to];
+							|= tables.set_mask[to];
 						break;
 					default:
 						_pawns[_to_move]
-							|= _tables.set_mask[to];
+							|= tables.set_mask[to];
 				}
 
 				/*
 				 * Set the en passant target square:
 				 */
-				if (_abs(from-to) == 16)
+				if (abs(from-to) == 16)
 				{
 					uint64 src =
-						_pawns[flip(_to_move)] & _tables.rank_adjacent[to];
+						_pawns[flip(_to_move)] & tables.rank_adjacent[to];
 
-					if (_to_move == WHITE)
+					if (_to_move == white)
 						_ep_info[_ply].target = to-8;
 					else
 						_ep_info[_ply].target = to+8;
 
-					if (src & (_tables.set_mask[to+1]))
+					if (src & (tables.set_mask[to+1]))
 						_ep_info[_ply].src[0] = to+1;
-					if (src & (_tables.set_mask[to-1]))
+					if (src & (tables.set_mask[to-1]))
 						_ep_info[_ply].src[1] = to-1;
 				}
 
 				break;
 
-			case KNIGHT:
+			case piece_t::knight:
 				clear_set64(from, to, _knights[_to_move]);
 				break;
 
-			case ROOK:
+			case piece_t::rook:
 				clear_set64( from, to, _rooks[_to_move] );
 
 				if ((_castle_rights[_ply][_to_move]))
 				{
-					switch (FILE(from))
+					switch (get_file(from))
 					{
 						/*
 						 * Reduce castling rights since we moved
@@ -1130,64 +1124,64 @@ namespace Chess
 
 				break;
 
-			case BISHOP:
+			case piece_t::bishop:
 				clear_set64(from, to, _bishops[_to_move]);
 				break;
 
-			case QUEEN:
+			case piece_t::queen:
 				clear_set64(from, to, _queens[_to_move] );
 				break;
 
-			case KING:
+			case piece_t::king:
 				clear_set64( from, to, _kings[_to_move] );
 				_king_sq[_to_move] = to;
 
-				if (_abs(from-to) == 2)
+				if (abs(from-to) == 2)
 				{
 					/*
 				 	 * This was a castle move - update
 				 	 * the rook data:
 				 	 */
-					if (_to_move == WHITE)
+					if (_to_move == white)
 					{
 						if (to == G1)
 						{
-							_pieces[H1] = INVALID;
-							_pieces[F1] = ROOK;
+							_pieces[H1] = piece_t::empty;
+							_pieces[F1] = piece_t::rook;
 
-							clear_set64(H1, F1, _rooks[WHITE]);
+							clear_set64(H1, F1, _rooks[white]);
 							clear_set64(H1, F1,
-								_occupied[WHITE]);
+								_occupied[white]);
 						}
 						else // Queenside castle
 						{
-							_pieces[A1] = INVALID;
-							_pieces[D1] = ROOK;
+							_pieces[A1] = piece_t::empty;
+							_pieces[D1] = piece_t::rook;
 
-							clear_set64(A1, D1, _rooks[WHITE]);
+							clear_set64(A1, D1, _rooks[white]);
 							clear_set64(A1, D1,
-								_occupied[WHITE]);
+								_occupied[white]);
 						}
 					}
 					else
 					{
 						if (to == G8)
 						{
-							_pieces[H8] = INVALID;
-							_pieces[F8] = ROOK;
+							_pieces[H8] = piece_t::empty;
+							_pieces[F8] = piece_t::rook;
 
-							clear_set64(H8, F8, _rooks[BLACK]);
+							clear_set64(H8, F8, _rooks[black]);
 							clear_set64(H8, F8,
-								_occupied[BLACK]);
+								_occupied[black]);
 						}
 						else // Queenside castle
 						{
-							_pieces[A8] = INVALID;
-							_pieces[D8] = ROOK;
+							_pieces[A8] = piece_t::empty;
+							_pieces[D8] = piece_t::rook;
 
-							clear_set64(A8, D8, _rooks[BLACK]);
+							clear_set64(A8, D8, _rooks[black]);
 							clear_set64(A8, D8,
-								_occupied[BLACK]);
+								_occupied[black]);
 						}
 					}
 				}
@@ -1200,60 +1194,58 @@ namespace Chess
 				break;
 		}
 
-		if (captured != INVALID)
+		if (captured != piece_t::empty)
 		{
 			delta_material += piece_value[captured];
 
 			switch (captured)
 			{
-				case PAWN:
+				case piece_t::pawn:
 
-					if (_occupied[flip(_to_move)] & _tables.set_mask[to])
+					if (_occupied[flip(_to_move)] & tables.set_mask[to])
 					{
-						_pawns[flip(_to_move)] &= _tables.clear_mask[to];
+						_pawns[flip(_to_move)] &= tables.clear_mask[to];
 					}
 					else
 					{
 						/*
 						 * This was an en passant capture:
 						 */
-						if (_to_move == WHITE)
+						if (_to_move == white)
 						{
-							_pieces[to-8] = INVALID;
+							_pieces[to-8] = piece_t::empty;
 
-							_occupied[BLACK]
-								&= _tables.clear_mask[to-8];
-							_pawns[BLACK]
-								&= _tables.clear_mask[to-8];
+							_occupied[black] &= tables.clear_mask[to-8];
+							_pawns[black] &=
+								tables.clear_mask[to-8];
 						}
 						else
 						{
-							_pieces[to+8] = INVALID;
+							_pieces[to+8] = piece_t::empty;
 
-							_occupied[WHITE]
-								&= _tables.clear_mask[to+8];
-							_pawns[WHITE]
-								&= _tables.clear_mask[to+8];
+							_occupied[white] &= tables.clear_mask[to+8];
+							_pawns[white] &=
+								tables.clear_mask[to+8];
 						}
 					}
 
 					break;
 
-				case KNIGHT:
+				case piece_t::knight:
 
-					_knights[flip(_to_move)] &= _tables.clear_mask[to];
+					_knights[flip(_to_move)] &= tables.clear_mask[to];
 					break;
 
-				case BISHOP:
-					_bishops[flip(_to_move)] &= _tables.clear_mask[to];
+				case piece_t::bishop:
+					_bishops[flip(_to_move)] &= tables.clear_mask[to];
 					break;
 
-				case QUEEN:
-					_queens[flip(_to_move)]  &= _tables.clear_mask[to];
+				case piece_t::queen:
+					_queens[flip(_to_move)]  &= tables.clear_mask[to];
 					break;
 
-				case ROOK:
-					_rooks[ flip(_to_move) ] &= _tables.clear_mask[to];
+				case piece_t::rook:
+					_rooks[ flip(_to_move) ] &= tables.clear_mask[to];
 
 					/*
 					 * Update the opponent's castling rights if he could
@@ -1265,7 +1257,7 @@ namespace Chess
 						 * Remove castling rights for the rook that
 						 * was captured:
 						 */
-						switch (FILE(to))
+						switch (get_file(to))
 						{
 							case 0:
 								_castle_rights[_ply][flip(_to_move)]
@@ -1282,19 +1274,19 @@ namespace Chess
 
 			// Update the enemy occupancy:
 			_occupied[flip(_to_move)] &=
-					_tables.clear_mask[to];
+					tables.clear_mask[to];
 		}
 
-		else if (moved != PAWN)
+		else if (moved != piece_t::pawn)
 			_half_move++;
 
-		if ( _to_move == BLACK )
+		if ( _to_move == black )
 			_full_move++;
 
 		/*
 		 * Update the material balance:
 		 */
-		if (_to_move == WHITE)
+		if (_to_move == white)
 			_material += delta_material;
 		else
 			_material -= delta_material;
@@ -1328,14 +1320,16 @@ namespace Chess
 	 */
 	inline bool Position::under_attack(int square, int to_move) const
 	{
-		if (_tables.pawn_attacks[flip(to_move)][square]
+		auto& tables = DataTables::get();
+
+		if (tables.pawn_attacks[flip(to_move)][square]
 				& _pawns[to_move])
 			return true;
 
-		if (_tables.king_attacks[ square ] & _kings[ to_move ])
+		if (tables.king_attacks[ square ] & _kings[ to_move ])
 			return true;
 
-		if (_tables.knight_attacks[square] & _knights[to_move])
+		if (tables.knight_attacks[square] & _knights[to_move])
 			return true;
 
 		const uint64 rooks_queens   =
@@ -1367,10 +1361,6 @@ namespace Chess
 	 */
 	inline bool Position::unmake_move(int move)
 	{
-	#if defined(DEBUG)
-		AbortIfNot(_is_init, false);
-	#endif
-
 		/*
 		 * Back up to the previous ply to restore castling,
 		 * en passant info, and the hash signature
@@ -1385,18 +1375,17 @@ namespace Chess
 		if (move == 0)
 			return true;
 
-		const int captured = CAPTURED(move);
-		const int from     = FROM(move);
-		const int moved    = MOVED(move);
-		const int promote  = PROMOTE(move);
-		const int to       = TO(move);
+		const piece_t captured = extract_captured(move);
+		const int from         = extract_from(move);
+		const piece_t moved    = extract_moved(move);
+		const piece_t promote  = extract_promote(move);
+		const int to           = extract_to(move);
 
 		/*
 		 * Restore the piece locations
 		 */
-		_pieces[from] = static_cast<piece_t>(moved);
-		_pieces[to]   =
-					 static_cast<piece_t>(captured);
+		_pieces[from] = moved;
+		_pieces[to]   = captured;
 
 		int delta_material = 0;
 
@@ -1405,32 +1394,34 @@ namespace Chess
 		 */
 		clear_set64(to, from, _occupied[_to_move]);
 
+		auto& tables = DataTables::get();
+
 		switch (moved)
 		{
-			case PAWN:
+			case piece_t::pawn:
 				_pawns[_to_move] |= _tables.set_mask[from];
 
-				if (promote != INVALID)
+				if (promote != piece_t::empty)
 				{
 					delta_material +=
-						piece_value[promote ] - PAWN_VALUE;
+						piece_value[promote ] - pawn_value;
 				}
 
 				switch (promote)
 				{
-					case KNIGHT:
+					case piece_t::knight:
 						_knights[_to_move]
 							&= _tables.clear_mask[to];
 						break;
-					case ROOK:
+					case piece_t::rook:
 						_rooks[_to_move]
 							&= _tables.clear_mask[to];
 						break;
-					case QUEEN:
+					case piece_t::queen:
 						_queens[_to_move]  
 							&= _tables.clear_mask[to];
 						break;
-					case BISHOP:
+					case piece_t::bishop:
 						_bishops[_to_move] 
 							&= _tables.clear_mask[to];
 						break;
@@ -1441,23 +1432,23 @@ namespace Chess
 
 				break;
 
-			case KNIGHT:
+			case piece_t::knight:
 				clear_set64(to, from, _knights[_to_move]);
 				break;
 
-			case ROOK:
+			case piece_t::rook:
 				clear_set64( to, from, _rooks[_to_move] );
 				break;
 
-			case BISHOP:
+			case piece_t::bishop:
 				clear_set64(to, from, _bishops[_to_move]);
 				break;
 
-			case QUEEN:
+			case piece_t::queen:
 				clear_set64( to, from, _queens[_to_move]);
 				break;
 
-			case KING:
+			case piece_t::king:
 				clear_set64( to, from, _kings[_to_move] );
 				_king_sq[_to_move] = from;
 
@@ -1465,48 +1456,48 @@ namespace Chess
 				 * Check if this was a castle move and update
 				 * the rook bits accordingly:
 				 */
-				if (_abs(from-to) == 2)
+				if (abs(from-to) == 2)
 				{
-					if (_to_move == WHITE)
+					if (_to_move == white)
 					{
 						if (to == G1)
 						{
-							_pieces[F1] = INVALID;
-							_pieces[H1] = ROOK;
+							_pieces[F1] = piece_t::empty;
+							_pieces[H1] = piece_t::rook;
 
-							clear_set64(F1, H1, _rooks[WHITE]);
+							clear_set64(F1, H1, _rooks[white]);
 							clear_set64(F1, H1,
-								_occupied[WHITE]);
+								_occupied[white]);
 						}
 						else // Queenside castle
 						{
-							_pieces[D1] = INVALID;
-							_pieces[A1] = ROOK;
+							_pieces[D1] = piece_t::empty;
+							_pieces[A1] = piece_t::rook;
 
-							clear_set64(D1, A1, _rooks[WHITE]);
+							clear_set64(D1, A1, _rooks[white]);
 							clear_set64(D1, A1,
-								_occupied[WHITE]);
+								_occupied[white]);
 						}
 					}
 					else
 					{
 						if (to == G8)
 						{
-							_pieces[F8] = INVALID;
-							_pieces[H8] = ROOK;
+							_pieces[F8] = piece_t::empty;
+							_pieces[H8] = piece_t::rook;
 
-							clear_set64(F8, H8, _rooks[BLACK]);
+							clear_set64(F8, H8, _rooks[black]);
 							clear_set64(F8, H8,
-								_occupied[BLACK]);
+								_occupied[black]);
 						}
 						else // Queenside castle
 						{
-							_pieces[D8] = INVALID;
-							_pieces[A8] = ROOK;
+							_pieces[D8] = piece_t::empty;
+							_pieces[A8] = piece_t::rook;
 
-							clear_set64(D8, A8, _rooks[BLACK]);
+							clear_set64(D8, A8, _rooks[black]);
 							clear_set64(D8, A8,
-								_occupied[BLACK]);
+								_occupied[black]);
 						}
 					}
 				}
@@ -1518,7 +1509,7 @@ namespace Chess
 		 * Restore the opponent's board info if this
 		 * was a capture
 		 */
-		if (captured != INVALID)
+		if (captured != piece_t::empty)
 		{
 			delta_material += piece_value[captured];
 
@@ -1530,7 +1521,7 @@ namespace Chess
 
 			switch (captured)
 			{
-				case PAWN:
+				case piece_t::pawn:
 
 					if (to == _ep_info[_ply].target)
 					{
@@ -1539,26 +1530,26 @@ namespace Chess
 						_occupied[flip(_to_move)] &=
 					  				_tables.clear_mask[to];
 
-						if (_to_move == WHITE)
+						if (_to_move == white)
 						{
-							_pieces[to-8] = PAWN;
+							_pieces[to-8] = piece_t::pawn;
 
-							_occupied[BLACK]
+							_occupied[black]
 								|= _tables.set_mask[to-8];
-							_pawns[BLACK]
+							_pawns[black]
 								|= _tables.set_mask[to-8];
 						}
 						else
 						{
-							_pieces[to+8] = PAWN;
+							_pieces[to+8] = piece_t::pawn;
 
-							_occupied[WHITE]
+							_occupied[white]
 								|= _tables.set_mask[to+8];
-							_pawns[WHITE]
+							_pawns[white]
 								|= _tables.set_mask[to+8];
 						}
 
-						_pieces[to] = INVALID;
+						_pieces[to] = piece_t::empty;
 					}
 					else
 					{
@@ -1568,30 +1559,30 @@ namespace Chess
 
 					break;
 
-				case KNIGHT:
+				case piece_t::knight:
 					_knights[flip(_to_move)] |= _tables.set_mask[to];
 					break;
-				case QUEEN:
+				case piece_t::queen:
 					_queens[flip(_to_move)]  |= _tables.set_mask[to];
 					break;
-				case ROOK:
+				case piece_t::rook:
 					_rooks[ flip(_to_move) ] |= _tables.set_mask[to];
 					break;
-				case BISHOP:
+				case piece_t::bishop:
 					_bishops[flip(_to_move)] |= _tables.set_mask[to];
 					break;
 			}
 		}
-		else if (moved != PAWN)
+		else if (moved != piece_t::pawn)
 			_half_move--;
 
-		if (_to_move == BLACK)
+		if (_to_move == black)
 			_full_move--;
 
 		/*
 		 * Restore the material balance:
 		 */
-		if (_to_move == WHITE)
+		if (_to_move == white)
 			_material -= delta_material;
 		else
 			_material += delta_material;
@@ -1610,11 +1601,11 @@ namespace Chess
 		uint64& hash = _save_hash[_ply+1];
 		hash = _save_hash[_ply];
 
-		const int captured = CAPTURED(move);
-		const int from     = FROM(move);
-		const int moved    = MOVED(move);
-		const int promote  = PROMOTE(move);
-		const int to       = TO(move);
+		const piece_t captured = extract_captured(move);
+		const int from         = extract_from(move);
+		const piece_t moved    = extract_moved(move);
+		const piece_t promote  = extract_promote(move);
+		const int to           = extract_to(move);
 
 		/*
 		 * If we had a valid en passant square for the current ply,
@@ -1623,7 +1614,7 @@ namespace Chess
 		if (_ep_info[_ply].target != BAD_SQUARE)
 		{
 			hash ^=
-			  _hash_input.en_passant[FILE(_ep_info[_ply].target) ];
+			  _hash_input.en_passant[get_file(_ep_info[_ply].target)];
 		}
 
 		/*
@@ -1640,9 +1631,9 @@ namespace Chess
 		 * XOR in the en passant value if we advanced a pawn by
 		 * two squares
 		 */
-		if (_abs(from-to) == 16)
+		if (abs(from-to) == 16)
 		{
-			hash ^= _hash_input.en_passant[ FILE(to) ];
+			hash ^= _hash_input.en_passant[ get_file(to) ];
 		}
 
 		/*
@@ -1652,7 +1643,7 @@ namespace Chess
 		hash ^=
 			_hash_input.piece[_to_move][moved][from];
 
-		if (promote == INVALID)
+		if (promote == piece_t::empty)
 			hash ^= _hash_input.piece[_to_move][ moved ][to];
 		else
 			hash ^= _hash_input.piece[_to_move][promote][to];
@@ -1661,19 +1652,19 @@ namespace Chess
 		 * Update the hash key if we moved a rook with which we
 		 * could have castled
 		 */
-		if (moved == ROOK)
+		if (moved == piece_t::rook)
 		{
-			if (FILE(from) == 0 &&
+			if (get_file(from) == 0 &&
 				(_castle_rights[_ply][_to_move] & castle_K))
 			{
 				hash ^=
-					_hash_input.castle_rights[_to_move][_OO_INDEX];
+					_hash_input.castle_rights[_to_move][castle_K_index];
 			}
-			else if (FILE(from) == 7 &&
+			else if (get_file(from) == 7 &&
 				(_castle_rights[_ply][_to_move] & castle_Q))
 			{
 				hash ^=
-					_hash_input.castle_rights[_to_move][OOO_INDEX];
+					_hash_input.castle_rights[_to_move][castle_Q_index];
 			}
 		}
 
@@ -1681,36 +1672,36 @@ namespace Chess
 		 * Update the hash key to reflect new castling rights
 		 * if the king was moved
 		 */
-		else if (moved == KING)
+		else if (moved == piece_t::king)
 		{
 			if (_castle_rights[_ply][_to_move] & castle_K)
 				hash ^=
-					_hash_input.castle_rights[_to_move][_OO_INDEX];
+					_hash_input.castle_rights[_to_move][castle_K_index];
 			if (_castle_rights[_ply][_to_move] & castle_Q)
 				hash ^=
-					_hash_input.castle_rights[_to_move][OOO_INDEX];
+					_hash_input.castle_rights[_to_move][castle_Q_index];
 
 			/*
 			 * Update the hash key for the rook involved with
 			 * the castle
 			 */
-			if (_abs(from-to) == 2)
+			if (abs(from-to) == 2)
 			{
-				if (_to_move == WHITE)
+				if (_to_move == white)
 				{
 					if (to == G1)
 					{
 						hash ^=
-							_hash_input.piece[WHITE][ROOK][H1];
+							_hash_input.piece[white][piece_t::rook][H1];
 						hash ^=
-							_hash_input.piece[WHITE][ROOK][F1];
+							_hash_input.piece[white][ROOK][F1];
 					}
 					else
 					{
 						hash ^=
-							_hash_input.piece[WHITE][ROOK][A1];
+							_hash_input.piece[white][piece_t::rook][A1];
 						hash ^=
-							_hash_input.piece[WHITE][ROOK][D1];
+							_hash_input.piece[white][piece_t::rook][D1];
 					}
 				}
 				else
@@ -1718,16 +1709,16 @@ namespace Chess
 					if (to == G8)
 					{
 						hash ^=
-							_hash_input.piece[BLACK][ROOK][H8];
+							_hash_input.piece[black][piece_t::rook][H8];
 						hash ^=
-							_hash_input.piece[BLACK][ROOK][F8];
+							_hash_input.piece[black][piece_t::rook][F8];
 					}
 					else
 					{
 						hash ^=
-							_hash_input.piece[BLACK][ROOK][A8];
+							_hash_input.piece[black][piece_t::rook][A8];
 						hash ^=
-							_hash_input.piece[BLACK][ROOK][D8];
+							_hash_input.piece[black][piece_t::rook][D8];
 					}
 				}
 			}
@@ -1736,7 +1727,7 @@ namespace Chess
 		/*
 		 * Next, Update the hash if an opponent's piece was captured
 		 */
-		if (captured != INVALID)
+		if (captured != piece_t::empty)
 		{
 			const int x_side = flip(_to_move);
 
@@ -1744,41 +1735,41 @@ namespace Chess
 			 * Note that if the captured piece was a pawn, we need
 			 * to treat en passant captures separately
 			 */
-			if (captured != PAWN)
+			if (captured != piece_t::pawn)
 				hash ^=
 					_hash_input.piece[flip(_to_move)][captured][to];
 
 			switch (captured)
 			{
-			case PAWN:
+			case piece_t::pawn:
 
-				if (_pieces[to] != INVALID)
-					hash ^= _hash_input.piece[x_side][PAWN][to];
+				if (_pieces[to] != piece_t::empty)
+					hash ^= _hash_input.piece[x_side][piece_t::pawn][to];
 				else
 				{
-					if (_to_move == WHITE)
+					if (_to_move == white)
 						hash ^=
-							_hash_input.piece[BLACK][PAWN][ to-8 ];
+							_hash_input.piece[black][piece_t::pawn][ to-8 ];
 					else
 						hash ^=
-							_hash_input.piece[WHITE][PAWN][ to+8 ];
+							_hash_input.piece[white][piece_t::pawn][ to+8 ];
 				}
 				
 				break;
 
-			case ROOK:
+			case piece_t::rook:
 
 				/*
 				 * Update the hash key if we captured a rook with which
 				 * the opponent could have castled
 				 */
-				switch (FILE(to))
+				switch (get_file(to))
 				{
 				case 0:
 					if (_castle_rights[_ply][x_side] & castle_K)
 					{
 						hash ^=
-							_hash_input.castle_rights[x_side][_OO_INDEX];
+							_hash_input.castle_rights[x_side][castle_K_index];
 					}
 				break;
 
@@ -1786,7 +1777,7 @@ namespace Chess
 					if (_castle_rights[_ply][x_side] & castle_Q)
 					{
 						hash ^=
-							_hash_input.castle_rights[x_side][OOO_INDEX];
+							_hash_input.castle_rights[x_side][castle_Q_index];
 					}
 				}
 			}
