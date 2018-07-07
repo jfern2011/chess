@@ -66,7 +66,7 @@ namespace Chess
 		};
 
 		const static char init_fen[] =
-		   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+			"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 	public:
 
@@ -84,16 +84,13 @@ namespace Chess
 		uint64 attacks_from(
 			int square, piece_t piece, int to_move) const;
 
-		static uint64 attacks_from_bishop(int square, uint64 occupied)
-			const;
+		static uint64 attacks_from_bishop(int square, uint64 occupied);
 
-		static uint64 attacks_from_queen( int square, uint64 occupied)
-			const;
+		static uint64 attacks_from_queen (int square, uint64 occupied);
 
-		static uint64 attacks_from_rook(  int square, uint64 occupied)
-			const;
+		static uint64 attacks_from_rook  (int square, uint64 occupied);
 
-		uint64 attacks_to( int square, int to_move) const;
+		uint64 attacks_to (int square, int to_move) const;
 
 		bool can_castle_long( int to_move) const;
 
@@ -435,7 +432,7 @@ namespace Chess
 	 * @return A bitboard specifying all squares attacked by this piece
 	 */
 	inline uint64 Position::attacks_from_bishop( int square,
-		uint64 occupied ) const
+		uint64 occupied )
 	{
 		auto& tables = DataTables::get();
 
@@ -454,7 +451,7 @@ namespace Chess
 	 * @return  A bitboard showing all squares attacked by this piece
 	 */
 	inline uint64 Position::attacks_from_queen(int square,
-		uint64 occupied) const
+		uint64 occupied)
 	{
 		return attacks_from_rook(square, occupied)
 				| attacks_from_bishop( square, occupied );
@@ -470,7 +467,7 @@ namespace Chess
 	 * @return A bitboard showing all squares attacked by this piece
 	 */
 	inline uint64 Position::attacks_from_rook(int square,
-		uint64 occupied) const
+		uint64 occupied)
 	{
 		auto& tables = DataTables::get();
 
