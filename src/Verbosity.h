@@ -11,7 +11,7 @@ namespace Chess
 		debug   = 3
 	};
 
-	Verbosity verbosity = terse;
+	auto verbosity = Verbosity::terse;
 
 	inline bool operator == (Verbosity v1, Verbosity v2)
 	{

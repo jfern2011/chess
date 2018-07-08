@@ -1,5 +1,5 @@
-#include "Position4.h"
 #include "util/bit_tools.h"
+#include "Position4.h"
 #include "util/str_util.h"
 #include "Verbosity.h"
 
@@ -13,7 +13,7 @@ namespace Chess
 	 */
 	Position::Position(Handle<std::ostream> stream,
 					   const std::string& fen)
-		: _output(stream, "Position")
+		: _output(new OutputSource("Position", stream))
 	{
 		_is_init = reset(fen);
 	}
@@ -46,13 +46,15 @@ namespace Chess
 	{
 		if (this != &rhs)
 		{
-			_bishops[white] = rhs._bishops[white];
-			_bishops[black] = rhs._bishops[black];
+			_bishops[player_t::white] = rhs._bishops[player_t::white];
+			_bishops[player_t::black] = rhs._bishops[player_t::black];
 
 			for (int i = 0; i < max_ply; i++)
 			{
-				_castle_rights[i][white] = rhs._castle_rights[i][white];
-				_castle_rights[i][black] = rhs._castle_rights[i][black];
+				_castle_rights[i][player_t::white] =
+					rhs._castle_rights[i][player_t::white];
+				_castle_rights[i][player_t::black] =
+					rhs._castle_rights[i][player_t::black];
 
 				_ep_info[i]   = rhs._ep_info[i];
 				_save_hash[i] =
@@ -64,26 +66,26 @@ namespace Chess
 			_hash_input = rhs._hash_input;
 			_is_init    = rhs._is_init;
 
-			_king_sq[white]  = rhs._king_sq[white];
-			_king_sq[black]  = rhs._king_sq[black];
+			_king_sq[player_t::white]  = rhs._king_sq[player_t::white];
+			_king_sq[player_t::black]  = rhs._king_sq[player_t::black];
 
-			_kings[white]    = rhs._kings[ white ];
-			_kings[black]    = rhs._kings[ black ];
+			_kings[player_t::white]    = rhs._kings[ player_t::white ];
+			_kings[player_t::black]    = rhs._kings[ player_t::black ];
 
-			_knights[white]  = rhs._knights[white];
-			_knights[black]  = rhs._knights[black];
+			_knights[player_t::white]  = rhs._knights[player_t::white];
+			_knights[player_t::black]  = rhs._knights[player_t::black];
 
 			_material = rhs._material;
 
-			_occupied[white] =
-				rhs._occupied[white];
-			_occupied[black] =
-				rhs._occupied[black];
+			_occupied[player_t::white] =
+				rhs._occupied[player_t::white];
+			_occupied[player_t::black] =
+				rhs._occupied[player_t::black];
 
 			_output = rhs._output;
 
-			_pawns[white]    = rhs._pawns[ white ];
-			_pawns[black]    = rhs._pawns[ black ];
+			_pawns[player_t::white]    = rhs._pawns[ player_t::white ];
+			_pawns[player_t::black]    = rhs._pawns[ player_t::black ];
 
 			for (int i = 0; i < 64; i++)
 			{
@@ -92,11 +94,15 @@ namespace Chess
 
 			_ply = rhs._ply;
 
-			_queens[white] = rhs._queens[white];
-			_queens[black] = rhs._queens[black];
+			_queens[player_t::white]   =
+				rhs._queens[player_t::white];
+			_queens[player_t::black]   =
+				rhs._queens[player_t::black];
 
-			_rooks[white] = rhs._rooks[ white ];
-			_rooks[black] = rhs._rooks[ black ];
+			_rooks[player_t::white]    =
+				rhs._rooks[ player_t::white ];
+			_rooks[player_t::black]    =
+				rhs._rooks[ player_t::black ];
 
 			_to_move = rhs._to_move;
 		}
@@ -148,12 +154,12 @@ namespace Chess
 				&& _save_hash[i] == rhs._save_hash[i];
 
 			same = same
-				&& _castle_rights[i][black] ==
-					rhs._castle_rights[i][black];
+				&& _castle_rights[i][player_t::black] ==
+					rhs._castle_rights[i][player_t::black];
 
 			same = same
-				&& _castle_rights[i][white] ==
-					rhs._castle_rights[i][white];
+				&& _castle_rights[i][player_t::white] ==
+					rhs._castle_rights[i][player_t::white];
 
 			same = same && _ep_info[i]
 				== rhs._ep_info[i];
@@ -173,28 +179,25 @@ namespace Chess
 		 * keys
 		 */
 
-		std::srand(101687);
-
 		for (int i = 0; i < 2; i++)
 		{
-			_hash_input.castle_rights[black][i] = Util::rand64();
-			_hash_input.castle_rights[white][i] = Util::rand64();
+			_hash_input.castle_rights[player_t::black][i] = rand64();
+			_hash_input.castle_rights[player_t::white][i] = rand64();
 		}
 
 		for (int i = 0; i < 8; i++)
-			_hash_input.en_passant[i] = Util::rand64();
+			_hash_input.en_passant[i] = rand64();
 
 		for (int i = 0; i < 6; i++)
 		{
 			for (int j = 0; j < 64; j++)
 			{
-				_hash_input.piece[black][i][j]  = Util::rand64();
-				_hash_input.piece[white][i][j]  = Util::rand64();
+				_hash_input.piece[player_t::black][i][j]  = rand64();
+				_hash_input.piece[player_t::white][i][j]  = rand64();
 			}
 		}
 
-		_hash_input.to_move =
-			Util::rand64();
+		_hash_input.to_move = rand64();
 
 		/*
 		 * Compute the hash signature for this position
@@ -203,25 +206,25 @@ namespace Chess
 		uint64& signature  = _save_hash[_ply];
 		signature = 0;
 
-		if (_ep_info[_ply].target != BAD_SQUARE)
+		if (_ep_info[_ply].target != square_t::BAD_SQUARE)
 			signature ^=
-				_hash_input.en_passant[get_file(_ep_info[_ply].target)];
+				_hash_input.en_passant[ get_file( _ep_info[_ply].target) ];
 
-		if (_to_move == white)
+		if (_to_move == player_t::white)
 			signature ^= _hash_input.to_move;
 
-		if (_castle_rights[_ply][white] & castle_K)
+		if (_castle_rights[_ply][player_t::white] & castle_K)
 			signature ^=
-				_hash_input.castle_rights[white][castle_K_index];
-		if (_castle_rights[_ply][white] & castle_Q)
+				_hash_input.castle_rights[player_t::white][castle_K_index];
+		if (_castle_rights[_ply][player_t::white] & castle_Q)
 			signature ^=
-				_hash_input.castle_rights[white][castle_Q_index];
-		if (_castle_rights[_ply][black] & castle_K)
+				_hash_input.castle_rights[player_t::white][castle_Q_index];
+		if (_castle_rights[_ply][player_t::black] & castle_K)
 			signature ^=
-				_hash_input.castle_rights[black][castle_K_index];
-		if (_castle_rights[_ply][black] & castle_Q)
+				_hash_input.castle_rights[player_t::black][castle_K_index];
+		if (_castle_rights[_ply][player_t::black] & castle_Q)
 			signature ^=
-				_hash_input.castle_rights[black][castle_Q_index];
+				_hash_input.castle_rights[player_t::black][castle_Q_index];
 
 		auto& tables = DataTables::get();
 
@@ -229,15 +232,15 @@ namespace Chess
 		{
 			if (_pieces[i] != piece_t::empty)
 			{
-				if (_occupied[black] & tables.set_mask[i])
+				if (_occupied[player_t::black] & tables.set_mask[i])
 				{
 					signature ^=
-						_hash_input.piece[ black ][ _pieces[i] ][i];
+						_hash_input.piece[ player_t::black ][ _pieces[i] ][i];
 				}
 				else
 				{
 					signature ^=
-						_hash_input.piece[ white ][ _pieces[i] ][i];
+						_hash_input.piece[ player_t::white ][ _pieces[i] ][i];
 				}
 			}
 		}
@@ -264,7 +267,7 @@ namespace Chess
 			if (_pieces[i] != piece_t::empty)
 			{
 				bool whitePiece =
-					static_cast<bool>(tables.set_mask[i] & _occupied[white]);
+					static_cast<bool>(tables.set_mask[i] & _occupied[player_t::white]);
 
 				if (empty != 0)
 				{
@@ -273,19 +276,19 @@ namespace Chess
 
 				switch (_pieces[i])
 				{
-				case PAWN:
+				case piece_t::pawn:
 					fen += (whitePiece ? "P" : "p");
 					break;
-				case KNIGHT:
+				case piece_t::knight:
 					fen += (whitePiece ? "N" : "n");
 					break;
-				case BISHOP:
+				case piece_t::bishop:
 					fen += (whitePiece ? "B" : "b");
 					break;
-				case ROOK:
+				case piece_t::rook:
 					fen += (whitePiece ? "R" : "r");
 					break;
-				case QUEEN:
+				case piece_t::queen:
 					fen += (whitePiece ? "Q" : "q");
 					break;
 				default:
@@ -309,27 +312,27 @@ namespace Chess
 			}
 		}
 
-		if (_to_move == white)
+		if (_to_move == player_t::white)
 			fen += " w ";
 		else
 			fen += " b ";
 
-		if (_castle_rights[_ply][white] & castle_K)
+		if (_castle_rights[_ply][player_t::white] & castle_K)
 			fen += "K";
-		if (_castle_rights[_ply][white] & castle_Q)
+		if (_castle_rights[_ply][player_t::white] & castle_Q)
 			fen += "Q";
-		if (_castle_rights[_ply][black] & castle_K)
+		if (_castle_rights[_ply][player_t::black] & castle_K)
 			fen += "k";
-		if (_castle_rights[_ply][black] & castle_Q)
+		if (_castle_rights[_ply][player_t::black] & castle_Q)
 			fen += "q";
 
-		if (_castle_rights[_ply][white] == 0 &&
-			_castle_rights[_ply][black] == 0)
+		if (_castle_rights[_ply][player_t::white] == 0 &&
+			_castle_rights[_ply][player_t::black] == 0)
 			fen += "-";
 
 		fen += " ";
 
-		if (_ep_info[_ply].target != BAD_SQUARE)
+		if (_ep_info[_ply].target != square_t::BAD_SQUARE)
 			fen += square_str[_ep_info[_ply].target];
 		else
 			fen += "-";
@@ -398,7 +401,7 @@ namespace Chess
 						break;
 				}
 
-				if (_occupied[black] & (one << sq))
+				if (_occupied[player_t::black] & (one << sq))
 					piece = Util::to_lower(piece);
 
 				std::printf("| %c ", piece);
@@ -432,9 +435,9 @@ namespace Chess
 
 		if (tokens.size() != 8)
 		{
-			if (verbosity >= Verbosity::terse)
+			if (verbosity >= Verbosity::terse && _output)
 			{
-				_output.write("Invalid FEN (wrong number of ranks): '%s'\n",
+				_output->write("Invalid FEN (wrong number of ranks): '%s'\n",
 					fen.c_str());
 			}
 
@@ -447,48 +450,48 @@ namespace Chess
 			for (size_t j = 0; j < tokens[i].size(); j++)
 			{
 				char c = tokens[i][j];
-				if (Util::isPiece(c))
+				if (is_piece(c))
 				{
 					uint64 mask = Util::get_bit<uint64>(square);
 					_pieces[square] = piece2enum(c);
 
 					if (Util::to_lower(c) == c)
-						_occupied[black] |= mask;
+						_occupied[player_t::black] |= mask;
 					else
-						_occupied[white] |= mask;
+						_occupied[player_t::white] |= mask;
 					square -= 1;
 
 					switch (c)
 					{
 						case 'p':
-							_pawns[black]   |= mask; break;
+							_pawns[player_t::black]   |= mask; break;
 						case 'P':
-							_pawns[white]   |= mask; break;
+							_pawns[player_t::white]   |= mask; break;
 						case 'r':
-							_rooks[black]   |= mask; break;
+							_rooks[player_t::black]   |= mask; break;
 						case 'R':
-							_rooks[white]   |= mask; break;
+							_rooks[player_t::white]   |= mask; break;
 						case 'n':
-							_knights[black] |= mask; break;
+							_knights[player_t::black] |= mask; break;
 						case 'N':
-							_knights[white] |= mask; break;
+							_knights[player_t::white] |= mask; break;
 						case 'b':
-							_bishops[black] |= mask; break;
+							_bishops[player_t::black] |= mask; break;
 						case 'B':
-							_bishops[white] |= mask; break;
+							_bishops[player_t::white] |= mask; break;
 						case 'q':
-							_queens[black]  |= mask; break;
+							_queens[player_t::black]  |= mask; break;
 						case 'Q':
-							_queens[white]  |= mask; break;
+							_queens[player_t::white]  |= mask; break;
 						case 'k':
-							_kings [black]  |= mask;
-							_king_sq[black]  =
-								Util::get_lSB<uint64>(mask);
+							_kings [player_t::black]  |= mask;
+							_king_sq[player_t::black]  =
+								static_cast<square_t>(Util::get_lsb(mask));
 							break;
 						case 'K':
-							_kings [white]  |= mask;
-							_king_sq[white]  =
-								Util::get_lSB<uint64>(mask);
+							_kings [player_t::white]  |= mask;
+							_king_sq[player_t::white]  =
+								static_cast<square_t>(Util::get_lsb(mask));
 							break;
 						default:
 							*this = backup;
@@ -510,9 +513,9 @@ namespace Chess
 					}
 					else
 					{
-						if (verbosity >= Verbosity::terse)
+						if (verbosity >= Verbosity::terse && _output)
 						{
-							_output.write("Invalid FEN (unexpected character '%c'): %s\n",
+							_output->write("Invalid FEN (unexpected character '%c'): %s\n",
 								c, fen.c_str());
 						}
 						
@@ -523,9 +526,9 @@ namespace Chess
 
 				if ((square < 0 && i != 7) || square < -1)
 				{
-					if (verbosity >= Verbosity::terse)
+					if (verbosity >= Verbosity::terse && _output)
 					{
-						_output.write("Invalid FEN (more than 64 squares given): '%s'\n",
+						_output->write("Invalid FEN (more than 64 squares given): '%s'\n",
 							fen.c_str());
 					}
 					
@@ -559,9 +562,9 @@ namespace Chess
 			case 6:
 				if (!Util::from_string(posn_info[5], _full_move))
 				{
-					if (verbosity >= Verbosity::terse)
+					if (verbosity >= Verbosity::terse && _output)
 					{
-						_output.write("Invalid FEN (fullmove number): '%s'\n",
+						_output->write("Invalid FEN (fullmove number): '%s'\n",
 							fen.c_str());
 					}
 
@@ -571,9 +574,9 @@ namespace Chess
 			case 5:
 				if (!Util::from_string(posn_info[4], _half_move))
 				{
-					if (verbosity >= Verbosity::terse)
+					if (verbosity >= Verbosity::terse && _output)
 					{
-						_output.write("Invalid FEN (halfmove clock): '%s'\n",
+						_output->write("Invalid FEN (halfmove clock): '%s'\n",
 							fen.c_str());
 					}
 
@@ -581,11 +584,11 @@ namespace Chess
 					return false;
 				}
 			case 4:
-				_ep_info[_ply].target = BAD_SQUARE;
+				_ep_info[_ply].target = square_t::BAD_SQUARE;
 
 				if (posn_info[3] != "-")
 				{
-					for (int i = 0; i < 64; i++)
+					for (auto i = square_t::H1; i <= square_t::A8; i++)
 					{
 						if (Util::to_lower(posn_info[3]) == square_str[i])
 						{
@@ -593,11 +596,11 @@ namespace Chess
 						}
 					}
 
-					if (_ep_info[_ply].target == BAD_SQUARE)
+					if (_ep_info[_ply].target == square_t::BAD_SQUARE)
 					{
-						if (verbosity >= Verbosity::terse)
+						if (verbosity >= Verbosity::terse && _output)
 						{
-							_output.write("Invalid FEN (en passant square): '%s'\n",
+							_output->write("Invalid FEN (en passant square): '%s'\n",
 								fen.c_str());
 						}
 						
@@ -611,24 +614,24 @@ namespace Chess
 					switch (posn_info[2][i])
 					{
 						case 'K':
-							_castle_rights[_ply][white] |= castle_K;
+							_castle_rights[_ply][player_t::white] |= castle_K;
 							break;
 						case 'Q':
-							_castle_rights[_ply][white] |= castle_Q;
+							_castle_rights[_ply][player_t::white] |= castle_Q;
 							break;
 						case 'k':
-							_castle_rights[_ply][black] |= castle_K;
+							_castle_rights[_ply][player_t::black] |= castle_K;
 							break;
 						case 'q':
-							_castle_rights[_ply][black] |= castle_Q;
+							_castle_rights[_ply][player_t::black] |= castle_Q;
 							break;
 						case '-':
 							if (posn_info[2].size() == 1)
 								continue;
 						default:
-							if (verbosity >= Verbosity::terse)
+							if (verbosity >= Verbosity::terse && _output)
 							{
-								_output.write("Invalid FEN (castling rights): '%s'\n",
+								_output->write("Invalid FEN (castling rights): '%s'\n",
 									fen.c_str());
 							}
 							
@@ -639,21 +642,21 @@ namespace Chess
 			case 2:
 				if (posn_info[1] != "w" && posn_info[1] != "b")
 				{
-					if (verbosity >= Verbosity::terse)
+					if (verbosity >= Verbosity::terse && _output)
 					{
-						_output.write("Invalid FEN (invalid color): '%s'\n",
+						_output->write("Invalid FEN (invalid color): '%s'\n",
 							fen.c_str());
 					}
 					
 					*this = backup;
 					return false;
 				}
-				_to_move = posn_info[1] == "w" ? white : black;
+				_to_move = posn_info[1] == "w" ? player_t::white : player_t::black;
 				break;
 			case 1:
-				if (verbosity >= Verbosity::terse)
+				if (verbosity >= Verbosity::terse && _output)
 				{
-					_output.write("Invalid FEN (unspecified color): '%s'\n",
+					_output->write("Invalid FEN (unspecified color): '%s'\n",
 						fen.c_str());
 				}
 				
@@ -664,13 +667,13 @@ namespace Chess
 		/*
 		 * Set the squares from which we can capture via en passant:
 		 */
-		uint64 src = 0; int victim;
+		uint64 src = 0; square_t victim;
 
 		auto& tables = DataTables::get();
 		
-		if (_ep_info[_ply].target != BAD_SQUARE)
+		if (_ep_info[_ply].target != square_t::BAD_SQUARE)
 		{
-			victim = (_to_move == white) ? 
+			victim = (_to_move == player_t::white) ? 
 				_ep_info[_ply].target-8 : _ep_info[_ply].target+8;
 
 			src =
@@ -698,18 +701,18 @@ namespace Chess
 		 * having to do so during static eval
 		 */
 		_material =
-			Util::bitCount(_pawns[white])   * pawn_value   +
-			Util::bitCount(_knights[white]) * knight_value + 
-			Util::bitCount(_bishops[white]) * bishop_value + 
-			Util::bitCount(_rooks[white])   * rook_value   +
-			Util::bitCount(_queens[white])  * queen_value;
+			Util::bit_count(_pawns[player_t::white])   * pawn_value   +
+			Util::bit_count(_knights[player_t::white]) * knight_value + 
+			Util::bit_count(_bishops[player_t::white]) * bishop_value + 
+			Util::bit_count(_rooks[player_t::white])   * rook_value   +
+			Util::bit_count(_queens[player_t::white])  * queen_value;
 
 		_material -=
-			Util::bitCount(_pawns[black])   * pawn_value   + 
-			Util::bitCount(_knights[black]) * knight_value + 
-			Util::bitCount(_bishops[black]) * bishop_value + 
-			Util::bitCount(_rooks[black])   * rook_value   +
-			Util::bitCount(_queens[black])  * queen_value;
+			Util::bit_count(_pawns[player_t::black])   * pawn_value   + 
+			Util::bit_count(_knights[player_t::black]) * knight_value + 
+			Util::bit_count(_bishops[player_t::black]) * bishop_value + 
+			Util::bit_count(_rooks[player_t::black])   * rook_value   +
+			Util::bit_count(_queens[player_t::black])  * queen_value;
 
 		/*
 		 * Generate a hash signature for this position
@@ -718,16 +721,6 @@ namespace Chess
 
 		_is_init = true;
 			return _is_init;
-	}
-
-	/**
-	 * Reset to the initial (starting) position
-	 *
-	 * @return True on success
-	 */
-	bool Position::reset()
-	{
-		return reset(init_fen);
 	}
 
 	/**
@@ -741,7 +734,7 @@ namespace Chess
 		{
 			_bishops[i]  = 0;
 			_kings[i]    = 0;
-			_king_sq[i]  = BAD_SQUARE;
+			_king_sq[i]  = square_t::BAD_SQUARE;
 			_knights[i]  = 0;
 			_occupied[i] = 0;
 			_pawns[i]    = 0;
@@ -758,14 +751,14 @@ namespace Chess
 		_is_init   = false;
 		_material  = 0;
 		_ply       = 0;
-		_to_move   = 0;
+		_to_move   = player_t::white;
 
 		for (int i = 0; i < max_ply; i++)
 		{
 			_ep_info[i].clear();
 
-			_castle_rights[i][black] = 0;
-			_castle_rights[i][white] = 0;
+			_castle_rights[i][player_t::black] = 0;
+			_castle_rights[i][player_t::white] = 0;
 
 			_save_hash[i] = 0;
 		}
@@ -792,11 +785,11 @@ namespace Chess
 	bool Position::validate(const std::string& fen) const
 	{
 		// Rule 1:
-		if ((_pawns[black] | _pawns[white]) & (rank_1 | rank_8))
+		if ((_pawns[player_t::black] | _pawns[player_t::white]) & (rank_1 | rank_8))
 		{
-			if (verbosity >= terse)
+			if (verbosity >= Verbosity::terse && _output)
 			{
-				_output.write("Invalid FEN (pawn(s) on back rank): '%s'\n",
+				_output->write("Invalid FEN (pawn(s) on back rank): '%s'\n",
 					fen.c_str());
 			}
 			
@@ -804,12 +797,12 @@ namespace Chess
 		}
 
 		// Rule 2:
-		if ((Util::bit_count(_kings[white]) != 1) ||
-			(Util::bit_count(_kings[black]) != 1))
+		if ((Util::bit_count(_kings[player_t::white]) != 1) ||
+			(Util::bit_count(_kings[player_t::black]) != 1))
 		{
-			if (verbosity >= terse)
+			if (verbosity >= Verbosity::terse && _output)
 			{
-				_output.write("Invalid FEN (wrong number of kings): '%s'\n",
+				_output->write("Invalid FEN (wrong number of kings): '%s'\n",
 					fen.c_str());
 			}
 			
@@ -819,9 +812,9 @@ namespace Chess
 		// Rule 3:
 		if (in_check(flip(_to_move)))
 		{
-			if (verbosity >= terse)
+			if (verbosity >= Verbosity::terse && _output)
 			{
-				_output.write("Invalid FEN (king can be captured): '%s'\n",
+				_output->write("Invalid FEN (king can be captured): '%s'\n",
 					fen.c_str());
 			}
 			
@@ -831,13 +824,13 @@ namespace Chess
 		// Rule 4:
 		int castle_mask = castle_K | castle_Q;
 
-		if (!(_kings[white] & Util::get_bit< uint64 >(E1)))
+		if (!(_kings[player_t::white] & Util::get_bit< uint64 >(square_t::E1)))
 		{
-			if (_castle_rights[_ply][white] & castle_mask)
+			if (_castle_rights[_ply][player_t::white] & castle_mask)
 			{
-				if (verbosity >= terse)
+				if (verbosity >= Verbosity::terse && _output)
 				{
-					_output.write("Invalid FEN (white may not castle): '%s'\n",
+					_output->write("Invalid FEN (player_t::white may not castle): '%s'\n",
 						fen.c_str());
 				}
 				
@@ -846,24 +839,24 @@ namespace Chess
 		}
 		else
 		{
-			if ((_castle_rights[_ply][white] & castle_K)
-				 && !(_rooks[white] & Util::get_bit<uint64>(H1)))
+			if ((_castle_rights[_ply][player_t::white] & castle_K)
+				 && !(_rooks[player_t::white] & Util::get_bit<uint64>(square_t::H1)))
 			{
-				if (verbosity >= terse)
+				if (verbosity >= Verbosity::terse && _output)
 				{
-					_output.write("Invalid FEN (white may not castle short): '%s'\n",
+					_output->write("Invalid FEN (player_t::white may not castle short): '%s'\n",
 						fen.c_str());
 				}
 				
 				return false; 
 			}
 
-			if ((_castle_rights[_ply][white] & castle_Q)
-				 && !(_rooks[white] & Util::get_bit<uint64>(A1)))
+			if ((_castle_rights[_ply][player_t::white] & castle_Q)
+				 && !(_rooks[player_t::white] & Util::get_bit<uint64>(square_t::A1)))
 			{
-				if (verbosity >= terse)
+				if (verbosity >= Verbosity::terse && _output)
 				{
-					_output.write("Invalid FEN (white may not castle long): '%s'\n",
+					_output->write("Invalid FEN (player_t::white may not castle long): '%s'\n",
 						fen.c_str());
 				}
 				
@@ -871,13 +864,13 @@ namespace Chess
 			}
 		}
 
-		if (!(_kings[black] & Util::get_bit< uint64 >(E8)))
+		if (!(_kings[player_t::black] & Util::get_bit< uint64 >(square_t::E8)))
 		{
-			if (_castle_rights[_ply][black] & castle_mask)
+			if (_castle_rights[_ply][player_t::black] & castle_mask)
 			{
-				if (verbosity >= terse)
+				if (verbosity >= Verbosity::terse && _output)
 				{
-					_output.write("Invalid FEN (black may not castle): '%s'\n",
+					_output->write("Invalid FEN (player_t::black may not castle): '%s'\n",
 						fen.c_str());
 				}
 				
@@ -886,24 +879,24 @@ namespace Chess
 		}
 		else
 		{
-			if ((_castle_rights[_ply][black] & castle_K)
-				 && !(_rooks[black] & Util::get_bit<uint64>(H8)))
+			if ((_castle_rights[_ply][player_t::black] & castle_K)
+				 && !(_rooks[player_t::black] & Util::get_bit<uint64>(square_t::H8)))
 			{
-				if (verbosity >= terse)
+				if (verbosity >= Verbosity::terse && _output)
 				{
-					_output.write("Invalid FEN (black may not castle short): '%s'\n",
+					_output->write("Invalid FEN (player_t::black may not castle short): '%s'\n",
 						fen.c_str());
 				}
 				
 				return false; 
 			}
 
-			if ((_castle_rights[_ply][black] & castle_Q)
-				 && !(_rooks[black] & Util::get_bit<uint64>(A8)))
+			if ((_castle_rights[_ply][player_t::black] & castle_Q)
+				 && !(_rooks[player_t::black] & Util::get_bit<uint64>(square_t::A8)))
 			{
-				if (verbosity >= terse)
+				if (verbosity >= Verbosity::terse && _output)
 				{
-					_output.write("Invalid FEN (black may not castle long): '%s'\n",
+					_output->write("Invalid FEN (player_t::black may not castle long): '%s'\n",
 						fen.c_str());
 				}
 				
@@ -912,14 +905,14 @@ namespace Chess
 		}
 
 		// Rule 5:
-		if (_ep_info[_ply].target != BAD_SQUARE)
+		if (_ep_info[_ply].target != square_t::BAD_SQUARE)
 		{
 			bool bad_ep = false;
 
-			if (_to_move == white)
+			if (_to_move == player_t::white)
 			{
 				if (get_rank(_ep_info[_ply].target) != 5 ||
-					!(_pawns[black] &
+					!(_pawns[player_t::black] &
 						Util::get_bit<uint64>(_ep_info[_ply].target-8)))
 				{
 					bad_ep = true;
@@ -928,7 +921,7 @@ namespace Chess
 			else
 			{
 				if (get_rank(_ep_info[_ply].target) != 2 ||
-					!(_pawns[white] &
+					!(_pawns[player_t::white] &
 						Util::get_bit<uint64>(_ep_info[_ply].target+8)))
 				{
 					bad_ep = true;
@@ -937,9 +930,9 @@ namespace Chess
 
 			if (bad_ep)
 			{
-				if (verbosity >= terse)
+				if (verbosity >= Verbosity::terse && _output)
 				{
-					_output.write("Invalid FEN (En passant square): '%s'\n",
+					_output->write("Invalid FEN (En passant square): '%s'\n",
 						fen.c_str());
 				}
 				
@@ -948,12 +941,12 @@ namespace Chess
 		}
 
 		// Rule 6:
-		if (Util::bit_count<uint64>(_pawns[white]) > 8 || 
-			Util::bit_count<uint64>(_pawns[black]) > 8)
+		if (Util::bit_count<uint64>(_pawns[player_t::white]) > 8 || 
+			Util::bit_count<uint64>(_pawns[player_t::black]) > 8)
 		{
-			if (verbosity >= terse)
+			if (verbosity >= Verbosity::terse && _output)
 			{
-				_output.write("Invalid FEN (Max 8 pawns allowed per side): '%s'\n",
+				_output->write("Invalid FEN (Max 8 pawns allowed per side): '%s'\n",
 					fen.c_str());
 			}
 			
@@ -961,48 +954,48 @@ namespace Chess
 		}
 
 		// Rule 7:
-		if (Util::bit_count<uint64>(_knights[white]) > 10 ||
-			Util::bit_count<uint64>(_knights[black]) > 10)
+		if (Util::bit_count<uint64>(_knights[player_t::white]) > 10 ||
+			Util::bit_count<uint64>(_knights[player_t::black]) > 10)
 		{
-			if (verbosity >= terse)
+			if (verbosity >= Verbosity::terse && _output)
 			{
-				_output.write("Invalid FEN (Max 10 knights allowed per side): '%s'\n",
+				_output->write("Invalid FEN (Max 10 knights allowed per side): '%s'\n",
 					fen.c_str());
 			}
 			
 			return false;
 		}
 
-		if (Util::bit_count<uint64>(_rooks[white]) > 10 ||
-			Util::bit_count<uint64>(_rooks[black]) > 10)
+		if (Util::bit_count<uint64>(_rooks[player_t::white]) > 10 ||
+			Util::bit_count<uint64>(_rooks[player_t::black]) > 10)
 		{
-			if (verbosity >= terse)
+			if (verbosity >= Verbosity::terse && _output)
 			{
-				_output.write("Invalid FEN (Max 10 rooks allowed per side): '%s'\n",
+				_output->write("Invalid FEN (Max 10 rooks allowed per side): '%s'\n",
 					fen.c_str());
 			}
 			
 			return false;
 		}
 
-		if (Util::bit_count<uint64>(_queens[white]) > 10 ||
-			Util::bit_count<uint64>(_queens[black]) > 10)
+		if (Util::bit_count<uint64>(_queens[player_t::white]) > 10 ||
+			Util::bit_count<uint64>(_queens[player_t::black]) > 10)
 		{
-			if (verbosity >= terse)
+			if (verbosity >= Verbosity::terse && _output)
 			{
-				_output.write("Invalid FEN (Max 10 queens allowed per side): '%s'\n",
+				_output->write("Invalid FEN (Max 10 queens allowed per side): '%s'\n",
 					fen.c_str());
 			}
 			
 			return false;
 		}
 
-		if (Util::bit_count<uint64>(_bishops[white]) > 10 ||
-			Util::bit_count<uint64>(_bishops[black]) > 10)
+		if (Util::bit_count<uint64>(_bishops[player_t::white]) > 10 ||
+			Util::bit_count<uint64>(_bishops[player_t::black]) > 10)
 		{
-			if (verbosity >= terse)
+			if (verbosity >= Verbosity::terse && _output)
 			{
-				_output.write("Invalid FEN (Max 10 bishops allowed per side): '%s'\n",
+				_output->write("Invalid FEN (Max 10 bishops allowed per side): '%s'\n",
 					fen.c_str());
 			}
 			

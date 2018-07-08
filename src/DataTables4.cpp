@@ -1,4 +1,5 @@
 #include "DataTables4.h"
+#include "chess_util4.h"
 #include "util/bit_tools.h"
 
 namespace Chess
@@ -427,20 +428,24 @@ namespace Chess
 			switch (get_file(i))
 			{
 				case 0:
-					tmp_frame ^= file_h ^ (one << H1) ^ (one << H8);
+					tmp_frame ^= file_h ^ (one << square_t::H1)
+										^ (one << square_t::H8);
 					break;
 				case 7:
-					tmp_frame ^= file_a ^ (one << A1) ^ (one << A8);
+					tmp_frame ^= file_a ^ (one << square_t::A1)
+										^ (one << square_t::A8);
 					break;
 			}
 
 			switch (get_rank(i))
 			{
 				case 0:
-					tmp_frame ^= rank_1 ^ (one << A1) ^ (one << H1);
+					tmp_frame ^= rank_1 ^ (one << square_t::A1)
+										^ (one << square_t::H1);
 					break;
 				case 7:
-					tmp_frame ^= rank_8 ^ (one << A8) ^ (one << H8);
+					tmp_frame ^= rank_8 ^ (one << square_t::A8)
+										^ (one << square_t::H8);
 					break;
 			}
 
@@ -846,22 +851,30 @@ namespace Chess
 				rank_adjacent[i] |= set_mask[i+1];
 		}
 
-		back_rank[white] = rank_1;
-		back_rank[black] = rank_8;
+		back_rank[player_t::white] = rank_1;
+		back_rank[player_t::black] = rank_8;
 
 		for (int i = 0; i < 7; i++)
 			for (int j = 0; j < 7; j++)
 				exchange[i][j] = piece_value[i] - piece_value[j];
 
-		queenside[white] =
-			set_mask[B1] | set_mask[C1] | set_mask[D1];
-		queenside[black] =
-			set_mask[B8] | set_mask[C8] | set_mask[D8];
+		queenside[player_t::white] =
+			set_mask[square_t::B1] |
+			set_mask[square_t::C1] |
+			set_mask[square_t::D1];
 
-		kingside[white] =
-			set_mask[F1] | set_mask[G1];
-		kingside[black] =
-			set_mask[F8] | set_mask[G8];
+		queenside[player_t::black] =
+			set_mask[square_t::B8] |
+			set_mask[square_t::C8] |
+			set_mask[square_t::D8];
+
+		kingside[player_t::white] =
+			set_mask[square_t::F1] |
+			set_mask[square_t::G1];
+
+		kingside[player_t::black] =
+			set_mask[square_t::F8] |
+			set_mask[square_t::G8];
 	}
 
 	/**
@@ -877,14 +890,14 @@ namespace Chess
 
 		for (int i = 0; i < 64; i += 1)
 		{
-			pawn_advances[white][i] = one << (i+8);
-			pawn_advances[black][i] = one << (i-8);
+			pawn_advances[player_t::white][i] = one << (i+8);
+			pawn_advances[player_t::black][i] = one << (i-8);
 
 			if (get_rank(i) == 1)
-				pawn_advances[white][i]
+				pawn_advances[player_t::white][i]
 					|= one << (i+16);
 			if (get_rank(i) == 6)
-				pawn_advances[black][i]
+				pawn_advances[player_t::black][i]
 					|= one << (i-16);
 		}
 	}
@@ -899,20 +912,20 @@ namespace Chess
 
 		for (int i = 0; i < 64; i += 1)
 		{
-			pawn_attacks[white][i] = 0;
-			pawn_attacks[black][i] = 0;
+			pawn_attacks[player_t::white][i] = 0;
+			pawn_attacks[player_t::black][i] = 0;
 
 			if (get_file(i) < 7)
 			{
-				pawn_attacks[white][i] |= one << (i+9);
-				pawn_attacks[black][i]
+				pawn_attacks[player_t::white][i] |= one << (i+9);
+				pawn_attacks[player_t::black][i]
 					|= one << (i-7);
 			}
 
 			if (get_file(i) > 0)
 			{
-				pawn_attacks[white][i] |= one << (i+7);
-				pawn_attacks[black][i]
+				pawn_attacks[player_t::white][i] |= one << (i+7);
+				pawn_attacks[player_t::black][i]
 					|= one << (i-9);
 			}
 		}
@@ -923,15 +936,15 @@ namespace Chess
 	 */
 	void DataTables::_init_piece_values()
 	{
-		piece_value[static_cast<int>(piece_t::pawn  )]
+		piece_value[piece_t::pawn  ]
 			= pawn_value;
-		piece_value[static_cast<int>(piece_t::rook  )]
+		piece_value[piece_t::rook  ]
 			= rook_value;
-		piece_value[static_cast<int>(piece_t::knight)]
+		piece_value[piece_t::knight]
 			= knight_value;
-		piece_value[static_cast<int>(piece_t::bishop)]
+		piece_value[piece_t::bishop]
 			= bishop_value;
-		piece_value[static_cast<int>(piece_t::queen )]
+		piece_value[piece_t::queen ]
 			= queen_value;
 	}
 

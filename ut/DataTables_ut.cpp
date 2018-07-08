@@ -41,11 +41,11 @@ namespace
 
 		Chess::uint64 ff = 0xff;
 
-		EXPECT_EQ(tables.back_rank[Chess::white], ff);
+		EXPECT_EQ(tables.back_rank[Chess::player_t::white], ff);
 
 		ff <<= 56;
 
-		EXPECT_EQ(tables.back_rank[Chess::black], ff);
+		EXPECT_EQ(tables.back_rank[Chess::player_t::black], ff);
 	}
 
 	TEST(DataTables, bishop_attacks_array)
