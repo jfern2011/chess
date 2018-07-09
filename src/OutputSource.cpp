@@ -66,6 +66,7 @@ namespace Chess
 
 			_stream->write(buf, nchars);
 		
+		_stream->flush();
 		return (true);
 	}
 }

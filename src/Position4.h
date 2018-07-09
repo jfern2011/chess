@@ -70,6 +70,8 @@ namespace Chess
 				const HashInput& rhs) const;
 
 			void clear();
+
+			void print();
 		};
 
 		static constexpr char init_fen[] =
@@ -102,6 +104,8 @@ namespace Chess
 		bool can_castle_long( player_t to_move) const;
 
 		bool can_castle_short(player_t to_move) const;
+
+		bool equals(const Position& rhs, int ply) const;
 
 		void generate_hash();
 
@@ -1029,10 +1033,10 @@ namespace Chess
 		}
 
 		const piece_t captured = extract_captured(move);
-		const square_t from    = extract_from(move);
+		const int from         = extract_from(move);
 		const piece_t moved    = extract_moved(move);
 		const piece_t promote  = extract_promote(move);
-		const square_t to      = extract_to(move);
+		const int to           = extract_to(move);
 
 		_pieces[from] = piece_t::empty;
 		_pieces[to]   = moved;
@@ -1094,14 +1098,18 @@ namespace Chess
 						_pawns[flip(_to_move)] & tables.rank_adjacent[to];
 
 					if (_to_move == player_t::white)
-						_ep_info[_ply].target = to-8;
+						_ep_info[_ply].target =
+							static_cast<square_t>(to-8);
 					else
-						_ep_info[_ply].target = to+8;
+						_ep_info[_ply].target =
+							static_cast<square_t>(to+8);
 
 					if (src & (tables.set_mask[to+1]))
-						_ep_info[_ply].src[0] = to+1;
+						_ep_info[_ply].src[0] =
+							static_cast<square_t>(to+1);
 					if (src & (tables.set_mask[to-1]))
-						_ep_info[_ply].src[1] = to-1;
+						_ep_info[_ply].src[1] =
+							static_cast<square_t>(to-1);
 				}
 
 				break;
@@ -1143,7 +1151,8 @@ namespace Chess
 
 			case piece_t::king:
 				clear_set64( from, to, _kings[_to_move] );
-				_king_sq[_to_move] = to;
+				_king_sq[_to_move] =
+					static_cast<square_t>(to);
 
 				if (abs(from-to) == 2)
 				{
@@ -1395,10 +1404,10 @@ namespace Chess
 			return true;
 
 		const piece_t captured = extract_captured(move);
-		const square_t from    = extract_from(move);
+		const int from         = extract_from(move);
 		const piece_t moved    = extract_moved(move);
 		const piece_t promote  = extract_promote(move);
-		const square_t to      = extract_to(move);
+		const int to           = extract_to(move);
 
 		/*
 		 * Restore the piece locations
@@ -1469,7 +1478,8 @@ namespace Chess
 
 			case piece_t::king:
 				clear_set64( to, from, _kings[_to_move] );
-				_king_sq[_to_move] = from;
+				_king_sq[_to_move] =
+					static_cast<square_t>(from);
 
 				/*
 				 * Check if this was a castle move and update
@@ -1629,10 +1639,10 @@ namespace Chess
 		hash = _save_hash[_ply];
 
 		const piece_t captured = extract_captured(move);
-		const square_t from    = extract_from(move);
+		const int from         = extract_from(move);
 		const piece_t moved    = extract_moved(move);
 		const piece_t promote  = extract_promote(move);
-		const square_t to      = extract_to(move);
+		const int to           = extract_to(move);
 
 		/*
 		 * If we had a valid en passant square for the current ply,
@@ -1658,7 +1668,7 @@ namespace Chess
 		 * XOR in the en passant value if we advanced a pawn by
 		 * two squares
 		 */
-		if (abs(from-to) == 16)
+		if (abs(from - to) == 16)
 		{
 			hash ^= _hash_input.en_passant[ get_file(to) ];
 		}

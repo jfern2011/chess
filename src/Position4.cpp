@@ -5,6 +5,44 @@
 
 namespace Chess
 {
+	constexpr char Position::init_fen[];
+
+	/**
+	 * Dump the set of random numbers to standard output
+	 */
+	void Position::HashInput::print()
+	{
+		for (int i = 0; i < 2; i++)
+		{
+			std::printf("castle_rights[white][%d]  = 0x%" PRIx64 "\n",
+				i, castle_rights[player_t::white][i]);
+			std::printf("castle_rights[black][%d]  = 0x%" PRIx64 "\n",
+				i, castle_rights[player_t::black][i]);
+		}
+
+		for (int i = 0; i < 8; i++)
+		{
+			std::printf("en_passant[%d]            = 0x%" PRIx64 "\n",
+				i, en_passant[i]);
+		}
+
+		for (int i = 0; i < 6; i++)
+		{
+			for (int j = 0; j < 64; j++)
+			{
+				std::printf("piece[black][%d][%2d]      = 0x%" PRIx64 "\n",
+					i, j, piece[player_t::black][i][j]);
+				std::printf("piece[white][%d][%2d]      = 0x%" PRIx64 "\n",
+					i, j, piece[player_t::white][i][j]);
+			}
+		}
+
+		std::printf("to_move                  = 0x%" PRIx64 "\n",
+			to_move);
+
+		std::fflush(stdout);
+	}
+
 	/**
 	 * Constructor
 	 *
@@ -164,6 +202,68 @@ namespace Chess
 			same = same && _ep_info[i]
 				== rhs._ep_info[i];
 		}
+
+		return same;
+	}
+
+	/**
+	 * Compare this Position with another at a given ply
+	 *
+	 * @note A Position stores internal data indexed by ply; if Position
+	 *       P makes/unmakes a move, then its data at the *next* ply
+	 *       will be different, and the equality (==) operator will note
+	 *       that P has changed. Here, we are interested in comparing
+	 *       the data located at index \a ply
+	 *
+	 * @param[in] rhs The Position to compare against
+	 * @param[in] ply The ply at which to perform the comparison
+	 *
+	 * @return True if they are the same
+	 */
+	bool Position::equals(const Position& rhs, int ply) const
+	{
+		bool same = true;
+
+		for (int i = 0; i < 64; i++)
+		{
+			same = same && ( _pieces[i] == rhs._pieces[i] );
+		}
+
+		same = same
+			&& _full_move  == rhs._full_move
+			&& _half_move  == rhs._half_move
+			&& _hash_input == rhs._hash_input
+			&& _is_init    == rhs._is_init
+			&& _material   == rhs._material
+			&& _to_move    == rhs._to_move
+			&& _ply        == rhs._ply;
+
+		for (int i = 0; i < 2; i++)
+		{
+			same = same
+				&& _bishops[i]  == rhs._bishops[i]
+				&& _kings[i]    == rhs._kings[i]
+			 	&& _king_sq[i]  == rhs._king_sq[i]
+			 	&& _knights[i]  == rhs._knights[i]
+			 	&& _occupied[i] == rhs._occupied[i]
+			 	&& _pawns[i]    == rhs._pawns[i]
+			 	&& _queens[i]   == rhs._queens[i]
+			 	&& _rooks[i]    == rhs._rooks[i];
+		}
+
+		same = same
+			&& _save_hash[ply] == rhs._save_hash[ply];
+
+		same = same
+			&& _castle_rights[ply][player_t::black] ==
+				rhs._castle_rights[ply][player_t::black];
+
+		same = same
+			&& _castle_rights[ply][player_t::white] ==
+				rhs._castle_rights[ply][player_t::white];
+
+		same = same && _ep_info[ply]
+			== rhs._ep_info[ply];
 
 		return same;
 	}
@@ -431,7 +531,7 @@ namespace Chess
 		// Clear member fields:
 		set_default();
 
-		std::vector<std::string> tokens; Util::split(fen, tokens, '/');
+		std::vector<std::string> tokens; Util::split(fen, tokens, "/");
 
 		if (tokens.size() != 8)
 		{
@@ -544,7 +644,7 @@ namespace Chess
 		}
 
 		std::vector<std::string> posn_info;
-		Util::split(tokens.back(), posn_info, ' ');
+		Util::split(tokens.back(), posn_info, " ");
 
 		_half_move = 0;
 		_full_move = 1;
@@ -588,11 +688,13 @@ namespace Chess
 
 				if (posn_info[3] != "-")
 				{
-					for (auto i = square_t::H1; i <= square_t::A8; i++)
+					for (int i = 0; i < 64; i++)
 					{
 						if (Util::to_lower(posn_info[3]) == square_str[i])
 						{
-							_ep_info[_ply].target = i; break;
+							_ep_info[_ply].target =
+								static_cast<square_t>(i);
+							break;
 						}
 					}
 
@@ -667,7 +769,7 @@ namespace Chess
 		/*
 		 * Set the squares from which we can capture via en passant:
 		 */
-		uint64 src = 0; square_t victim;
+		uint64 src = 0; int victim;
 
 		auto& tables = DataTables::get();
 		
@@ -680,10 +782,12 @@ namespace Chess
 				_pawns[ _to_move ] & tables.rank_adjacent[victim];
 
 			if (src & (tables.set_mask[victim+1]))
-				_ep_info[_ply].src[0] = victim+1;
+				_ep_info[_ply].src[0] =
+					static_cast<square_t>(victim+1);
 
 			if (src & (tables.set_mask[victim-1]))
-				_ep_info[_ply].src[1] = victim-1;
+				_ep_info[_ply].src[1] =
+					static_cast<square_t>(victim-1);
 		}
 
 		/*

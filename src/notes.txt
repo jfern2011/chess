@@ -1,0 +1,4 @@
+1. change attacks_from() to attacks_from<piece>
+2. change e.g. get_rooks() to get_piece64<piece>
+
+These reduce code size

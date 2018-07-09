@@ -68,7 +68,7 @@ namespace Chess
 
 	struct piece_e
 	{
-		enum piece_t
+		enum piece_t : int32
 		{
 			pawn, rook, knight, bishop, queen, king, empty
 		};
@@ -77,7 +77,7 @@ namespace Chess
 
 	struct square_e
 	{
-		enum square_t
+		enum square_t : int32
 		{
 			H1, G1, F1, E1, D1, C1, B1, A1,
 			H2, G2, F2, E2, D2, C2, B2, A2,

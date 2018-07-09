@@ -235,6 +235,30 @@ namespace Chess
 	}
 
 	/**
+	 * Pack move data into its 21-bit representation
+	 *
+	 * @param[in] captured The captured piece
+	 * @param[in] from     The origin square
+	 * @param[in] moved    The piece that was moved
+	 * @param[in] promote  The piece promoted to
+	 * @param[in] to       The destination square
+	 *
+	 * @return The bit-packed move
+	 */
+	inline int32 pack_move(piece_t  captured,
+						   square_t from,
+						   piece_t  moved,
+						   piece_t  promote,
+						   square_t to)
+	{
+		return (captured << 15) |
+			   (from) |
+			   (moved << 12) |
+			   (promote << 18)  |
+			   (to << 6);
+	}
+
+	/**
 	 * Get the enumeration equivalent for a piece given as a character
 	 *
 	 * @param [in] c The character to convert
@@ -307,50 +331,12 @@ namespace Chess
 	 */
 	inline uint64 rand64()
 	{
-		std::default_random_engine generator;
+		static std::default_random_engine generator;
 
 		static std::uniform_int_distribution<uint64>
 			dist(0,std::numeric_limits<uint64>::max());
 
 		return dist(generator);
-	}
-
-	/**
-	 * Apply a negative offset to a \ref square_t
-	 *
-	 * @param[in] square The square to apply an offset from
-	 * @param[in] offset The offset
-	 *
-	 * @return The new square
-	 */
-	inline square_t operator-(square_t square, int offset)
-	{
-		return square - static_cast<square_t>(offset);
-	}
-
-	/**
-	 * Apply a positive offset to a \ref square_t
-	 *
-	 * @param[in] square The square to apply an offset from
-	 * @param[in] offset The offset
-	 *
-	 * @return The new square
-	 */
-	inline square_t operator+(square_t square, int offset)
-	{
-		return square + static_cast<square_t>(offset);
-	}
-
-	/**
-	 * Postfix increment
-	 *
-	 * @param [in] square The square to increment
-	 *
-	 * @return The next square
-	 */
-	inline void operator++(square_t& square, int)
-	{
-		square = square + 1;
 	}
 }
 
