@@ -32,7 +32,7 @@ namespace Chess
 
 	public:
 
-		static inline const DataTables& get();
+		static const DataTables& get();
 
 		/**
 		 * The "magic" numbers used to look up attacks_from boards for
@@ -354,7 +354,7 @@ namespace Chess
 	 *
 	 * @return The global databases
 	 */
-	const DataTables& DataTables::get()
+	inline const DataTables& DataTables::get()
 	{
 		if (!_tables)
 		{
@@ -394,7 +394,7 @@ namespace Chess
 			_tables->_init_pawn_advances();
 
 			/*
-		 	 * Initlialize the bitscan tables:
+		 	 * Initialize the bitscan tables:
 		 	 */
 			_tables->_init_xsb();
 
