@@ -62,7 +62,12 @@ namespace Chess
 
 	struct player_e
 	{
-		enum player_t  { black, white };
+		enum player_t
+		{
+			black,
+			white,
+			both
+		};
 	};
 	typedef player_e::player_t player_t;
 

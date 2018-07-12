@@ -794,7 +794,7 @@ namespace Chess
 		 * Validate the new position. If it violates any of the rules
 		 * of chess, reject it
 		 */
-		if (!validate(fen))
+		if (!_validate(fen))
 		{
 			*this = backup;
 				return(false);
@@ -886,7 +886,7 @@ namespace Chess
 	 *
 	 * @return True if this is a valid Position
 	 */
-	bool Position::validate(const std::string& fen) const
+	bool Position::_validate(const std::string& fen) const
 	{
 		// Rule 1:
 		if ((_pawns[player_t::black] | _pawns[player_t::white]) & (rank_1 | rank_8))

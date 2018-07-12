@@ -90,74 +90,50 @@ namespace Chess
 
 		bool operator==(const Position& rhs) const;
 
+		template <piece_t type>
 		uint64 attacks_from(
-			square_t square, piece_t piece, player_t to_move) const;
+			square_t square, player_t to_move= player_t::both) const;
 
-		static uint64 attacks_from_bishop(square_t square, uint64 occupied);
-
-		static uint64 attacks_from_queen (square_t square, uint64 occupied);
-
-		static uint64 attacks_from_rook  (square_t square, uint64 occupied);
-
-		uint64 attacks_to (square_t square, player_t to_move) const;
+		uint64 attacks_to  (square_t square, player_t to_move) const;
 
 		bool can_castle_long( player_t to_move) const;
 
 		bool can_castle_short(player_t to_move) const;
 
-		bool equals(const Position& rhs, int ply) const;
+		bool equals(const Position& p, int ply) const;
 
 		void generate_hash();
 
-		static int get_bishop_mobility(square_t square, uint64 occupied);
-
-		uint64 get_bishops(player_t to_move) const;
-
-		uint64 get_bishops() const;
+		template <piece_t type>
+		uint64 get_bitboard( player_t to_move ) const;
 
 		uint64 get_discover_ready(player_t to_move) const;
 
-		std::string get_fen() const;
+		std::string get_fen()         const;
 
-		int get_fullmove_number() const;
+		int get_fullmove_number()     const;
 
-		uint64 get_hash_key() const;
+		uint64 get_hash_key(int  ply) const;
 
-		uint64 get_hash_key(int ply) const;
+		uint64 get_hash_key()         const;
 
-		square_t get_king_square(player_t to_move) const;
-
-		uint64 get_kings(player_t to_move) const;
-
-		uint64 get_knights(player_t to_move) const;
+		square_t get_king_square (player_t to_move) const;
 
 		int get_material() const;
 
-		uint64 get_occupied(player_t to_move) const;
+		template <piece_t type>
+		int get_mobility(square_t square);
 
-		uint64 get_occupied() const;
+		uint64 get_occupied( player_t to_move ) const;
 
-		uint64 get_pawns(player_t to_move) const;
-
-		uint64 get_pinned_pieces(player_t to_move) const;
-
-		static int get_queen_mobility (square_t square, uint64 occupied);
-
-		uint64 get_queens(player_t to_move) const;
-
-		uint64 get_queens() const;
-
-		static int get_rook_mobility  (square_t square, uint64 occupied);
-
-		uint64 get_rooks(player_t to_move) const;
-
-		uint64 get_rooks() const;
+		uint64 get_pinned_pieces (player_t to_move) const;
 
 		player_t get_turn() const;
 
 		bool in_check(player_t to_move) const;
 
-		direction_t is_pinned(square_t square, player_t to_move) const;
+		direction_t is_pinned(
+			square_t square, player_t to_move ) const;
 
 		bool make_move(int32 move);
 
@@ -169,16 +145,36 @@ namespace Chess
 
 		void set_default();
 
-		bool under_attack(square_t square, player_t to_move) const;
+		bool under_attack(
+			square_t square, player_t to_move ) const;
 
-		bool unmake_move(int32 move);
-
-		void update_hash(int32 move);
-
-		bool validate(
-			const std::string& fen) const;
+		bool unmake_move (int32 move);
 
 	private:
+
+		/* Methods that compute sliding piece attacks  */
+
+		uint64 _attacks_from_diag (square_t square,
+			uint64 occupied) const;
+
+		uint64 _attacks_from_queen(square_t square,
+			uint64 occupied) const;
+
+		uint64 _attacks_from_rook (square_t square,
+			uint64 occupied) const;
+
+		/* Methods that compute sliding piece mobility */
+
+		int _get_diag_mobility (square_t square, uint64 occupied) const;
+
+		int _get_queen_mobility(square_t square, uint64 occupied) const;
+
+		int _get_rook_mobility (square_t square, uint64 occupied) const;
+
+		void _update_hash(int32 move);
+
+		bool _validate(
+			const std::string& fen) const;
 
 		/**
 		 * Bitboards that give the locations of all bishops in the position
@@ -394,98 +390,71 @@ namespace Chess
 	 * Generates the squares attacked by the given piece located at the
 	 * given square
 	 *
-	 * @param[in] square   The square this piece is on
-	 * @param[in] piece    What piece to generate attacked squares for
-	 * @param[in] to_move  The side to move
+	 * @tparam type  Which piece to generate attacked squares for
 	 *
-	 * @return A bitboard specifying all squares attacked by this piece
-	 *         or ~0 on error
+	 * @param[in] square   The square this piece is on
+	 * @param[in] to_move  Generate an attacks board for this side (for
+	 *                     pawn attacks)
+	 *
+	 * @return A bitboard specifying all squares attacked by this
+	 *         piece from \a square
 	 */
-	inline uint64 Position::attacks_from(square_t square, piece_t piece,
+	template <piece_t type>
+	inline uint64 Position::attacks_from(square_t square,
 		player_t to_move) const
 	{
-		uint64 occ =
-			_occupied[player_t::white] | _occupied[player_t::black];
-
-		auto& tables = DataTables::get();
-
-		switch (piece)
-		{
-			case piece_t::rook:
-				return attacks_from_rook(square, occ);
-			case piece_t::knight:
-				return tables.knight_attacks[square];
-			case piece_t::bishop:
-				return
-					attacks_from_bishop( square, occ);
-			case piece_t::pawn:
-				return tables.pawn_attacks[to_move][square];
-			case piece_t::king:
-				return tables.king_attacks[square];
-			case piece_t::queen:
-				return attacks_from_rook(square, occ) |
-					   attacks_from_bishop(square, occ);
-			default:
-				Abort(~0, "invalid piece: %d\n",
-					piece);
-		}
-
 		return 0;
 	}
 
-	/**
-	 * Generates the squares attacked by a bishop located at the given
-	 * square
-	 *
-	 * @param[in] square   The bishop's location
-	 * @param[in] occupied The occupied squares bitboard
-	 *
-	 * @return A bitboard specifying all squares attacked by this piece
-	 */
-	inline uint64 Position::attacks_from_bishop(square_t square,
-		uint64 occupied )
+#ifndef DOXYGEN_SKIP
+	template <>
+	inline uint64 Position::attacks_from< piece_t::rook >(square_t square,
+		player_t) const
 	{
-		auto& tables = DataTables::get();
-
-		return tables.bishop_attacks[tables.bishop_offsets[square] +
-				(((occupied & tables.bishop_attacks_mask[square])
-					* tables.diag_magics[square]) >> tables.bishop_db_shifts[square])];
+		return _attacks_from_rook(square, _occupied[player_t::white] |
+										  _occupied[player_t::black]);
 	}
 
-	/**
-	 * Generates the squares attacked by a queen located at the given
-	 * square
-	 *
-	 * @param[in] square   The queen's location
-	 * @param[in] occupied The occupied squares bitboard
-	 *
-	 * @return  A bitboard showing all squares attacked by this piece
-	 */
-	inline uint64 Position::attacks_from_queen(square_t square,
-		uint64 occupied)
+	template <>
+	inline uint64 Position::attacks_from<piece_t::knight>(square_t square,
+		player_t) const
 	{
-		return attacks_from_rook(square, occupied)
-				| attacks_from_bishop( square, occupied );
+		return DataTables::get().knight_attacks[square];
 	}
 
-	/**
-	 * Generates the squares attacked by a rook located at the given
-	 * square
-	 *
-	 * @param[in] square   The rook's location
-	 * @param[in] occupied The occupied squares bitboard
-	 *
-	 * @return A bitboard showing all squares attacked by this piece
-	 */
-	inline uint64 Position::attacks_from_rook(square_t square,
-		uint64 occupied)
+	template <>
+	inline uint64 Position::attacks_from<piece_t::bishop>(square_t square,
+		player_t) const
 	{
-		auto& tables = DataTables::get();
-
-		return tables.rook_attacks[tables.rook_offsets[square] +
-				(((occupied & tables.rook_attacks_mask[square])
-					* tables.rook_magics[square]) >> tables.rook_db_shifts[square])];
+		return _attacks_from_diag(square, _occupied[player_t::white] |
+										  _occupied[player_t::black]);
 	}
+
+	template <>
+	inline uint64 Position::attacks_from< piece_t::pawn >(square_t square,
+		player_t to_move) const
+	{
+		return DataTables::get().pawn_attacks[to_move][square];
+	}
+
+	template <>
+	inline uint64 Position::attacks_from< piece_t::king >(square_t square,
+		player_t) const
+	{
+		return DataTables::get().king_attacks[square];
+	}
+
+	template <>
+	inline uint64 Position::attacks_from<piece_t::queen >(square_t square,
+		player_t) const
+	{
+		const uint64 occ =
+			_occupied[player_t::white] | _occupied[player_t::black];
+
+		return _attacks_from_rook(square, occ) |
+			   _attacks_from_diag(square, occ);
+	}
+#endif
 
 	/**
 	 * Get a bitboard containing 1-bits for each square occupied by \a
@@ -512,10 +481,10 @@ namespace Chess
 		out |= tables.knight_attacks[square]
 				& _knights[to_move];
 
-		out |= attacks_from_rook(square, occupied)
+		out |= _attacks_from_rook(square, occupied)
 				& ( _rooks[ to_move ] | _queens[to_move] );
 
-		out |= attacks_from_bishop(square, occupied)
+		out |= _attacks_from_diag(square, occupied)
 				& ( _bishops[to_move] | _queens[to_move] );
 
 		out |= tables.king_attacks[square]
@@ -551,47 +520,69 @@ namespace Chess
 	}
 
 	/**
-	 * Get the mobility of a bishop on \a square. This is hashed to avoid
-	 * computing it on the fly
+	 * Get a bitboard representing all of a player's type of piece. For
+	 * example, to get all of white's bishops:
 	 *
-	 * @param[in] square   The bishop's location
-	 * @param[in] occupied The occupied squares bitboard
+	 * @code
+	 * get_bitboard< piece_t::bishop >(player_t::white)
+	 * @endcode
 	 *
-	 * @return The Hamming weight of \ref attacks_from_bishop()
+	 * @tparam type Specifies the piece type
+	 *
+	 * @param[in] to_move Specifies whose pieces to get
+	 *
+	 * @return A bitboard with 1 bit set for each square containing the
+	 *         specified piece belonging to \a to_move
 	 */
-	inline int Position::get_bishop_mobility(square_t square,
-		uint64 occupied)
+	template <piece_t type>
+	inline uint64 Position::get_bitboard(player_t to_move) const
 	{
-		auto& tables = DataTables::get();
-
-		return tables.bishop_mobility[tables.bishop_offsets[square] +
-				(((occupied & tables.bishop_attacks_mask[square])
-					* tables.diag_magics[square]) >> tables.bishop_db_shifts[square])];
+		return 0;
 	}
 
-	/**
-	 * Get a bitboard representing all bishops belonging to \a to_move
-	 *
-	 * @param[in] to_move Whose bishops to get
-	 *
-	 * @return  A bitboard with 1 bit set for each square containing a
-	 *          bishop belonging to \a to_move
-	 */
-	inline uint64 Position::get_bishops(player_t to_move) const
+#ifndef DOXYGEN_SKIP
+	template <>
+	inline uint64 Position::get_bitboard< piece_t::rook >(
+		player_t to_move) const
+	{
+		return _rooks[to_move];
+	}
+
+	template <>
+	inline uint64 Position::get_bitboard<piece_t::knight>(
+		player_t to_move) const
+	{
+		return _knights[to_move];
+	}
+
+	template <>
+	inline uint64 Position::get_bitboard<piece_t::bishop>(
+		player_t to_move) const
 	{
 		return _bishops[to_move];
 	}
 
-	/**
-	 * Get a bit board representing all bishops on board
-	 *
-	 * @return A bitboard with 1 bit set for each square
-	 *         containing a bishop
-	 */
-	inline uint64 Position::get_bishops() const
+	template <>
+	inline uint64 Position::get_bitboard< piece_t::pawn >(
+		player_t to_move) const
 	{
-		return _bishops[player_t::black] | _bishops[player_t::white];
+		return _pawns[to_move];
 	}
+
+	template <>
+	inline uint64 Position::get_bitboard< piece_t::king >(
+		player_t to_move) const
+	{
+		return _kings[to_move];
+	}
+
+	template <>
+	inline uint64 Position::get_bitboard<piece_t::queen >(
+		player_t to_move) const
+	{
+		return _queens[to_move];
+	}
+#endif
 
 	/**
 	 * Get a bitboard containing all pieces that, if moved, would uncover
@@ -608,7 +599,7 @@ namespace Chess
 			_occupied[player_t::black] | _occupied[player_t::white];
 
 		uint64 pinned =
-			attacks_from_queen(_king_sq[to_move], occupied)
+			_attacks_from_queen(_king_sq[to_move], occupied)
 				& _occupied[flip(to_move)];
 
 		auto& tables = DataTables::get();
@@ -620,28 +611,28 @@ namespace Chess
 			switch (tables.directions[sq][_king_sq[to_move]])
 			{
 			case direction_t::along_rank:
-				if (!(attacks_from_rook( sq, occupied)
+				if (!(_attacks_from_rook( sq, occupied)
 						& tables.ranks64[sq]
 						& (_rooks[flip(to_move)] |
 							_queens[flip(to_move)])))
 					clear_bit64(sq, pinned);
 				break;
 			case direction_t::along_file:
-				if (!(attacks_from_rook( sq, occupied)
+				if (!(_attacks_from_rook( sq, occupied)
 						& tables.files64[sq]
 						& (_rooks[flip(to_move)] |
 							_queens[flip(to_move)])))
 					clear_bit64(sq, pinned);
 				break;
 			case direction_t::along_a1h8:
-				if (!(attacks_from_bishop(sq, occupied)
+				if (!(_attacks_from_diag(sq, occupied)
 					  & tables.a1h8_64[sq]
 					  & (_bishops[flip(to_move)] |
 					  		 _queens[flip(to_move)])))
 					clear_bit64(sq, pinned);
 				break;
 			case direction_t::along_h1a8:
-				if (!(attacks_from_bishop(sq, occupied)
+				if (!(_attacks_from_diag(sq, occupied)
 					  & tables.h1a8_64[sq]
 					  & (_bishops[flip(to_move)] |
 					  		 _queens[flip(to_move)])))
@@ -657,16 +648,6 @@ namespace Chess
 	}
 
 	/**
-	 * Get the 64-bit Zobrist key associated with this position
-	 *
-	 * @return The hash key
-	 */
-	inline uint64 Position::get_hash_key() const
-	{
-		return(_save_hash[_ply]);
-	}
-
-	/**
 	 * Get the 64-bit Zobrist key associated with the position
 	 * at the specified ply
 	 *
@@ -675,6 +656,17 @@ namespace Chess
 	 * @return The hash key
 	 */
 	inline uint64 Position::get_hash_key(int ply) const
+	{
+		return _save_hash[ply];
+	}
+
+	/**
+	 * Get the 64-bit Zobrist key associated with the position
+	 * at the current ply
+	 *
+	 * @return The hash key
+	 */
+	inline uint64 Position::get_hash_key() const
 	{
 		return _save_hash[_ply];
 	}
@@ -694,33 +686,8 @@ namespace Chess
 	}
 
 	/**
-	 * Get a bitboard that represents the king belonging to \a to_move
-	 *
-	 * @param[in] to_move Whose king to get
-	 *
-	 * @return A bitboard with 1 bit set for the square containing the
-	 *         the king belonging to \a to_move
-	 */
-	inline uint64 Position::get_kings(player_t to_move) const
-	{
-		return _kings[to_move];
-	}
-
-	/**
-	 * Get a bitboard representing all knights belonging to \a to_move
-	 *
-	 * @param[in] to_move Whose knights to get
-	 *
-	 * @return  A bitboard with 1 bit set for each square containing a
-	 *          knight belonging to \a to_move
-	 */
-	inline uint64 Position::get_knights(player_t to_move) const
-	{
-		return _knights[to_move];
-	}
-
-	/**
-	 * Get the material balance. A positive value means player_t::white is better
+	 * Get the material balance. A positive value means white has
+	 * more material
 	 *
 	 * @return The material balance
 	 */
@@ -728,6 +695,47 @@ namespace Chess
 	{
 		return _material;
 	}
+
+	/**
+	 * Get the mobility of a given piece on the given \a square. This
+	 * is hashed to avoid computing it on the fly
+	 *
+	 * @param[in] square The piece's location
+	 *
+	 * @return The Hamming weight of \ref attacks_from(). For sliding
+	 *         pieces only, this may be positive
+	 */
+	template <piece_t type>
+	inline int Position::get_mobility(square_t square)
+	{
+		return 0;
+	}
+
+#ifndef DOXYGEN_SKIP
+	template <>
+	inline int Position::get_mobility< piece_t::rook >(square_t square)
+	{
+		return _get_rook_mobility(square, _occupied[player_t::white] |
+										  _occupied[player_t::black]);
+	}
+
+	template <>
+	inline int Position::get_mobility<piece_t::bishop>(square_t square)
+	{
+		return _get_diag_mobility(square, _occupied[player_t::white] |
+										  _occupied[player_t::black]);
+	}
+
+	template <>
+	inline int Position::get_mobility<piece_t::queen >(square_t square)
+	{
+		const uint64 occ =
+			_occupied[player_t::white] | _occupied[player_t::black];
+
+		return _get_diag_mobility(square, occ) |
+			   _get_rook_mobility(square, occ);
+	}
+#endif
 
 	/**
 	 * Get a bitboard representing all squares occupied by \a to_move
@@ -740,29 +748,6 @@ namespace Chess
 	inline uint64 Position::get_occupied(player_t to_move) const
 	{
 		return _occupied[to_move];
-	}
-
-	/**
-	 * Get a bitboard representing all squares occupied by both sides
-	 *
-	 * @return A bitboard with 1 bit set for each occupied square
-	 */
-	inline uint64 Position::get_occupied() const
-	{
-		return _occupied[player_t::black] | _occupied[player_t::white];
-	}
-
-	/**
-	 * Get a bitboard representing all pawns belonging to \a to_move
-	 *
-	 * @param[in] to_move Whose pawns to get
-	 *
-	 * @return  A bitboard with 1 bit set for each square containing
-	 *          a pawn belonging to \a to_move
-	 */
-	inline uint64 Position::get_pawns(player_t to_move) const
-	{
-		return _pawns[to_move];
 	}
 
 	/**
@@ -779,7 +764,7 @@ namespace Chess
 			_occupied[player_t::black] | _occupied[player_t::white];
 
 		uint64 pinned =
-			attacks_from_queen(_king_sq[to_move], occupied)
+			_attacks_from_queen(_king_sq[to_move], occupied)
 				& _occupied[to_move];
 
 		auto& tables = DataTables::get();
@@ -791,28 +776,28 @@ namespace Chess
 			switch (tables.directions[sq][_king_sq[to_move]])
 			{
 			case direction_t::along_rank:
-				if (!(attacks_from_rook(sq, occupied)
+				if (!(_attacks_from_rook(sq, occupied)
 						& tables.ranks64[sq]
 						& (_rooks[flip(to_move)] |
 							_queens[flip(to_move)])))
 					clear_bit64(sq, pinned);
 				break;
 			case direction_t::along_file:
-				if (!(attacks_from_rook( sq, occupied)
+				if (!(_attacks_from_rook( sq, occupied)
 						& tables.files64[sq]
 						& (_rooks[flip(to_move)] |
 							_queens[flip(to_move)])))
 					clear_bit64(sq, pinned);
 				break;
 			case direction_t::along_a1h8:
-				if (!(attacks_from_bishop(sq, occupied)
+				if (!(_attacks_from_diag(sq, occupied)
 					  & tables.a1h8_64[sq]
 					  & (_bishops[flip(to_move)] |
 					  		 _queens[flip(to_move)])))
 					clear_bit64(sq, pinned);
 				break;
 			case direction_t::along_h1a8:
-				if (!(attacks_from_bishop(sq, occupied)
+				if (!(_attacks_from_diag(sq, occupied)
 					  & tables.h1a8_64[sq]
 					  & (_bishops[flip(to_move)] |
 					  		 _queens[flip(to_move)])))
@@ -825,89 +810,6 @@ namespace Chess
 		}
 
 		return pinned;
-	}
-
-	/**
-	 * Get the mobility of a queen on \a square. This is hashed to avoid
-	 * computing it on the fly
-	 *
-	 * @param[in] square   The queen's location
-	 * @param[in] occupied The occupied squares bitboard
-	 *
-	 * @return The Hamming weight of \ref attacks_from_queen()
-	 */
-	inline int Position::get_queen_mobility(square_t square,
-		uint64 occupied)
-	{
-		return get_rook_mobility(square, occupied)
-				+ get_bishop_mobility(square, occupied);
-	}
-
-	/**
-	 * Get a bitboard representing all queens belonging to \a to_move
-	 *
-	 * @param[in] to_move Whose queens to get
-	 *
-	 * @return A bitboard with 1 bit set for each square containing a
-	 *         queen belonging to \a to_move
-	 */
-	inline uint64 Position::get_queens(player_t to_move) const
-	{
-		return _queens[to_move];
-	}
-
-	/**
-	 * Get a bitboard representing all queens on the board
-	 *
-	 * @return   A bitboard with 1 bit set for each square
-	 *           containing a queen
-	 */
-	inline uint64 Position::get_queens() const
-	{
-		return _queens[player_t::black] | _queens[player_t::white];
-	}
-
-	/**
-	 * Returns the mobility of a rook on \a square. This is hashed to avoid
-	 * computing it on the fly
-	 *
-	 * @param[in] square   The rook's location
-	 * @param[in] occupied The occupied squares bitboard
-	 *
-	 * @return The Hamming weight of \ref attacks_from_rook()
-	 */
-	inline int Position::get_rook_mobility(square_t square,
-		uint64 occupied)
-	{
-		auto& tables = DataTables::get();
-
-		return tables.rook_mobility[tables.rook_offsets[square] +
-				(((occupied & tables.rook_attacks_mask[square])
-					* tables.rook_magics[square]) >> tables.rook_db_shifts[square])];
-	}
-
-	/**
-	 * Get a bitboard representing all rooks belonging to \a to_move
-	 *
-	 * @param[in] to_move Whose rooks to get
-	 *
-	 * @return  A bitboard with 1 bit set for each square containing
-	 *          a rook belonging to \a to_move
-	 */
-	inline uint64 Position::get_rooks(player_t to_move) const
-	{
-		return _rooks[to_move];
-	}
-
-	/**
-	 * Get a bitboard representing all rooks on the board
-	 *
-	 * @return  A bitboard with 1 bit set for each square
-	 *          containing a rook
-	 */
-	inline uint64 Position::get_rooks() const
-	{
-		return _rooks[player_t::black] | _rooks[player_t::white];
 	}
 
 	/**
@@ -950,12 +852,12 @@ namespace Chess
 
 		auto& tables = DataTables::get();
 
-		if (attacks_from_queen(square,occupied) & _kings[to_move])
+		if (_attacks_from_queen(square,occupied) & _kings[to_move])
 		{
 			switch(tables.directions[ square ][_king_sq[ to_move ]])
 			{
 			case direction_t::along_rank:
-				if (attacks_from_rook( square, occupied)
+				if (_attacks_from_rook( square, occupied)
 						& tables.ranks64[square]
 						& (_rooks[flip(to_move)] |
 							_queens[flip(to_move)]))
@@ -963,7 +865,7 @@ namespace Chess
 					return direction_t::along_rank;
 				break;
 			case direction_t::along_file:
-				if (attacks_from_rook( square, occupied)
+				if (_attacks_from_rook( square, occupied)
 						& tables.files64[square]
 						& (_rooks[flip(to_move)] |
 							_queens[flip(to_move)]))
@@ -971,7 +873,7 @@ namespace Chess
 					return direction_t::along_file;
 				break;
 			case direction_t::along_a1h8:
-				if (attacks_from_bishop(square, occupied)
+				if (_attacks_from_diag(square, occupied)
 					  & tables.a1h8_64[square]
 					  & (_bishops[flip(to_move)] |
 					  			 _queens[flip(to_move)]))
@@ -979,7 +881,7 @@ namespace Chess
 					return direction_t::along_a1h8;
 				break;
 			case direction_t::along_h1a8:
-				if (attacks_from_bishop(square, occupied)
+				if (_attacks_from_diag(square, occupied)
 					  & tables.h1a8_64[square]
 					  & (_bishops[flip(to_move)] |
 					  			 _queens[flip(to_move)]))
@@ -1006,7 +908,7 @@ namespace Chess
 		/*
 		 * Update the position hash signature
 		 */
-		update_hash(move);
+		_update_hash(move);
 
 		/*
 		 * Before doing anything, carry over the castling
@@ -1365,13 +1267,13 @@ namespace Chess
 			_bishops[to_move] | _queens[to_move];
 
 		uint64 rook_attackers =
-			attacks_from( square, piece_t::rook, to_move );
+			attacks_from< piece_t::rook >(square);
 
 		if ( rook_attackers & rooks_queens )
 			return true;
 
 		uint64 diag_attackers = 
-			attacks_from(square, piece_t::bishop, to_move);
+			attacks_from<piece_t::bishop>(square);
 
 		if (diag_attackers & bishops_queens)
 			return true;
@@ -1628,12 +1530,120 @@ namespace Chess
 	}
 
 	/**
+	 * Generates the squares attacked by a bishop located at the given
+	 * square
+	 *
+	 * @param[in] square   The bishop's location
+	 * @param[in] occupied The occupied squares bitboard
+	 *
+	 * @return A bitboard specifying all squares attacked by this piece
+	 */
+	inline uint64 Position::_attacks_from_diag(square_t square,
+		uint64 occupied ) const
+	{
+		auto& tables = DataTables::get();
+
+		return tables.bishop_attacks[tables.bishop_offsets[square] +
+				(((occupied & tables.bishop_attacks_mask[square])
+					* tables.diag_magics[square]) >> tables.bishop_db_shifts[square])];
+	}
+
+	/**
+	 * Generates the squares attacked by a queen located at the given
+	 * square
+	 *
+	 * @param[in] square   The queen's location
+	 * @param[in] occupied The occupied squares bitboard
+	 *
+	 * @return  A bitboard showing all squares attacked by this piece
+	 */
+	inline uint64 Position::_attacks_from_queen(square_t square,
+		uint64 occupied) const
+	{
+		return _attacks_from_rook(square, occupied)
+				| _attacks_from_diag( square, occupied );
+	}
+
+	/**
+	 * Generates the squares attacked by a rook located at the given
+	 * square
+	 *
+	 * @param[in] square   The rook's location
+	 * @param[in] occupied The occupied squares bitboard
+	 *
+	 * @return A bitboard showing all squares attacked by this piece
+	 */
+	inline uint64 Position::_attacks_from_rook(square_t square,
+		uint64 occupied) const
+	{
+		auto& tables = DataTables::get();
+
+		return tables.rook_attacks[tables.rook_offsets[square] +
+				(((occupied & tables.rook_attacks_mask[square])
+					* tables.rook_magics[square]) >> tables.rook_db_shifts[square])];
+	}
+
+	/**
+	 * Get the mobility of a bishop on \a square. This is hashed to avoid
+	 * computing it on the fly
+	 *
+	 * @param[in] square   The bishop's location
+	 * @param[in] occupied The occupied squares bitboard
+	 *
+	 * @return The Hamming weight of \ref _attacks_from_diag()
+	 */
+	inline int Position::_get_diag_mobility(square_t square,
+		uint64 occupied) const
+	{
+		auto& tables = DataTables::get();
+
+		return tables.bishop_mobility[tables.bishop_offsets[square] +
+				(((occupied & tables.bishop_attacks_mask[square])
+					* tables.diag_magics[square]) >> tables.bishop_db_shifts[square])];
+	}
+
+	/**
+	 * Get the mobility of a queen on \a square. This is hashed to avoid
+	 * computing it on the fly
+	 *
+	 * @param[in] square   The queen's location
+	 * @param[in] occupied The occupied squares bitboard
+	 *
+	 * @return The Hamming weight of \ref attacks_from_queen()
+	 */
+	inline int Position::_get_queen_mobility(square_t square,
+		uint64 occupied) const
+	{
+		return _get_rook_mobility(square, occupied)
+				+ _get_diag_mobility(square, occupied);
+	}
+
+	/**
+	 * Returns the mobility of a rook on \a square. This is hashed to avoid
+	 * computing it on the fly
+	 *
+	 * @param[in] square   The rook's location
+	 * @param[in] occupied The occupied squares bitboard
+	 *
+	 * @return The Hamming weight of \ref attacks_from_rook()
+	 */
+	inline int Position::_get_rook_mobility(square_t square,
+		uint64 occupied) const
+	{
+		auto& tables = DataTables::get();
+
+		return tables.rook_mobility[tables.rook_offsets[square] +
+				(((occupied & tables.rook_attacks_mask[square])
+					* tables.rook_magics[square]) >> tables.rook_db_shifts[square])];
+	}
+
+	/**
 	 * Update the hash signature at the current ply. This should only
 	 * be called when making a move
 	 *
 	 * @param[in] move The last move made
 	 */
-	inline void Position::update_hash(int32 move)
+	inline void Position::_update_hash(int32 move)
 	{
 		uint64& hash = _save_hash[_ply+1];
 		hash = _save_hash[_ply];
