@@ -14,7 +14,9 @@ namespace Chess
 	 */
 	class Position
 	{
+
 	public:
+
 		/**
 		 * Structure containing en passant information for
 		 * a position
@@ -74,6 +76,9 @@ namespace Chess
 			void print();
 		};
 
+		/**
+		 * The default starting position
+		 */
 		static constexpr char init_fen[] =
 			"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -223,7 +228,7 @@ namespace Chess
 
 		/**
 		 * The square each king is on. This avoids having to \ref LSB the
-		 * \ref _kings bitboard
+		 * \ref _kings bitboard to get an index
 		 */
 		BUFFER(square_t, _king_sq, 2);
 
