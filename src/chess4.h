@@ -16,7 +16,7 @@ namespace Chess
 	using uint16 = std::uint16_t;
 	using uint8 = std::uint8_t;
 
-	const int max_ply      = 128;
+	const int max_ply      = 512;
 	const int pawn_value   = 100;
 	const int knight_value = 325;
 	const int bishop_value = 325;

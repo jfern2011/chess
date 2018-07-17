@@ -1,0 +1,8 @@
+1. Null move heuristic and the 50-move rule
+   - Possibility of fooling the engine into thinking it could force a draw by null-moving
+   - If a line includes a null move, don't increment the half move clock?
+2. Stuff to test:
+   - Position hashing algorithm
+   - 50-move rule
+3. Is unmake_move() really required? Can't we just decrement ply?
+4. Check SEE algorithm
