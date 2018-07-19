@@ -199,7 +199,7 @@ namespace Chess
 				&& _full_move[i]  == rhs._full_move[i]
 				&& _half_move[i]  == rhs._half_move[i]
 				&& _material[i]   == rhs._material[i]
-				&& _to_move[i]    == rhs._to_move[i]
+				&& _to_move[i]    == rhs._to_move[i];
 
 			same = same
 				&& _save_hash[i] == rhs._save_hash[i];
@@ -323,7 +323,7 @@ namespace Chess
 			signature ^=
 				_hash_input.en_passant[ get_file( _ep_info[_ply].target) ];
 
-		if (_to_move == player_t::white)
+		if (_to_move[_ply] == player_t::white)
 			signature ^= _hash_input.to_move;
 
 		if (_castle_rights[_ply][player_t::white] & castle_K)
@@ -426,7 +426,7 @@ namespace Chess
 			}
 		}
 
-		if (_to_move == player_t::white)
+		if (_to_move[_ply] == player_t::white)
 			fen += " w ";
 		else
 			fen += " b ";
@@ -454,8 +454,8 @@ namespace Chess
 		char halfMove_s[8];
 		char fullMove_s[8];
 
-		std::sprintf(halfMove_s, "%d", _half_move);
-		std::sprintf(fullMove_s, "%d", _full_move);
+		std::sprintf(halfMove_s, "%d", _half_move[_ply]);
+		std::sprintf(fullMove_s, "%d", _full_move[_ply]);
 
 		std::string space = " ";
 
@@ -660,13 +660,13 @@ namespace Chess
 		std::vector<std::string> posn_info;
 		Util::split(tokens.back(), posn_info, " ");
 
-		_half_move = 0;
-		_full_move = 1;
-
 		/*
 		 * Reset the ply count, which removes all database-driven history
 		 */
 		_ply = 0;
+
+		_half_move[_ply] = 0;
+		_full_move[_ply] = 1;
 
 		switch (posn_info.size())
 		{
@@ -674,7 +674,7 @@ namespace Chess
 				// Ignore anything beyond the 6th token instead of
 				// returning an error
 			case 6:
-				if (!Util::from_string(posn_info[5], _full_move))
+				if (!Util::from_string(posn_info[5], _full_move[_ply]))
 				{
 					if (verbosity >= Verbosity::terse && _output)
 					{
@@ -686,7 +686,7 @@ namespace Chess
 					return false;
 				}
 			case 5:
-				if (!Util::from_string(posn_info[4], _half_move))
+				if (!Util::from_string(posn_info[4], _half_move[_ply]))
 				{
 					if (verbosity >= Verbosity::terse && _output)
 					{
@@ -767,7 +767,8 @@ namespace Chess
 					*this = backup;
 					return false;
 				}
-				_to_move = posn_info[1] == "w" ? player_t::white : player_t::black;
+				_to_move[_ply] =
+					posn_info[1] == "w" ? player_t::white : player_t::black;
 				break;
 			case 1:
 				if (verbosity >= Verbosity::terse && _output)
@@ -789,11 +790,11 @@ namespace Chess
 		
 		if (_ep_info[_ply].target != square_t::BAD_SQUARE)
 		{
-			victim = (_to_move == player_t::white) ? 
+			victim = (_to_move[_ply] == player_t::white) ? 
 				_ep_info[_ply].target-8 : _ep_info[_ply].target+8;
 
 			src =
-				_pawns[_ply][ _to_move ] & tables.rank_adjacent[victim];
+				_pawns[_ply][ _to_move[_ply] ] & tables.rank_adjacent[victim];
 
 			if (src & (tables.set_mask[victim+1]))
 				_ep_info[_ply].src[0] =
@@ -818,14 +819,14 @@ namespace Chess
 		 * Compute the material balance. This avoids
 		 * having to do so during static eval
 		 */
-		_material =
+		_material[_ply] =
 			Util::bit_count(_pawns[_ply][player_t::white])   * pawn_value   +
 			Util::bit_count(_knights[_ply][player_t::white]) * knight_value + 
 			Util::bit_count(_bishops[_ply][player_t::white]) * bishop_value + 
 			Util::bit_count(_rooks[_ply][player_t::white])   * rook_value   +
 			Util::bit_count(_queens[_ply][player_t::white])  * queen_value;
 
-		_material -=
+		_material[_ply] -=
 			Util::bit_count(_pawns[_ply][player_t::black])   * pawn_value   + 
 			Util::bit_count(_knights[_ply][player_t::black]) * knight_value + 
 			Util::bit_count(_bishops[_ply][player_t::black]) * bishop_value + 
@@ -927,7 +928,7 @@ namespace Chess
 		}
 
 		// Rule 3:
-		if (in_check(flip(_to_move)))
+		if (in_check(flip(_to_move[_ply])))
 		{
 			if (verbosity >= Verbosity::terse && _output)
 			{
@@ -981,7 +982,7 @@ namespace Chess
 			}
 		}
 
-		if (!(_kings[player_t::black] & Util::get_bit< uint64 >(square_t::E8)))
+		if (!(_kings[_ply][player_t::black] & Util::get_bit< uint64 >(square_t::E8)))
 		{
 			if (_castle_rights[_ply][player_t::black] & castle_mask)
 			{
@@ -1026,7 +1027,7 @@ namespace Chess
 		{
 			bool bad_ep = false;
 
-			if (_to_move == player_t::white)
+			if (_to_move[_ply] == player_t::white)
 			{
 				if (get_rank(_ep_info[_ply].target) != 5 ||
 					!(_pawns[_ply][player_t::black] &

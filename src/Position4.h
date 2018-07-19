@@ -835,7 +835,7 @@ namespace Chess
 	/**
 	 * Determine if the given side, \a to_move, is in check
 	 *
-	 * @param[in] to_move \ref player_t::white or \ref player_t::black
+	 * @param [in] to_move \ref player_t::white or \ref player_t::black
 	 *
 	 * @return True if \a to_move is in check
 	 */
@@ -860,7 +860,7 @@ namespace Chess
 		const uint64 occupied = _occupied[_ply][player_t::black] |
 								_occupied[_ply][player_t::white];
 
-		if (_attacks_from_queen(square,occupied) & _kings[to_move])
+		if (_attacks_from_queen(square,occupied) & _kings[_ply][to_move])
 		{
 			auto& tables = DataTables::get();
 
@@ -929,16 +929,17 @@ namespace Chess
 		_castle_rights[_ply+1][player_t::white] = 
 				_castle_rights[_ply][player_t::white];
 
-		player_t to_move& = _to_move[_ply];
-
 		/*
 		 * 3. Increment the ply count
 		 */
 		_ply++;
 
+		player_t& to_move = _to_move[_ply  ];
+		to_move           = _to_move[_ply-1];
+
 		/*
-		 * 4. Check if this is a null move. If so, switch sides, clear
-		 *    the en passant square, and return
+		 * 4.  Check if this is a null move. If so, switch sides, clear
+		 *     the en passant square, and return
 		 */
 		if (move == 0)
 		{
@@ -988,254 +989,252 @@ namespace Chess
 		 */
 		auto& tables = DataTables::get();
 
-		switch (moved)
+		/*
+		 * 10.1 A pawn was moved
+		 */
+		if (moved == piece_t::pawn)
+		{
+			uint64& pawns = _pawns[_ply  ][to_move];
+			pawns         = _pawns[_ply-1][to_move];
+
+			/*
+			 * 10.1.1 Clear the origin square in the pawn bitboard
+			 */
+			pawns &= tables.clear_mask[from];
+
+			/*
+			 * 10.1.2 If this was a promotion, update the board
+			 *        squares array with the new piece and adjust
+			 *        the material change accordingly
+			 */
+			if (promote != piece_t::empty)
+			{
+				_pieces[to] = promote;
+
+				delta_material +=
+					tables.piece_value[promote]-pawn_value;
+			}
+
+			/*
+			 * 10.1.3 If this was a promotion, update the bitboard
+			 *        of the piece that was promoted to
+			 */
+			switch (promote)
+			{
+				case piece_t::knight:
+					_knights[_ply][to_move] =
+						_knights[_ply-1][to_move] | tables.set_mask[to];
+					break;
+				case piece_t::rook:
+					_rooks[_ply][to_move] =
+						_rooks  [_ply-1][to_move] | tables.set_mask[to];
+					break;
+				case piece_t::queen:
+					_queens[_ply][to_move] =
+						_queens [_ply-1][to_move] | tables.set_mask[to];
+					break;
+				case piece_t::bishop:
+					_bishops[_ply][to_move] =
+						_bishops[_ply-1][to_move] | tables.set_mask[to];
+					break;
+				default:
+					pawns = 
+						_pawns  [_ply-1][to_move] | tables.set_mask[to];
+			}
+
+			/*
+			 * 10.1.4 Set the en passant target square if the pawn
+			 *        moved 2 spaces
+			 */
+			if (abs(from-to) == 16)
+			{
+				uint64 src = _pawns[_ply-1][flip(to_move)]
+					& tables.rank_adjacent[to];
+
+				if (to_move == player_t::white)
+					_ep_info[_ply].target =
+						static_cast<square_t>(to-8);
+				else
+					_ep_info[_ply].target =
+						static_cast<square_t>(to+8);
+
+				if (src & (tables.set_mask[to+1]))
+					_ep_info[_ply].src[0] =
+						static_cast<square_t>(to+1);
+				if (src & (tables.set_mask[to-1]))
+					_ep_info[_ply].src[1] =
+						static_cast<square_t>(to-1);
+			}
+		}
+
+		/*
+		 * 10.2 A knight was moved. All that is needed is to clear
+		 *      the origin bit and set the destination bit of
+		 *      the knight bitboard
+		 */
+		else if (moved == piece_t::knight)
+		{
+			uint64& knights = _knights[_ply  ][to_move];
+			knights         = _knights[_ply-1][to_move];
+
+			clear_set64(from, to, knights);
+		}
+
+		/*
+		 * 10.3 A rook was moved
+		 */
+		else if (moved == piece_t::rook)
 		{
 			/*
-			 * 10.1 A pawn was moved
+			 * 10.3.1 Clear/set the origin/destination bits of the
+			 *        rook bitboard
 			 */
-			case piece_t::pawn:
+			uint64& rooks = _rooks[_ply  ][to_move];
+			rooks         = _rooks[_ply-1][to_move];
 
-				uint64& pawns = _pawns[_ply  ][to_move];
-				pawns         = _pawns[_ply-1][to_move];
-
-				/*
-				 * 10.1.1 Clear the origin square in the pawn bitboard
-				 */
-				pawns &= tables.clear_mask[from];
-
-				/*
-				 * 10.1.2 If this was a promotion, update the board
-				 *        squares array with the new piece and adjust
-				 *        the material change accordingly
-				 */
-				if (promote != piece_t::empty)
-				{
-					_pieces[to] = promote;
-
-					delta_material +=
-						tables.piece_value[promote]-pawn_value;
-				}
-
-				/*
-				 * 10.1.3 If this was a promotion, update the bitboard
-				 *        of the piece that was promoted to
-				 */
-				switch (promote)
-				{
-					case piece_t::knight:
-						_knights[_ply][to_move] =
-							_knights[_ply-1][to_move] | tables.set_mask[to];
-						break;
-					case piece_t::rook:
-						_rooks[_ply][to_move] =
-							_rooks  [_ply-1][to_move] | tables.set_mask[to];
-						break;
-					case piece_t::queen:
-						_queens[_ply][to_move] =
-							_queens [_ply-1][to_move] | tables.set_mask[to];
-						break;
-					case piece_t::bishop:
-						_bishops[_ply][to_move] =
-							_bishops[_ply-1][to_move] | tables.set_mask[to];
-						break;
-					default:
-						_pawns[_ply][to_move] =
-							_pawns  [_ply-1][to_move] | tables.set_mask[to];
-				}
-
-				/*
-				 * 10.1.4 Set the en passant target square if the pawn
-				 *        moved 2 spaces
-				 */
-				if (abs(from-to) == 16)
-				{
-					uint64 src = _pawns[_ply-1][flip(to_move)]
-						& tables.rank_adjacent[to];
-
-					if (to_move == player_t::white)
-						_ep_info[_ply].target =
-							static_cast<square_t>(to-8);
-					else
-						_ep_info[_ply].target =
-							static_cast<square_t>(to+8);
-
-					if (src & (tables.set_mask[to+1]))
-						_ep_info[_ply].src[0] =
-							static_cast<square_t>(to+1);
-					if (src & (tables.set_mask[to-1]))
-						_ep_info[_ply].src[1] =
-							static_cast<square_t>(to-1);
-				}
-
-				break;
+			clear_set64( from, to, rooks );
 
 			/*
-			 * 10.2 A knight was moved. All that is needed is to clear
-			 *      the origin bit and set the destination bit of
-			 *      the knight bitboard
+			 * 10.3.2 If we were able to castle with this rook, it
+			 *        is no longer possible. Remove the castling
+			 *        rights associated with this rook
 			 */
-			case piece_t::knight:
-				uint64& knights = _knights[_ply  ][to_move];
-				knights         = _knights[_ply-1][to_move];
+			if ((_castle_rights[_ply][to_move]))
+			{
+				switch (get_file(from))
+				{
+					case 0:
+						_castle_rights[_ply][to_move]
+							&= castle_Q;
+					break;
+					case 7:
+						_castle_rights[_ply][to_move]
+							&= castle_K;
+				}
+			}
+		}
 
-				clear_set64(from, to, knights);
-				break;
+		/*
+		 * 10.4 A bishop was moved. All that is needed is to clear
+		 *      the origin bit and set the destination bit of
+		 *      the bishop bitboard
+		 */
+		else if (moved == piece_t::bishop)
+		{
+			uint64& bishops = _bishops[_ply  ][to_move];
+			bishops         = _bishops[_ply-1][to_move];
+
+			clear_set64(from, to, bishops);
+		}
+
+		/*
+		 * 10.5 A queen was moved. All that is needed is to clear
+		 *      the origin bit and set the destination bit of
+		 *      the queen bitboard
+		 */
+		else if (moved == piece_t::queen)
+		{
+			uint64& queens = _queens[_ply  ][to_move];
+			queens         = _queens[_ply-1][to_move];
+
+			clear_set64(from, to, queens);
+		}
+
+		/*
+		 * 10.6 A king was moved
+		 */
+		else if (moved == piece_t::king)
+		{
+			/*
+			 * 10.6.1 Clear/set the origin/destination bits of the
+			 *        king bitboard
+			 */
+
+			uint64& king  = _kings[_ply  ][to_move];
+			king          = _kings[_ply-1][to_move];
+
+			clear_set64(from, to, king);
 
 			/*
-			 * 10.3 A rook was moved
+			 * 10.6.2 Update the king's location
 			 */
-			case piece_t::rook:
+			_king_sq[_ply][to_move] =
+				static_cast<square_t>(to);
 
-				/*
-				 * 10.3.1 Clear/set the origin/destination bits of the
-				 *        rook bitboard
-				 */
+			/*
+			 * 10.6.3 Handle castling moves
+			 */
+			if (abs(from-to) == 2)
+			{
 				uint64& rooks = _rooks[_ply  ][to_move];
 				rooks         = _rooks[_ply-1][to_move];
 
-				clear_set64( from, to, rooks );
-
-				/*
-				 * 10.3.2 If we were able to castle with this rook, it
-				 *        is no longer possible. Remove the castling
-				 *        rights associated with this rook
-				 */
-				if ((_castle_rights[_ply][to_move]))
+				if (to_move == player_t::white)
 				{
-					switch (get_file(from))
+					/*
+				 	 * 10.6.3.1 Update the board squares for the rook
+				 	 *          and its bitboard (white)
+				 	 */
+					if (to == square_t::G1)
 					{
-						case 0:
-							_castle_rights[_ply][to_move]
-								&= castle_Q;
-						break;
-						case 7:
-							_castle_rights[_ply][to_move]
-								&= castle_K;
+						_pieces[square_t::H1] = piece_t::empty;
+						_pieces[square_t::F1] = piece_t::rook;
+
+						clear_set64(square_t::H1, square_t::F1,
+							rooks);
+						clear_set64(square_t::H1, square_t::F1,
+							occupied);
+					}
+					else // Queenside castle
+					{
+						_pieces[square_t::A1] = piece_t::empty;
+						_pieces[square_t::D1] = piece_t::rook;
+
+						clear_set64(square_t::A1, square_t::D1,
+							rooks);
+						clear_set64(square_t::A1, square_t::D1,
+							occupied);
 					}
 				}
-
-				break;
-
-			/*
-			 * 10.4 A bishop was moved. All that is needed is to clear
-			 *      the origin bit and set the destination bit of
-			 *      the bishop bitboard
-			 */
-			case piece_t::bishop:
-
-				uint64& bishops = _bishops[_ply  ][to_move];
-				bishops         = _bishops[_ply-1][to_move];
-
-				clear_set64(from, to, bishops);
-
-				break;
-
-			/*
-			 * 10.5 A queen was moved. All that is needed is to clear
-			 *      the origin bit and set the destination bit of
-			 *      the queen bitboard
-			 */
-			case piece_t::queen:
-				uint64& queens = _queens[_ply  ][to_move];
-				queens         = _queens[_ply-1][to_move];
-
-				clear_set64(from, to, queens);
-
-				break;
-
-			/*
-			 * 10.6 A king was moved
-			 */
-			case piece_t::king:
-
-				/*
-				 * 10.6.1 Clear/set the origin/destination bits of the
-				 *        king bitboard
-				 */
-
-				uint64& king  = _kings[_ply  ][to_move];
-				king          = _kings[_ply-1][to_move];
-
-				clear_set64(from, to, king);
-
-				/*
-				 * 10.6.2 Update the king's location
-				 */
-				_king_sq[_ply][to_move] =
-					static_cast<square_t>(to);
-
-				/*
-				 * 10.6.3 Handle castling moves
-				 */
-				if (abs(from-to) == 2)
+				else
 				{
-					uint64& rooks = _rooks[_ply  ][to_move];
-					rooks         = _rooks[_ply-1][to_move];
-
-					if (to_move == player_t::white)
+					/*
+				 	 * 10.6.3.1 Update the board squares for the rook
+				 	 *          and its bitboard (black)
+				 	 */
+					if (to == square_t::G8)
 					{
-						/*
-					 	 * 10.6.3.1 Update the board squares for the rook
-					 	 *          and its bitboard (white)
-					 	 */
-						if (to == square_t::G1)
-						{
-							_pieces[square_t::H1] = piece_t::empty;
-							_pieces[square_t::F1] = piece_t::rook;
+						_pieces[square_t::H8] = piece_t::empty;
+						_pieces[square_t::F8] = piece_t::rook;
 
-							clear_set64(square_t::H1, square_t::F1,
-								rooks);
-							clear_set64(square_t::H1, square_t::F1,
-								occupied);
-						}
-						else // Queenside castle
-						{
-							_pieces[square_t::A1] = piece_t::empty;
-							_pieces[square_t::D1] = piece_t::rook;
-
-							clear_set64(square_t::A1, square_t::D1,
-								rooks);
-							clear_set64(square_t::A1, square_t::D1,
-								occupied);
-						}
+						clear_set64(square_t::H8, square_t::F8,
+							rooks);
+						clear_set64(square_t::H8, square_t::F8,
+							occupied);
 					}
-					else
+					else // Queenside castle
 					{
-						/*
-					 	 * 10.6.3.1 Update the board squares for the rook
-					 	 *          and its bitboard (black)
-					 	 */
-						if (to == square_t::G8)
-						{
-							_pieces[square_t::H8] = piece_t::empty;
-							_pieces[square_t::F8] = piece_t::rook;
+						_pieces[square_t::A8] = piece_t::empty;
+						_pieces[square_t::D8] = piece_t::rook;
 
-							clear_set64(square_t::H8, square_t::F8,
-								rooks);
-							clear_set64(square_t::H8, square_t::F8,
-								occupied);
-						}
-						else // Queenside castle
-						{
-							_pieces[square_t::A8] = piece_t::empty;
-							_pieces[square_t::D8] = piece_t::rook;
-
-							clear_set64(square_t::A8, square_t::D8,
-								rooks);
-							clear_set64(square_t::A8, square_t::D8,
-								occupied);
-						}
+						clear_set64(square_t::A8, square_t::D8,
+							rooks);
+						clear_set64(square_t::A8, square_t::D8,
+							occupied);
 					}
 				}
+			}
 
-				/*
-				 * 10.6.4 Because the king was moved, clear all
-				 *        castling rights for this player:
-				 */
-				_castle_rights[_ply][to_move] = 0;
-				break;
-			default:
-				Abort(false);
+			/*
+			 * 10.6.4 Because the king was moved, clear all
+			 *        castling rights for this player:
+			 */
+			_castle_rights[_ply][to_move] = 0;
+		}
+
+		else // invalid piece was moved
+		{
+			Abort(false);
 		}
 
 		/*
@@ -1549,7 +1548,7 @@ namespace Chess
 		else if (captured != piece_t::empty
 					&& to == _ep_info[_ply].target)
 		{
-			if (_to_move == player_t::white)
+			if (_to_move[_ply]  == player_t::white)
 				_pieces[to-8] = piece_t::pawn;
 			else
 				_pieces[to+8] = piece_t::pawn;
@@ -1677,7 +1676,7 @@ namespace Chess
 	inline void Position::_update_hash(int32 move)
 	{
 		uint64& hash = _save_hash[_ply+1];
-		hash = _save_hash[_ply];
+		hash         = _save_hash[_ply];
 
 		const piece_t captured = extract_captured(move);
 		const int from         = extract_from(move);
@@ -1714,17 +1713,19 @@ namespace Chess
 			hash ^= _hash_input.en_passant[ get_file(to) ];
 		}
 
+		const player_t& to_move = _to_move[_ply];
+
 		/*
 		 * Update the hash entry to reflect the new location of
 		 * the piece moved:
 		 */
 		hash ^=
-			_hash_input.piece[_to_move][moved][from];
+			_hash_input.piece[to_move][moved][from];
 
 		if (promote == piece_t::empty)
-			hash ^= _hash_input.piece[_to_move][ moved ][to];
+			hash ^= _hash_input.piece[to_move][ moved ][to];
 		else
-			hash ^= _hash_input.piece[_to_move][promote][to];
+			hash ^= _hash_input.piece[to_move][promote][to];
 
 		/*
 		 * Update the hash key if we moved a rook with which we
@@ -1733,16 +1734,16 @@ namespace Chess
 		if (moved == piece_t::rook)
 		{
 			if (get_file(from) == 0 &&
-				(_castle_rights[_ply][_to_move] & castle_K))
+				(_castle_rights[_ply][to_move] & castle_K))
 			{
 				hash ^=
-					_hash_input.castle_rights[_to_move][castle_K_index];
+					_hash_input.castle_rights[to_move][castle_K_index];
 			}
 			else if (get_file(from) == 7 &&
-				(_castle_rights[_ply][_to_move] & castle_Q))
+				(_castle_rights[_ply][to_move] & castle_Q))
 			{
 				hash ^=
-					_hash_input.castle_rights[_to_move][castle_Q_index];
+					_hash_input.castle_rights[to_move][castle_Q_index];
 			}
 		}
 
@@ -1752,12 +1753,12 @@ namespace Chess
 		 */
 		else if (moved == piece_t::king)
 		{
-			if (_castle_rights[_ply][_to_move] & castle_K)
+			if (_castle_rights[_ply][to_move] & castle_K)
 				hash ^=
-					_hash_input.castle_rights[_to_move][castle_K_index];
-			if (_castle_rights[_ply][_to_move] & castle_Q)
+					_hash_input.castle_rights[to_move][castle_K_index];
+			if (_castle_rights[_ply][to_move] & castle_Q)
 				hash ^=
-					_hash_input.castle_rights[_to_move][castle_Q_index];
+					_hash_input.castle_rights[to_move][castle_Q_index];
 
 			/*
 			 * Update the hash key for the rook involved with
@@ -1765,21 +1766,25 @@ namespace Chess
 			 */
 			if (abs(from-to) == 2)
 			{
-				if (_to_move == player_t::white)
+				if (to_move == player_t::white)
 				{
 					if (to == square_t::G1)
 					{
 						hash ^=
-							_hash_input.piece[player_t::white][piece_t::rook][square_t::H1];
+							_hash_input.piece[player_t::white][
+								piece_t::rook][square_t::H1];
 						hash ^=
-							_hash_input.piece[player_t::white][piece_t::rook][square_t::F1];
+							_hash_input.piece[player_t::white][
+								piece_t::rook][square_t::F1];
 					}
 					else
 					{
 						hash ^=
-							_hash_input.piece[player_t::white][piece_t::rook][square_t::A1];
+							_hash_input.piece[player_t::white][
+								piece_t::rook][square_t::A1];
 						hash ^=
-							_hash_input.piece[player_t::white][piece_t::rook][square_t::D1];
+							_hash_input.piece[player_t::white][
+								piece_t::rook][square_t::D1];
 					}
 				}
 				else
@@ -1787,16 +1792,20 @@ namespace Chess
 					if (to == square_t::G8)
 					{
 						hash ^=
-							_hash_input.piece[player_t::black][piece_t::rook][square_t::H8];
+							_hash_input.piece[player_t::black][
+								piece_t::rook][square_t::H8];
 						hash ^=
-							_hash_input.piece[player_t::black][piece_t::rook][square_t::F8];
+							_hash_input.piece[player_t::black][
+								piece_t::rook][square_t::F8];
 					}
 					else
 					{
 						hash ^=
-							_hash_input.piece[player_t::black][piece_t::rook][square_t::A8];
+							_hash_input.piece[player_t::black][
+								piece_t::rook][square_t::A8];
 						hash ^=
-							_hash_input.piece[player_t::black][piece_t::rook][square_t::D8];
+							_hash_input.piece[player_t::black][
+								piece_t::rook][square_t::D8];
 					}
 				}
 			}
@@ -1807,24 +1816,28 @@ namespace Chess
 		 */
 		if (captured != piece_t::empty)
 		{
-			const player_t x_side = flip(_to_move);
+			const player_t x_side = flip(to_move);
 
 			switch (captured)
 			{
+
 			case piece_t::pawn:
 
 				if (_pieces[to] != piece_t::empty)
-					hash ^= _hash_input.piece[x_side][piece_t::pawn][to];
+				{
+					hash ^= _hash_input.piece[x_side][
+						piece_t::pawn][to];
+				}
 				else
 				{
-					if (_to_move == player_t::white)
-						hash ^=
-							_hash_input.piece[player_t::black][piece_t::pawn][to-8];
+					if (to_move == player_t::white)
+						hash ^= _hash_input.piece[player_t::black][
+									piece_t::pawn][to-8];
 					else
-						hash ^=
-							_hash_input.piece[player_t::white][piece_t::pawn][to+8];
+						hash ^= _hash_input.piece[player_t::white][
+							piece_t::pawn][to+8];
 				}
-				
+
 				break;
 
 			case piece_t::rook:
@@ -1838,16 +1851,16 @@ namespace Chess
 				case 0:
 					if (_castle_rights[_ply][x_side] & castle_K)
 					{
-						hash ^=
-							_hash_input.castle_rights[x_side][castle_K_index];
+						hash ^= _hash_input.castle_rights[x_side][
+							castle_K_index];
 					}
 				break;
 
 				case 7:
 					if (_castle_rights[_ply][x_side] & castle_Q)
 					{
-						hash ^=
-							_hash_input.castle_rights[x_side][castle_Q_index];
+						hash ^= _hash_input.castle_rights[x_side][
+							castle_Q_index];
 					}
 				}
 
@@ -1856,7 +1869,7 @@ namespace Chess
 			default:
 
 				hash ^= _hash_input.piece[
-					flip(_to_move)][captured][to];
+					flip(to_move)][captured][to];
 			}
 		}
 
