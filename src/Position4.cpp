@@ -320,8 +320,7 @@ namespace Chess
 		signature = 0;
 
 		if (_ep_info[_ply].target != square_t::BAD_SQUARE)
-			signature ^=
-				_hash_input.en_passant[ get_file( _ep_info[_ply].target) ];
+			signature ^= _hash_input.en_passant[get_file(_ep_info[_ply].target)];
 
 		if (_to_move[_ply] == player_t::white)
 			signature ^= _hash_input.to_move;
@@ -488,7 +487,7 @@ namespace Chess
 		{
 			if (get_rank(sq) != prev_rank)
 			{
-				std::printf("\n ---+---+---+---+---+---+---+--- \n");
+				_output->write("\n ---+---+---+---+---+---+---+--- \n");
 				if (sq == -1) break;
 
 				prev_rank = get_rank(sq);
@@ -518,16 +517,14 @@ namespace Chess
 				if (_occupied[_ply][player_t::black] & (one << sq))
 					piece = Util::to_lower(piece);
 
-				std::printf("| %c ", piece);
+				_output->write("| %c ", piece);
 			}
 			else
-				std::printf("|   ");
+				_output->write("|   ");
 
 			if (sq % 8 == 0)
-				std::printf("|");
+				_output->write("|");
 		}
-
-		std::fflush(stdout);
 	}
 
 	/**
@@ -542,7 +539,7 @@ namespace Chess
 		Position backup(*this);
 		int square = 63;
 
-		// Clear member fields:
+		// Clear member fields. Note this sets _ply = 0
 		set_default();
 
 		std::vector<std::string> tokens; Util::split(fen, tokens, "/");
@@ -598,12 +595,12 @@ namespace Chess
 						case 'Q':
 							_queens[_ply][player_t::white]  |= mask; break;
 						case 'k':
-							_kings [_ply][player_t::black]  |= mask;
+							_kings[_ply][player_t::black]   |= mask;
 							_king_sq[_ply][player_t::black]  =
 								static_cast<square_t>(Util::get_lsb(mask));
 							break;
 						case 'K':
-							_kings [_ply][player_t::white]  |= mask;
+							_kings[_ply][player_t::white]   |= mask;
 							_king_sq[_ply][player_t::white]  =
 								static_cast<square_t>(Util::get_lsb(mask));
 							break;
@@ -659,11 +656,6 @@ namespace Chess
 
 		std::vector<std::string> posn_info;
 		Util::split(tokens.back(), posn_info, " ");
-
-		/*
-		 * Reset the ply count, which removes all database-driven history
-		 */
-		_ply = 0;
 
 		_half_move[_ply] = 0;
 		_full_move[_ply] = 1;
@@ -839,7 +831,7 @@ namespace Chess
 		generate_hash();
 
 		_is_init = true;
-			return _is_init;
+		return true;
 	}
 
 	/**
@@ -866,11 +858,8 @@ namespace Chess
 			_full_move[i] = -1;
 			_half_move[i] = -1;
 
-			_hash_input.clear();
-
-			_is_init     = false;
+			
 			_material[i] = 0;
-			_ply         = 0;
 			_to_move[i]  = player_t::white;
 
 			_ep_info[i].clear();
@@ -880,6 +869,11 @@ namespace Chess
 
 			_save_hash[i] = 0;
 		}
+
+		_hash_input.clear();
+
+		_is_init = false;
+		_ply     = 0;
 	}
 
 	/**
