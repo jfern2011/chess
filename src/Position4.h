@@ -1038,8 +1038,7 @@ namespace Chess
 						_bishops[_ply-1][to_move] | tables.set_mask[to];
 					break;
 				default:
-					pawns = 
-						_pawns  [_ply-1][to_move] | tables.set_mask[to];
+					pawns |= tables.set_mask[to];
 			}
 
 			/*
@@ -1384,16 +1383,18 @@ namespace Chess
 		 * 12. If this is a reversible move, increment the half-move
 		 *     clock. Otherwise, reset it to zero
 		 */
-		else if (moved != piece_t::pawn)
-			_half_move[_ply] = _half_move[_ply-1] + 1;
-		else
+		if (moved == piece_t::pawn || captured != piece_t::empty)
 			_half_move[_ply] = 0;
+		else
+			_half_move[_ply] = _half_move[_ply-1] + 1;
 
 		/*
 		 * 13. Increment the full-move number if black played
 		 */
 		if ( to_move == player_t::black )
 			_full_move[_ply] = _full_move[_ply-1] + 1;
+		else
+			_full_move[_ply] = _full_move[_ply-1];
 
 		/*
 		 * 14. Update the material balance

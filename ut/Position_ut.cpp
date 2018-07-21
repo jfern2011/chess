@@ -39,7 +39,7 @@ namespace
 
 			const uint64 orig_hash = position.get_hash_key();
 			const uint64 orig_occupied = position.get_occupied(player_t::white);
-			const uint64 orig_pawns = position.get_pawns(player_t::white);
+			const uint64 orig_pawns = position.get_bitboard<piece_t::pawn>(player_t::white);
 
 			EXPECT_EQ(position.get_material(), 0);
 
@@ -75,7 +75,7 @@ namespace
 						square_t::E3,
 						new_pawns);
 
-			EXPECT_EQ(new_pawns, position.get_pawns(player_t::white));
+			EXPECT_EQ(new_pawns, position.get_bitboard<piece_t::pawn>(player_t::white));
 
 			EXPECT_EQ(position.get_turn(), player_t::black);
 
@@ -106,7 +106,7 @@ namespace
 
 			const uint64 orig_hash = position.get_hash_key();
 			const uint64 orig_occupied = position.get_occupied(player_t::white);
-			const uint64 orig_pawns = position.get_pawns(player_t::white);
+			const uint64 orig_pawns = position.get_bitboard<piece_t::pawn>(player_t::white);
 
 			EXPECT_EQ(position.get_material(), 0);
 
@@ -142,7 +142,7 @@ namespace
 						square_t::E4,
 						new_pawns);
 
-			EXPECT_EQ(new_pawns, position.get_pawns(player_t::white));
+			EXPECT_EQ(new_pawns, position.get_bitboard<piece_t::pawn>(player_t::white));
 
 			EXPECT_EQ(position.get_turn(), player_t::black);
 
@@ -183,7 +183,7 @@ namespace
 
 				const uint64 orig_hash = position.get_hash_key();
 				const uint64 orig_occupied = position.get_occupied(player_t::white);
-				const uint64 orig_pawns = position.get_pawns(player_t::white);
+				const uint64 orig_pawns = position.get_bitboard<piece_t::pawn>(player_t::white);
 				const uint64 orig_xoccupied = position.get_occupied(player_t::black);
 
 				uint64 orig_xpiece64 = 0;
@@ -192,22 +192,22 @@ namespace
 
 				if (pieces[n] == piece_t::rook)
 				{
-					orig_xpiece64 = position.get_rooks(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::rook>(player_t::black);
 					material -= rook_value;
 				}
 				else if (pieces[n] == piece_t::knight)
 				{
-					orig_xpiece64 = position.get_knights(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::knight>(player_t::black);
 					material -= knight_value;
 				}
 				else if (pieces[n] == piece_t::bishop)
 				{
-					orig_xpiece64 = position.get_bishops(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::bishop>(player_t::black);
 					material -= bishop_value;
 				}
 				else if (pieces[n] == piece_t::queen)
 				{
-					orig_xpiece64 = position.get_queens(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::queen>(player_t::black);
 					material -= queen_value;
 				}
 
@@ -266,19 +266,19 @@ namespace
 
 				if (pieces[n] == piece_t::rook)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_rooks(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::rook>(player_t::black));
 				}
 				else if (pieces[n] == piece_t::knight)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_knights(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::knight>(player_t::black));
 				}
 				else if (pieces[n] == piece_t::bishop)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_bishops(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::bishop>(player_t::black));
 				}
 				else if (pieces[n] == piece_t::queen)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_queens(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::queen>(player_t::black));
 				}
 
 				uint64 new_pawns = orig_pawns;
@@ -287,7 +287,7 @@ namespace
 							square_t::D7,
 							new_pawns);
 
-				EXPECT_EQ(new_pawns, position.get_pawns(player_t::white));
+				EXPECT_EQ(new_pawns, position.get_bitboard<piece_t::pawn>(player_t::white));
 
 				EXPECT_EQ(position.get_turn(), player_t::black);
 
@@ -329,7 +329,7 @@ namespace
 
 				const uint64 orig_hash = position.get_hash_key();
 				const uint64 orig_occupied = position.get_occupied(player_t::white);
-				const uint64 orig_pawns = position.get_pawns(player_t::white);
+				const uint64 orig_pawns = position.get_bitboard<piece_t::pawn>(player_t::white);
 				const uint64 orig_xoccupied = position.get_occupied(player_t::black);
 
 				uint64 orig_xpiece64 = 0;
@@ -338,22 +338,22 @@ namespace
 
 				if (pieces[n] == piece_t::rook)
 				{
-					orig_xpiece64 = position.get_rooks(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::rook>(player_t::black);
 					material -= rook_value;
 				}
 				else if (pieces[n] == piece_t::knight)
 				{
-					orig_xpiece64 = position.get_knights(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::knight>(player_t::black);
 					material -= knight_value;
 				}
 				else if (pieces[n] == piece_t::bishop)
 				{
-					orig_xpiece64 = position.get_bishops(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::bishop>(player_t::black);
 					material -= bishop_value;
 				}
 				else if (pieces[n] == piece_t::queen)
 				{
-					orig_xpiece64 = position.get_queens(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::queen>(player_t::black);
 					material -= queen_value;
 				}
 
@@ -412,19 +412,19 @@ namespace
 
 				if (pieces[n] == piece_t::rook)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_rooks(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::rook>(player_t::black));
 				}
 				else if (pieces[n] == piece_t::knight)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_knights(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::knight>(player_t::black));
 				}
 				else if (pieces[n] == piece_t::bishop)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_bishops(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::bishop>(player_t::black));
 				}
 				else if (pieces[n] == piece_t::queen)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_queens(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::queen>(player_t::black));
 				}
 
 				uint64 new_pawns = orig_pawns;
@@ -433,7 +433,7 @@ namespace
 							square_t::F7,
 							new_pawns);
 
-				EXPECT_EQ(new_pawns, position.get_pawns(player_t::white));
+				EXPECT_EQ(new_pawns, position.get_bitboard<piece_t::pawn>(player_t::white));
 
 				EXPECT_EQ(position.get_turn(), player_t::black);
 
@@ -467,9 +467,9 @@ namespace
 
 				const uint64 orig_hash = position.get_hash_key();
 				const uint64 orig_occupied = position.get_occupied(player_t::white);
-				const uint64 orig_pawns = position.get_pawns(player_t::white);
+				const uint64 orig_pawns = position.get_bitboard<piece_t::pawn>(player_t::white);
 				const uint64 orig_xoccupied = position.get_occupied(player_t::black);
-				const uint64 orig_xpawns = position.get_pawns(player_t::black);
+				const uint64 orig_xpawns = position.get_bitboard<piece_t::pawn>(player_t::black);
 
 				EXPECT_EQ(position.get_material(), pawn_value);
 
@@ -507,7 +507,7 @@ namespace
 				uint64 new_xpawns = orig_xpawns;
 				clear_bit64(square_t::E5, new_xpawns);
 
-				EXPECT_EQ(new_xpawns, position.get_pawns(player_t::black));
+				EXPECT_EQ(new_xpawns, position.get_bitboard<piece_t::pawn>(player_t::black));
 
 				uint64 new_pawns = orig_pawns;
 
@@ -515,7 +515,7 @@ namespace
 							square_t::E6,
 							new_pawns);
 
-				EXPECT_EQ(new_pawns, position.get_pawns(player_t::white));
+				EXPECT_EQ(new_pawns, position.get_bitboard<piece_t::pawn>(player_t::white));
 
 				EXPECT_EQ(position.get_turn(), player_t::black);
 
@@ -548,9 +548,9 @@ namespace
 
 				const uint64 orig_hash = position.get_hash_key();
 				const uint64 orig_occupied = position.get_occupied(player_t::white);
-				const uint64 orig_pawns = position.get_pawns(player_t::white);
+				const uint64 orig_pawns = position.get_bitboard<piece_t::pawn>(player_t::white);
 				const uint64 orig_xoccupied = position.get_occupied(player_t::black);
-				const uint64 orig_xpawns = position.get_pawns(player_t::black);
+				const uint64 orig_xpawns = position.get_bitboard<piece_t::pawn>(player_t::black);
 
 				EXPECT_EQ(position.get_material(), pawn_value);
 
@@ -588,7 +588,7 @@ namespace
 				uint64 new_xpawns = orig_xpawns;
 				clear_bit64(square_t::E5, new_xpawns);
 
-				EXPECT_EQ(new_xpawns, position.get_pawns(player_t::black));
+				EXPECT_EQ(new_xpawns, position.get_bitboard<piece_t::pawn>(player_t::black));
 
 				uint64 new_pawns = orig_pawns;
 
@@ -596,7 +596,7 @@ namespace
 							square_t::E6,
 							new_pawns);
 
-				EXPECT_EQ(new_pawns, position.get_pawns(player_t::white));
+				EXPECT_EQ(new_pawns, position.get_bitboard<piece_t::pawn>(player_t::white));
 
 				EXPECT_EQ(position.get_turn(), player_t::black);
 
@@ -634,7 +634,7 @@ namespace
 
 				const uint64 orig_hash = position.get_hash_key();
 				const uint64 orig_occupied = position.get_occupied(player_t::white);
-				const uint64 orig_pawns = position.get_pawns(player_t::white);
+				const uint64 orig_pawns = position.get_bitboard<piece_t::pawn>(player_t::white);
 
 				EXPECT_EQ(position.get_material(), pawn_value);
 
@@ -659,25 +659,25 @@ namespace
 				if (pieces[i] == piece_t::rook)
 				{
 					EXPECT_EQ(position.get_material(), rook_value);
-					EXPECT_EQ(position.get_rooks(player_t::white),
+					EXPECT_EQ(position.get_bitboard<piece_t::rook>(player_t::white),
 						Util::get_bit<uint64>(square_t::E8));
 				}
 				else if (pieces[i] == piece_t::knight)
 				{
 					EXPECT_EQ(position.get_material(), knight_value);
-					EXPECT_EQ(position.get_knights(player_t::white),
+					EXPECT_EQ(position.get_bitboard<piece_t::knight>(player_t::white),
 						Util::get_bit<uint64>(square_t::E8));
 				}
 				else if (pieces[i] == piece_t::bishop)
 				{
 					EXPECT_EQ(position.get_material(), bishop_value);
-					EXPECT_EQ(position.get_bishops(player_t::white),
+					EXPECT_EQ(position.get_bitboard<piece_t::bishop>(player_t::white),
 						Util::get_bit<uint64>(square_t::E8));
 				}
 				else if (pieces[i] == piece_t::queen)
 				{
 					EXPECT_EQ(position.get_material(), queen_value);
-					EXPECT_EQ(position.get_queens(player_t::white),
+					EXPECT_EQ(position.get_bitboard<piece_t::queen>(player_t::white),
 						Util::get_bit<uint64>(square_t::E8));
 				}
 
@@ -693,7 +693,7 @@ namespace
 
 				clear_bit64(square_t::E7, new_pawns);
 
-				EXPECT_EQ(new_pawns, position.get_pawns(player_t::white));
+				EXPECT_EQ(new_pawns, position.get_bitboard<piece_t::pawn>(player_t::white));
 
 				EXPECT_EQ(position.get_turn(), player_t::black);
 
@@ -737,7 +737,7 @@ namespace
 
 					const uint64 orig_hash = position.get_hash_key();
 					const uint64 orig_occupied = position.get_occupied(player_t::white);
-					const uint64 orig_pawns = position.get_pawns(player_t::white);
+					const uint64 orig_pawns = position.get_bitboard<piece_t::pawn>(player_t::white);
 					const uint64 orig_xoccupied = position.get_occupied(player_t::black);
 
 					uint64 orig_xpiece64 = 0;
@@ -746,22 +746,22 @@ namespace
 
 					if (pieces[n] == piece_t::rook)
 					{
-						orig_xpiece64 = position.get_rooks(player_t::black);
+						orig_xpiece64 = position.get_bitboard<piece_t::rook>(player_t::black);
 						material -= rook_value;
 					}
 					else if (pieces[n] == piece_t::knight)
 					{
-						orig_xpiece64 = position.get_knights(player_t::black);
+						orig_xpiece64 = position.get_bitboard<piece_t::knight>(player_t::black);
 						material -= knight_value;
 					}
 					else if (pieces[n] == piece_t::bishop)
 					{
-						orig_xpiece64 = position.get_bishops(player_t::black);
+						orig_xpiece64 = position.get_bitboard<piece_t::bishop>(player_t::black);
 						material -= bishop_value;
 					}
 					else if (pieces[n] == piece_t::queen)
 					{
-						orig_xpiece64 = position.get_queens(player_t::black);
+						orig_xpiece64 = position.get_bitboard<piece_t::queen>(player_t::black);
 						material -= queen_value;
 					}
 
@@ -787,25 +787,25 @@ namespace
 					if (pieces[i] == piece_t::rook)
 					{
 						material += rook_value - pawn_value;
-						EXPECT_EQ(position.get_rooks(player_t::white),
+						EXPECT_EQ(position.get_bitboard<piece_t::rook>(player_t::white),
 							Util::get_bit<uint64>(square_t::D8));
 					}
 					else if (pieces[i] == piece_t::knight)
 					{
 						material += knight_value - pawn_value;
-						EXPECT_EQ(position.get_knights(player_t::white),
+						EXPECT_EQ(position.get_bitboard<piece_t::knight>(player_t::white),
 							Util::get_bit<uint64>(square_t::D8));
 					}
 					else if (pieces[i] == piece_t::bishop)
 					{
 						material += bishop_value - pawn_value;
-						EXPECT_EQ(position.get_bishops(player_t::white),
+						EXPECT_EQ(position.get_bitboard<piece_t::bishop>(player_t::white),
 							Util::get_bit<uint64>(square_t::D8));
 					}
 					else if (pieces[i] == piece_t::queen)
 					{
 						material += queen_value - pawn_value;
-						EXPECT_EQ(position.get_queens(player_t::white),
+						EXPECT_EQ(position.get_bitboard<piece_t::queen>(player_t::white),
 							Util::get_bit<uint64>(square_t::D8));
 					}
 
@@ -846,26 +846,26 @@ namespace
 
 					if (pieces[n] == piece_t::rook)
 					{
-						EXPECT_EQ(new_xpiece64, position.get_rooks(player_t::black));
+						EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::rook>(player_t::black));
 					}
 					else if (pieces[n] == piece_t::knight)
 					{
-						EXPECT_EQ(new_xpiece64, position.get_knights(player_t::black));
+						EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::knight>(player_t::black));
 					}
 					else if (pieces[n] == piece_t::bishop)
 					{
-						EXPECT_EQ(new_xpiece64, position.get_bishops(player_t::black));
+						EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::bishop>(player_t::black));
 					}
 					else if (pieces[n] == piece_t::queen)
 					{
-						EXPECT_EQ(new_xpiece64, position.get_queens(player_t::black));
+						EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::queen>(player_t::black));
 					}
 
 					uint64 new_pawns = orig_pawns;
 
 					clear_bit64(square_t::E7, new_pawns);
 
-					EXPECT_EQ(new_pawns, position.get_pawns(player_t::white));
+					EXPECT_EQ(new_pawns, position.get_bitboard<piece_t::pawn>(player_t::white));
 
 					EXPECT_EQ(position.get_turn(), player_t::black);
 
@@ -910,7 +910,7 @@ namespace
 
 					const uint64 orig_hash = position.get_hash_key();
 					const uint64 orig_occupied = position.get_occupied(player_t::white);
-					const uint64 orig_pawns = position.get_pawns(player_t::white);
+					const uint64 orig_pawns = position.get_bitboard<piece_t::pawn>(player_t::white);
 					const uint64 orig_xoccupied = position.get_occupied(player_t::black);
 
 					uint64 orig_xpiece64 = 0;
@@ -919,22 +919,22 @@ namespace
 
 					if (pieces[n] == piece_t::rook)
 					{
-						orig_xpiece64 = position.get_rooks(player_t::black);
+						orig_xpiece64 = position.get_bitboard<piece_t::rook>(player_t::black);
 						material -= rook_value;
 					}
 					else if (pieces[n] == piece_t::knight)
 					{
-						orig_xpiece64 = position.get_knights(player_t::black);
+						orig_xpiece64 = position.get_bitboard<piece_t::knight>(player_t::black);
 						material -= knight_value;
 					}
 					else if (pieces[n] == piece_t::bishop)
 					{
-						orig_xpiece64 = position.get_bishops(player_t::black);
+						orig_xpiece64 = position.get_bitboard<piece_t::bishop>(player_t::black);
 						material -= bishop_value;
 					}
 					else if (pieces[n] == piece_t::queen)
 					{
-						orig_xpiece64 = position.get_queens(player_t::black);
+						orig_xpiece64 = position.get_bitboard<piece_t::queen>(player_t::black);
 						material -= queen_value;
 					}
 
@@ -960,25 +960,25 @@ namespace
 					if (pieces[i] == piece_t::rook)
 					{
 						material += rook_value - pawn_value;
-						EXPECT_EQ(position.get_rooks(player_t::white),
+						EXPECT_EQ(position.get_bitboard<piece_t::rook>(player_t::white),
 							Util::get_bit<uint64>(square_t::F8));
 					}
 					else if (pieces[i] == piece_t::knight)
 					{
 						material += knight_value - pawn_value;
-						EXPECT_EQ(position.get_knights(player_t::white),
+						EXPECT_EQ(position.get_bitboard<piece_t::knight>(player_t::white),
 							Util::get_bit<uint64>(square_t::F8));
 					}
 					else if (pieces[i] == piece_t::bishop)
 					{
 						material += bishop_value - pawn_value;
-						EXPECT_EQ(position.get_bishops(player_t::white),
+						EXPECT_EQ(position.get_bitboard<piece_t::bishop>(player_t::white),
 							Util::get_bit<uint64>(square_t::F8));
 					}
 					else if (pieces[i] == piece_t::queen)
 					{
 						material += queen_value - pawn_value;
-						EXPECT_EQ(position.get_queens(player_t::white),
+						EXPECT_EQ(position.get_bitboard<piece_t::queen>(player_t::white),
 							Util::get_bit<uint64>(square_t::F8));
 					}
 
@@ -1019,26 +1019,26 @@ namespace
 
 					if (pieces[n] == piece_t::rook)
 					{
-						EXPECT_EQ(new_xpiece64, position.get_rooks(player_t::black));
+						EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::rook>(player_t::black));
 					}
 					else if (pieces[n] == piece_t::knight)
 					{
-						EXPECT_EQ(new_xpiece64, position.get_knights(player_t::black));
+						EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::knight>(player_t::black));
 					}
 					else if (pieces[n] == piece_t::bishop)
 					{
-						EXPECT_EQ(new_xpiece64, position.get_bishops(player_t::black));
+						EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::bishop>(player_t::black));
 					}
 					else if (pieces[n] == piece_t::queen)
 					{
-						EXPECT_EQ(new_xpiece64, position.get_queens(player_t::black));
+						EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::queen>(player_t::black));
 					}
 
 					uint64 new_pawns = orig_pawns;
 
 					clear_bit64(square_t::E7, new_pawns);
 
-					EXPECT_EQ(new_pawns, position.get_pawns(player_t::white));
+					EXPECT_EQ(new_pawns, position.get_bitboard<piece_t::pawn>(player_t::white));
 
 					EXPECT_EQ(position.get_turn(), player_t::black);
 
@@ -1079,7 +1079,7 @@ namespace
 
 			const uint64 orig_hash = position.get_hash_key();
 			const uint64 orig_occupied = position.get_occupied(player_t::white);
-			const uint64 orig_rooks = position.get_rooks(player_t::white);
+			const uint64 orig_rooks = position.get_bitboard<piece_t::rook>(player_t::white);
 
 			EXPECT_EQ(position.get_material(), rook_value - pawn_value);
 
@@ -1115,7 +1115,7 @@ namespace
 						square_t::D4,
 						new_rooks);
 
-			EXPECT_EQ(new_rooks, position.get_rooks(player_t::white));
+			EXPECT_EQ(new_rooks, position.get_bitboard<piece_t::rook>(player_t::white));
 
 			EXPECT_EQ(position.get_turn(), player_t::black);
 
@@ -1156,7 +1156,7 @@ namespace
 
 				const uint64 orig_hash = position.get_hash_key();
 				const uint64 orig_occupied = position.get_occupied(player_t::white);
-				const uint64 orig_rooks = position.get_rooks(player_t::white);
+				const uint64 orig_rooks = position.get_bitboard<piece_t::rook>(player_t::white);
 				const uint64 orig_xoccupied = position.get_occupied(player_t::black);
 
 				uint64 orig_xpiece64 = 0;
@@ -1165,27 +1165,27 @@ namespace
 
 				if (pieces[n] == piece_t::pawn)
 				{
-					orig_xpiece64 = position.get_pawns(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::pawn>(player_t::black);
 					material -= pawn_value;
 				}
 				else if (pieces[n] == piece_t::rook)
 				{
-					orig_xpiece64 = position.get_rooks(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::rook>(player_t::black);
 					material -= rook_value;
 				}
 				else if (pieces[n] == piece_t::knight)
 				{
-					orig_xpiece64 = position.get_knights(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::knight>(player_t::black);
 					material -= knight_value;
 				}
 				else if (pieces[n] == piece_t::bishop)
 				{
-					orig_xpiece64 = position.get_bishops(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::bishop>(player_t::black);
 					material -= bishop_value;
 				}
 				else if (pieces[n] == piece_t::queen)
 				{
-					orig_xpiece64 = position.get_queens(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::queen>(player_t::black);
 					material -= queen_value;
 				}
 
@@ -1248,23 +1248,23 @@ namespace
 
 				if (pieces[n] == piece_t::pawn)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_pawns(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::pawn>(player_t::black));
 				}
 				else if (pieces[n] == piece_t::pawn)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_rooks(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::rook>(player_t::black));
 				}
 				else if (pieces[n] == piece_t::knight)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_knights(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::knight>(player_t::black));
 				}
 				else if (pieces[n] == piece_t::bishop)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_bishops(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::bishop>(player_t::black));
 				}
 				else if (pieces[n] == piece_t::queen)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_queens(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::queen>(player_t::black));
 				}
 
 				uint64 new_rooks = orig_rooks;
@@ -1273,7 +1273,7 @@ namespace
 							square_t::C7,
 							new_rooks);
 
-				EXPECT_EQ(new_rooks, position.get_rooks(player_t::white));
+				EXPECT_EQ(new_rooks, position.get_bitboard<piece_t::rook>(player_t::white));
 
 				EXPECT_EQ(position.get_turn(), player_t::black);
 
@@ -1313,7 +1313,7 @@ namespace
 
 			const uint64 orig_hash = position.get_hash_key();
 			const uint64 orig_occupied = position.get_occupied(player_t::white);
-			const uint64 orig_queens = position.get_queens(player_t::white);
+			const uint64 orig_queens = position.get_bitboard<piece_t::queen>(player_t::white);
 
 			EXPECT_EQ(position.get_material(), queen_value - pawn_value);
 
@@ -1349,7 +1349,7 @@ namespace
 						square_t::D4,
 						new_queens);
 
-			EXPECT_EQ(new_queens, position.get_queens(player_t::white));
+			EXPECT_EQ(new_queens, position.get_bitboard<piece_t::queen>(player_t::white));
 
 			EXPECT_EQ(position.get_turn(), player_t::black);
 
@@ -1390,7 +1390,7 @@ namespace
 
 				const uint64 orig_hash = position.get_hash_key();
 				const uint64 orig_occupied = position.get_occupied(player_t::white);
-				const uint64 orig_queens = position.get_queens(player_t::white);
+				const uint64 orig_queens = position.get_bitboard<piece_t::queen>(player_t::white);
 				const uint64 orig_xoccupied = position.get_occupied(player_t::black);
 
 				uint64 orig_xpiece64 = 0;
@@ -1399,27 +1399,27 @@ namespace
 
 				if (pieces[n] == piece_t::pawn)
 				{
-					orig_xpiece64 = position.get_pawns(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::pawn>(player_t::black);
 					material -= pawn_value;
 				}
 				else if (pieces[n] == piece_t::rook)
 				{
-					orig_xpiece64 = position.get_rooks(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::rook>(player_t::black);
 					material -= rook_value;
 				}
 				else if (pieces[n] == piece_t::knight)
 				{
-					orig_xpiece64 = position.get_knights(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::knight>(player_t::black);
 					material -= knight_value;
 				}
 				else if (pieces[n] == piece_t::bishop)
 				{
-					orig_xpiece64 = position.get_bishops(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::bishop>(player_t::black);
 					material -= bishop_value;
 				}
 				else if (pieces[n] == piece_t::queen)
 				{
-					orig_xpiece64 = position.get_queens(player_t::black);
+					orig_xpiece64 = position.get_bitboard<piece_t::queen>(player_t::black);
 					material -= queen_value;
 				}
 
@@ -1482,23 +1482,23 @@ namespace
 
 				if (pieces[n] == piece_t::pawn)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_pawns(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::pawn>(player_t::black));
 				}
 				else if (pieces[n] == piece_t::pawn)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_rooks(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::rook>(player_t::black));
 				}
 				else if (pieces[n] == piece_t::knight)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_knights(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::knight>(player_t::black));
 				}
 				else if (pieces[n] == piece_t::bishop)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_bishops(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::bishop>(player_t::black));
 				}
 				else if (pieces[n] == piece_t::queen)
 				{
-					EXPECT_EQ(new_xpiece64, position.get_queens(player_t::black));
+					EXPECT_EQ(new_xpiece64, position.get_bitboard<piece_t::queen>(player_t::black));
 				}
 
 				uint64 new_queens = orig_queens;
@@ -1507,7 +1507,7 @@ namespace
 							square_t::C7,
 							new_queens);
 
-				EXPECT_EQ(new_queens, position.get_queens(player_t::white));
+				EXPECT_EQ(new_queens, position.get_bitboard<piece_t::queen>(player_t::white));
 
 				EXPECT_EQ(position.get_turn(), player_t::black);
 

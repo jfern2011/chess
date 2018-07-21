@@ -575,13 +575,13 @@ namespace Chess
 					switch (c)
 					{
 						case 'p':
-							_pawns[_ply][player_t::black]   |= mask; break;
+							_pawns  [_ply][player_t::black] |= mask; break;
 						case 'P':
-							_pawns[_ply][player_t::white]   |= mask; break;
+							_pawns  [_ply][player_t::white] |= mask; break;
 						case 'r':
-							_rooks[_ply][player_t::black]   |= mask; break;
+							_rooks  [_ply][player_t::black] |= mask; break;
 						case 'R':
-							_rooks[_ply][player_t::white]   |= mask; break;
+							_rooks  [_ply][player_t::white] |= mask; break;
 						case 'n':
 							_knights[_ply][player_t::black] |= mask; break;
 						case 'N':
@@ -591,9 +591,9 @@ namespace Chess
 						case 'B':
 							_bishops[_ply][player_t::white] |= mask; break;
 						case 'q':
-							_queens[_ply][player_t::black]  |= mask; break;
+							_queens [_ply][player_t::black] |= mask; break;
 						case 'Q':
-							_queens[_ply][player_t::white]  |= mask; break;
+							_queens [_ply][player_t::white] |= mask; break;
 						case 'k':
 							_kings[_ply][player_t::black]   |= mask;
 							_king_sq[_ply][player_t::black]  =
