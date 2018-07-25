@@ -35,6 +35,11 @@ namespace Chess
 		static const DataTables& get();
 
 		/**
+		 * The "3rd" rank, as seen from each player's perspective
+		 */
+		BUFFER(uint64, _3rd_rank, 2);
+
+		/**
 		 * The "magic" numbers used to look up attacks_from boards for
 		 * bishops in the magic bitboard hashing algorithm
 		 */
@@ -97,6 +102,26 @@ namespace Chess
 		BUFFER(uint64, bishop_range_mask, 64);
 
 		/**
+		 * The destination square when castling short
+		 */
+		BUFFER(square_t, castle_OO_dest, 2);
+
+		/**
+		 * The squares a king must traverse to castle short
+		 */
+		BUFFER(square_t, castle_OO_path, 2, 2);
+
+		/**
+		 *  The destination square when castling long
+		 */
+		BUFFER(square_t, castle_OOO_dest, 2);
+
+		/**
+		 *  The squares a king must traverse to castle long
+		 */
+		BUFFER(square_t, castle_OOO_path, 2, 2);
+
+		/**
 		 * Bitmasks used to clear single bits. All bits are set except
 		 * at the corresponding index
 		 */
@@ -143,6 +168,11 @@ namespace Chess
 		BUFFER(uint64, king_attacks, 64);
 
 		/**
+		 * The home squares of both kings (e1, e8)
+		 */
+		BUFFER(square_t, king_home, 2);
+
+		/**
 		 * Bits representing the kingside, i.e. for white this would
 		 * be F1 and G1
 		 */
@@ -157,6 +187,28 @@ namespace Chess
 		 * Returns the LSB for every possible unsigned 16-bit value
 		 */
 		BUFFER(uint8, lsb, 65536);
+
+		/**
+		 * The square arrived at by retreating 2 pawn steps
+		 */
+		BUFFER(square_t, minus_16, 2, 64);
+
+		/**
+		 * The square arrived at by retreating 1 pawn step
+		 */
+		BUFFER(square_t, minus_8, 2, 64);
+
+		/**
+		 *  The square arrived at via undoing a pawn capture to the
+		 *  left, as seen from either player's perspective
+		 */
+		BUFFER(square_t, minus_9, 2, 64);
+
+		/**
+		 *  The square arrived at via undoing a pawn capture to the
+		 *  right, as seen from either player's perspective
+		 */
+		BUFFER(square_t, minus_7, 2, 64);
 
 		/**
 		 * Returns the MSB for every possible unsigned 16-bit value
@@ -196,6 +248,23 @@ namespace Chess
 		 * The values of each type of piece. See \ref value_t
 		 */
 		BUFFER(int, piece_value, 6);
+
+		/**
+		 * The square arrived at by advancing 1 pawn step
+		 */
+		BUFFER(square_t, plus_8, 2, 64);
+
+		/**
+		 *  The square arrived at via a pawn capture to the left, as seen
+		 *  from either player's perspective
+		 */
+		BUFFER(square_t, plus_9, 2, 64);
+
+		/**
+		 * The square arrived at via a pawn capture to the right, as seen
+		 * from either player's perspective
+		 */
+		BUFFER(square_t, plus_7, 2, 64);
 
 		/**
 		 * Returns the population count for every possible unsigned

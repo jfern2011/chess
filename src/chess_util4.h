@@ -338,6 +338,63 @@ namespace Chess
 
 		return dist(generator);
 	}
+
+	/**
+	 * Shift a player's pawn bitboard. See the specializations for
+	 * shifting by 7 or by 9, which implement safeguards for shifting
+	 * pawns diagonally
+	 *
+	 * @tparam N The number of bits to shift by
+	 *
+	 * @param[in] pawns   The bitboard to shift
+	 * @param[in] to_move The player whose pawns to shift
+	 *
+	 * @return The shifted pawn board
+	 */
+	template <int N>
+	inline uint64 shift_pawns(uint64 pawns, player_t to_move)
+	{
+		return (to_move == player_t::white) ?
+			(pawns << N) : (pawns >> N);
+	}
+
+	/**
+	 * Specialization of \ref shift_pawns(). Shifts the given pawn
+	 * bitboard by 7 (e.g. to compute pawn captures). Pawns that would
+	 * wrap around to the file on the opposite end of the board are
+	 * discarded
+	 *
+	 * @param[in] pawns   The bitboard to shift
+	 * @param[in] to_move The player whose pawns to shift
+	 *
+	 * @return The shifted pawn board
+	 */
+	template <>
+	inline uint64 shift_pawns<7>(uint64 pawns, player_t to_move)
+	{
+		return (to_move == player_t::white) ?
+			((pawns & (~file_h)) << 7) :
+			((pawns & (~file_a)) >> 7);
+	}
+
+	/**
+	 * Specialization of \ref shift_pawns(). Shifts the given pawn
+	 * bitboard by 9 (e.g. to compute pawn captures). Pawns that would
+	 * wrap around to the file on the opposite end of the board are
+	 * discarded
+	 *
+	 * @param[in] pawns   The bitboard to shift
+	 * @param[in] to_move The player whose pawns to shift
+	 *
+	 * @return The shifted pawn board
+	 */
+	template <>
+	inline uint64 shift_pawns<9>(uint64 pawns, player_t to_move)
+	{
+		return (to_move == player_t::white) ?
+			((pawns & (~file_a)) << 9) :
+			((pawns & (~file_h)) >> 9);
+	}
 }
 
 #endif

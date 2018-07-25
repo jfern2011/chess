@@ -767,9 +767,25 @@ namespace Chess
 	 * \ref exchange
 	 * \ref kingside
 	 * \ref queenside
+	 * \ref plus_7
+	 * \ref plus_8
+	 * \ref plus_9
+	 * \ref minus_7
+	 * \ref minus_8
+	 * \ref minus_9
+	 * \ref minus_16
+	 * \ref castle_OO_dest
+	 * \ref castle_OO_path
+	 * \ref castle_OOO_dest
+	 * \ref castle_OOO_path
+	 * \ref king_home
+	 * \ref _3rd_rank
 	 */
 	void DataTables::_init_misc_masks()
 	{
+		_3rd_rank[player_t::white] = rank_3;
+		_3rd_rank[player_t::black] = rank_6;
+		
 		const uint64 one = 1;
 
 		for (int i = 0; i < 64; i++)
@@ -875,6 +891,85 @@ namespace Chess
 		kingside[player_t::black] =
 			set_mask[square_t::F8] |
 			set_mask[square_t::G8];
+
+		for (int i = 0; i < 64; i++)
+		{
+			const int bad_square =
+				static_cast<int>(square_t::BAD_SQUARE);
+
+			plus_7[player_t::white][i]  =
+				static_cast<square_t>(
+					std::min(i + 7, bad_square));
+			plus_7[player_t::black][i]  =
+				static_cast<square_t>(std::max(i - 7, 0));
+
+			plus_8[player_t::white][i]  =
+				static_cast<square_t>(
+					std::min(i + 8, bad_square));
+			plus_8[player_t::black][i]  =
+				static_cast<square_t>(std::max(i - 8, 0));
+
+			plus_9[player_t::white][i]  =
+				static_cast<square_t>(
+					std::min(i + 9, bad_square));
+			plus_9[player_t::black][i]  =
+				static_cast<square_t>(std::max(i - 9, 0));
+
+			minus_7[player_t::white][i] =
+				static_cast<square_t>(std::max(i - 7, 0));
+			minus_7[player_t::black][i] =
+				static_cast<square_t>(
+					std::min(i + 7, bad_square));
+
+			minus_8[player_t::white][i] =
+				static_cast<square_t>(std::max(i - 8, 0));
+			minus_8[player_t::black][i] =
+				static_cast<square_t>(
+					std::min(i + 8, bad_square));
+
+			minus_9[player_t::white][i] =
+				static_cast<square_t>(std::max(i - 9, 0));
+			minus_9[player_t::black][i] =
+				static_cast<square_t>(
+					std::min(i + 9, bad_square));
+
+			minus_16[player_t::white][i] =
+				static_cast<square_t>(std::max(i -16, 0));
+			minus_16[player_t::black][i] =
+				static_cast<square_t>(
+					std::min(i +16, bad_square));
+		}
+
+		castle_OO_dest [player_t::white] = square_t::G1;
+		castle_OO_dest [player_t::black] = square_t::G8;
+
+		castle_OO_path [player_t::white][0] =
+			square_t::F1;
+		castle_OO_path [player_t::white][1] =
+			square_t::G1;
+
+		castle_OO_path [player_t::black][0] =
+			square_t::F8;
+		castle_OO_path [player_t::black][1] =
+			square_t::G8;
+
+		castle_OOO_dest[player_t::white] = square_t::C1;
+		castle_OOO_dest[player_t::black] = square_t::C8;
+
+		castle_OOO_path[player_t::white][0] =
+			square_t::C1;
+		castle_OOO_path[player_t::white][1] =
+			square_t::D1;
+
+		castle_OOO_path[player_t::black][0] =
+			square_t::C8;
+		castle_OOO_path[player_t::black][1] =
+			square_t::D8;
+
+		king_home[player_t::white] =
+			square_t::E1;
+		king_home[player_t::black] =
+			square_t::E8;
 	}
 
 	/**

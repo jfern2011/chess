@@ -99,11 +99,17 @@ namespace Chess
 		uint64 attacks_from(
 			square_t square, player_t to_move= player_t::both) const;
 
+		template <piece_t type>
+		uint64 attacks_from(square_t square, uint64 occupied,
+			player_t to_move = player_t::both) const;
+
 		uint64 attacks_to  (square_t square, player_t to_move) const;
 
 		bool can_castle_long( player_t to_move) const;
 
 		bool can_castle_short(player_t to_move) const;
+
+		const EnPassant& ep_data() const;
 
 		bool equals(const Position& p, int ply) const;
 
@@ -411,6 +417,27 @@ namespace Chess
 		return 0;
 	}
 
+	/**
+	 * Generates the squares attacked by the given piece located at the
+	 * given square
+	 *
+	 * @tparam type  Which piece to generate attacked squares for
+	 *
+	 * @param[in] square   The square this piece is on
+	 * @param[in] occupied A custom occupied squares bitboard
+	 * @param[in] to_move  Generate an attacks board for this side (for
+	 *                     pawn attacks)
+	 *
+	 * @return A bitboard specifying all squares attacked by this
+	 *         piece from \a square
+	 */
+	template <piece_t type>
+	inline uint64 Position::attacks_from(square_t square,
+		uint64 occupied, player_t to_move) const
+	{
+		return 0;
+	}
+
 #ifndef DOXYGEN_SKIP
 	template <>
 	inline uint64 Position::attacks_from< piece_t::rook >(square_t square,
@@ -458,6 +485,49 @@ namespace Chess
 		const uint64 occupied = _occupied[_ply][player_t::white] |
 								_occupied[_ply][player_t::black];
 
+		return _attacks_from_rook(square, occupied) |
+			   _attacks_from_diag(square, occupied);
+	}
+
+	template <>
+	inline uint64 Position::attacks_from< piece_t::rook >(square_t square,
+		uint64 occupied, player_t) const
+	{
+		return _attacks_from_rook(square, occupied);
+	}
+
+	template <>
+	inline uint64 Position::attacks_from<piece_t::knight>(square_t square,
+		uint64 occupied, player_t) const
+	{
+		return attacks_from<piece_t::knight>(square);
+	}
+
+	template <>
+	inline uint64 Position::attacks_from<piece_t::bishop>(square_t square,
+		uint64 occupied, player_t) const
+	{
+		return _attacks_from_diag(square, occupied);
+	}
+
+	template <>
+	inline uint64 Position::attacks_from< piece_t::pawn >(square_t square,
+		uint64 occupied, player_t to_move) const
+	{
+		return attacks_from<piece_t::pawn>(square);
+	}
+
+	template <>
+	inline uint64 Position::attacks_from< piece_t::king >(square_t square,
+		uint64 occupied, player_t) const
+	{
+		return attacks_from<piece_t::king>(square);
+	}
+
+	template <>
+	inline uint64 Position::attacks_from<piece_t::queen >(square_t square,
+		uint64 occupied, player_t) const
+	{
 		return _attacks_from_rook(square, occupied) |
 			   _attacks_from_diag(square, occupied);
 	}
@@ -525,6 +595,16 @@ namespace Chess
 	inline bool Position::can_castle_short(player_t to_move) const
 	{
 		return _castle_rights[_ply][to_move] & castle_K;
+	}
+
+	/**
+	 * Get a reference to the en passant information at the current ply
+	 *
+	 * @return The en passant info
+	 */
+	inline auto Position::ep_data() const -> const EnPassant&
+	{
+		return _ep_info[_ply];
 	}
 
 	/**
