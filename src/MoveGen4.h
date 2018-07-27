@@ -21,7 +21,7 @@ namespace Chess
 		 * @note Generally, this function should not get called directly
 		 *       but rather indirectly by the other move generators.
 		 *       This does not handle pawn or king moves as those pieces
-		 *       move specially
+		 *       move uniquely (e.g. castle, en passant)
 		 *
 		 * @param[in]  pos    The current position
 		 * @param[in]  target The target squares to move to
@@ -42,14 +42,16 @@ namespace Chess
 			/*
 			 * Generate knight moves
 			 */
-			uint64 pieces =
-				pos.get_bitboard<piece_t::knight>(to_move) & (~pinned);
+			uint64 pieces = pos.get_bitboard< piece_t::knight >(to_move)
+								& (~pinned);
+
 			while (pieces)
 			{
 				const square_t from =
 					static_cast<square_t>(msb64(pieces));
 
-				uint64 _moves  = tables.knight_attacks[from] & target;
+				uint64 _moves       =
+					tables.knight_attacks[from] & target;
 
 				while (_moves)
 				{
@@ -57,8 +59,7 @@ namespace Chess
 						static_cast<square_t>(msb64(_moves));
 
 					moves[count++] = pack_move(pos.piece_on(to),
-											   from,
-											   piece_t::knight,
+											   from, piece_t::knight,
 											   piece_t::empty,
 											   to);
 
@@ -96,16 +97,17 @@ namespace Chess
 						clear_bit64(from, pieces);
 						continue;
 					case direction_t::along_rank:
-						restrict_attacks = tables.ranks64[from];
+						restrict_attacks =
+							tables.ranks64[from];
 						break;
 					default:
-						restrict_attacks = tables.files64[from];
+						restrict_attacks =
+							tables.files64[from];
 					}
 				}
 
-				uint64 _moves =
-					pos.attacks_from<piece_t::rook>(from) & target
-						& restrict_attacks;
+				uint64 _moves = pos.attacks_from< piece_t::rook >(from)
+								 & target & restrict_attacks;
 
 				while (_moves)
 				{
@@ -113,8 +115,7 @@ namespace Chess
 						static_cast<square_t>(msb64(_moves));
 
 					moves[count++] = pack_move(pos.piece_on(to),
-											   from,
-											   piece_t::rook,
+											   from, piece_t::rook,
 											   piece_t::empty,
 											   to);
 
@@ -153,16 +154,17 @@ namespace Chess
 						clear_bit64(from, pieces);
 						continue;
 					case direction_t::along_a1h8:
-						restrict_attacks = tables.a1h8_64[from];
+						restrict_attacks =
+							tables.a1h8_64[from];
 						break;
 					default:
-						restrict_attacks = tables.h1a8_64[from];
+						restrict_attacks =
+							tables.h1a8_64[from];
 					}
 				}
 
-				uint64 _moves =
-					pos.attacks_from<piece_t::bishop>(from) & target
-						& restrict_attacks;
+				uint64 _moves = pos.attacks_from<piece_t::bishop>(from)
+								 & target & restrict_attacks;
 
 				while (_moves)
 				{
@@ -170,8 +172,7 @@ namespace Chess
 						static_cast<square_t>(msb64(_moves));
 
 					moves[count++] = pack_move(pos.piece_on(to),
-											   from,
-											   piece_t::bishop,
+											   from, piece_t::bishop,
 											   piece_t::empty,
 											   to);
 
@@ -191,8 +192,8 @@ namespace Chess
 					static_cast<square_t>(msb64(pieces));
 
 				/*
-				 * If the queen is pinned, then restrict its motion to along
-				 * the direction of the pin:
+				 * If the queen is pinned, then restrict its motion
+				 * to along the direction of the pin:
 				 */
 				uint64 restrict_attacks = ~0;
 
@@ -201,22 +202,25 @@ namespace Chess
 					switch (tables.directions[from][pos.get_king_square(to_move)])
 					{
 					case direction_t::along_a1h8:
-						restrict_attacks = tables.a1h8_64[from];
+						restrict_attacks =
+							tables.a1h8_64[from];
 						break;
 					case direction_t::along_h1a8:
-						restrict_attacks = tables.h1a8_64[from];
+						restrict_attacks =
+							tables.h1a8_64[from];
 						break;
 					case direction_t::along_rank:
-						restrict_attacks = tables.ranks64[from];
+						restrict_attacks =
+							tables.ranks64[from];
 						break;
 					default:
-						restrict_attacks = tables.files64[from];
+						restrict_attacks =
+							tables.files64[from];
 					}
 				}
 
-				uint64 _moves =
-					pos.attacks_from<piece_t::queen>(from) & target
-						& restrict_attacks;
+				uint64 _moves = pos.attacks_from< piece_t::queen >(from)
+								 & target & restrict_attacks;
 
 				while (_moves)
 				{
@@ -224,8 +228,7 @@ namespace Chess
 						static_cast<square_t>(msb64(_moves));
 
 					moves[count++] = pack_move(pos.piece_on(to),
-											   from,
-											   piece_t::queen,
+											   from, piece_t::queen,
 											   piece_t::empty,
 											   to);
 						
@@ -238,30 +241,24 @@ namespace Chess
 			/*
 			 * Generate king non-castle moves
 			 */
-			pieces = pos.get_bitboard<piece_t::king>(to_move);
-
 			{
-				const square_t from =
-					static_cast<square_t>(msb64(pieces));
+				const square_t from = pos.get_king_square(to_move);
 
-				uint64 _moves = tables.king_attacks[ from ] & target;
+				uint64 _moves =
+					tables.king_attacks[from] & target;
 
+				const player_t xside = flip(to_move);
 				while (_moves)
 				{
 					const square_t to =
 						static_cast<square_t>(msb64(_moves));
 
-					if (pos.under_attack(to, flip(to_move)))
+					if (!pos.under_attack(to, xside))
 					{
-						clear_bit64( to, _moves);
-						continue;
+						moves[count++] = pack_move(pos.piece_on(to),
+							from, piece_t::king, piece_t::empty,
+						to);
 					}
-
-					moves[count++] = pack_move(pos.piece_on(to),
-											   from,
-											   piece_t::king,
-											   piece_t::empty,
-											   to);
 
 					clear_bit64(to, _moves);
 				}
@@ -284,12 +281,11 @@ namespace Chess
 		{
 			const player_t to_move = pos.get_turn();
 
-			const uint64 pinned = pos.get_pinned_pieces(to_move);
+			const uint64 pinned    = pos.get_pinned_pieces(to_move);
 
 			size_t count = generate(pos,
 									pos.get_occupied(flip(to_move)),
-									pinned,
-									captures);
+									pinned, captures);
 
 			const auto& tables = DataTables::get();
 
@@ -297,14 +293,14 @@ namespace Chess
 			 * Generate pawn captures (1)
 			 */
 			const uint64 pawns =
-				pos.get_bitboard<piece_t::pawn>(to_move);
+				pos.get_bitboard<piece_t::pawn>(to_move) ;
 
-			uint64 caps = shift_pawns<7>(pawns, to_move)
-							& pos.get_occupied(flip(to_move));
+			uint64 caps = shift_pawns<7>(pawns, to_move) &
+				pos.get_occupied(flip(to_move));
 
 			while (caps)
 			{
-				const square_t to   = static_cast<square_t>(msb64(caps));
+				const square_t to   = static_cast <square_t>(msb64(caps));
 				const square_t from = tables.minus_7[to_move][to];
 
 				if ((tables.set_mask[from] & pinned) &&
@@ -356,12 +352,12 @@ namespace Chess
 			/*
 			 * Generate pawn captures (2)
 			 */
-			caps = shift_pawns<9>(pawns, to_move)
-					& pos.get_occupied(flip(to_move));
+			caps = shift_pawns<9>(pawns, to_move) &
+				pos.get_occupied(flip(to_move));
 
 			while (caps)
 			{
-				const square_t to   = static_cast<square_t>(msb64(caps));
+				const square_t to   = static_cast <square_t>(msb64(caps));
 				const square_t from = tables.minus_9[to_move][to];
 
 				if ((tables.set_mask[from] & pinned) &&
@@ -658,6 +654,29 @@ namespace Chess
 			}
 
 			return count;
+		}
+
+		inline int64 perft(Position& pos, int depth)
+		{
+			BUFFER(int32, moves, max_moves);
+
+			size_t count = generate_captures(pos, moves);
+			count += generate_non_captures(pos, &moves[count]);
+
+			if (depth <= 1) return count;
+
+			int64 nodes = 0;
+
+			for (size_t i = 0; i < count; ++i)
+			{
+				pos.make_move(moves[i]);
+
+				nodes += perft(pos, depth-1);
+
+				pos.unmake_move(moves[i]);
+			}
+
+			return nodes;
 		}
 	}
 }

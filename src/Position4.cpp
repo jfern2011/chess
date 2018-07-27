@@ -84,69 +84,55 @@ namespace Chess
 	{
 		if (this != &rhs)
 		{
+			_bishops[player_t::white] =
+				rhs._bishops[player_t::white];
+			_bishops[player_t::black] =
+				rhs._bishops[player_t::black];
+
 			for (int i = 0; i < max_ply; i++)
 			{
-				_bishops[i][player_t::white] =
-					rhs._bishops[i][player_t::white];
-				_bishops[i][player_t::black] =
-					rhs._bishops[i][player_t::black];
-
 				_castle_rights[i][player_t::white] =
 					rhs._castle_rights[i][player_t::white];
 				_castle_rights[i][player_t::black] =
 					rhs._castle_rights[i][player_t::black];
 
-				_ep_info[i]   = rhs._ep_info[i];
-				_save_hash[i] =
-					rhs._save_hash[i];
-
-				_full_move[i]  = rhs._full_move[i];
-				_half_move[i]  = rhs._half_move[i];
-				
-				_king_sq[i][player_t::white]  =
-					rhs._king_sq[i][player_t::white];
-				_king_sq[i][player_t::black]  =
-					rhs._king_sq[i][player_t::black];
-
-				_kings[i][player_t::white]    =
-					rhs._kings[i][ player_t::white ];
-				_kings[i][player_t::black]    =
-					rhs._kings[i][ player_t::black ];
-
-				_knights[i][player_t::white]  =
-					rhs._knights[i][player_t::white];
-				_knights[i][player_t::black]  =
-					rhs._knights[i][player_t::black];
-
-				_material[i] = rhs._material[i];
-
-				_occupied[i][player_t::white] =
-					rhs._occupied[i][player_t::white];
-				_occupied[i][player_t::black] =
-					rhs._occupied[i][player_t::black];
-
-				_pawns[i][player_t::white]    =
-					rhs._pawns[i][ player_t::white ];
-				_pawns[i][player_t::black]    =
-					rhs._pawns[i][ player_t::black ];
-
-				_queens[i][player_t::white]   =
-					rhs._queens[i][player_t::white ];
-				_queens[i][player_t::black]   =
-					rhs._queens[i][player_t::black ];
-
-				_rooks[i][player_t::white]    =
-					rhs._rooks[i][ player_t::white ];
-				_rooks[i][player_t::black]    =
-					rhs._rooks[i][ player_t::black ];
-
-				_to_move[i] = rhs._to_move[i];
+				_ep_info[i] = rhs._ep_info[i];
 			}
+
+			_full_move  = rhs._full_move;
+			_half_move  = rhs._half_move;
 
 			_hash_input = rhs._hash_input;
 			_is_init    = rhs._is_init;
 
+			_kings[player_t::white]    =
+				rhs._kings[ player_t::white ];
+			_kings[player_t::black]    =
+				rhs._kings[ player_t::black ];
+
+			_king_sq[player_t::white]  =
+				rhs._king_sq[player_t::white];
+			_king_sq[player_t::black]  =
+				rhs._king_sq[player_t::black];
+
+			_knights[player_t::white]  =
+				rhs._knights[player_t::white];
+			_knights[player_t::black]  =
+				rhs._knights[player_t::black];
+
+			_material = rhs._material;
+
+			_occupied[player_t::white] =
+				rhs._occupied[player_t::white];
+			_occupied[player_t::black] =
+				rhs._occupied[player_t::black];
+
 			_output = rhs._output;
+
+			_pawns[player_t::white]    =
+				rhs._pawns[ player_t::white ];
+			_pawns[player_t::black]    =
+				rhs._pawns[ player_t::black ];
 
 			for (int i = 0; i < 64; i++)
 			{
@@ -154,6 +140,23 @@ namespace Chess
 			}
 
 			_ply = rhs._ply;
+
+			_queens[player_t::white]   =
+				rhs._queens[player_t::white ];
+			_queens[player_t::black]   =
+				rhs._queens[player_t::black ];
+
+			_rooks[player_t::white]    =
+				rhs._rooks[ player_t::white ];
+			_rooks[player_t::black]    =
+				rhs._rooks[ player_t::black ];
+
+			for (int i = 0; i < max_ply; i++)
+			{
+				_save_hash[i] = rhs._save_hash[i];
+			}
+
+			_to_move = rhs._to_move;
 		}
 
 		return *this;
@@ -170,50 +173,41 @@ namespace Chess
 	{
 		bool same = true;
 
-		for (int i = 0; i < 64; i++)
+		for (int j = 0; j < 2; j++)
 		{
-			same = same && ( _pieces[i] == rhs._pieces[i] );
+			same = same
+				&& _bishops[j]  == rhs._bishops[j]
+				&& _kings[j]    == rhs._kings[j]
+			 	&& _king_sq[j]  == rhs._king_sq[j]
+			 	&& _knights[j]  == rhs._knights[j]
+			 	&& _occupied[j] == rhs._occupied[j]
+			 	&& _pawns[j]    == rhs._pawns[j]
+			 	&& _queens[j]   == rhs._queens[j]
+			 	&& _rooks[j]    == rhs._rooks[j];
 		}
-
-		same = same
-			&& _hash_input == rhs._hash_input
-			&& _is_init    == rhs._is_init
-			&& _ply        == rhs._ply;
 
 		for (int i = 0; i < max_ply; i++)
 		{
-			for (int j = 0; j < 2; j++)
-			{
-				same = same
-					&& _bishops[i][j]  == rhs._bishops[i][j]
-					&& _kings[i][j]    == rhs._kings[i][j]
-				 	&& _king_sq[i][j]  == rhs._king_sq[i][j]
-				 	&& _knights[i][j]  == rhs._knights[i][j]
-				 	&& _occupied[i][j] == rhs._occupied[i][j]
-				 	&& _pawns[i][j]    == rhs._pawns[i][j]
-				 	&& _queens[i][j]   == rhs._queens[i][j]
-				 	&& _rooks[i][j]    == rhs._rooks[i][j];
-			}
-
 			same = same
-				&& _full_move[i]  == rhs._full_move[i]
-				&& _half_move[i]  == rhs._half_move[i]
-				&& _material[i]   == rhs._material[i]
-				&& _to_move[i]    == rhs._to_move[i];
+				&& _ep_info[i]          == rhs._ep_info[i]
+				&& _castle_rights[i][0] == rhs._castle_rights[i][0]
+				&& _castle_rights[i][1] == rhs._castle_rights[i][1]
+				&& _save_hash[i]        == rhs._save_hash[i];
+		}
 
-			same = same
-				&& _save_hash[i] == rhs._save_hash[i];
+		same = same
+			&& _full_move  == rhs._full_move
+			&& _half_move  == rhs._half_move
+			&& _hash_input == rhs._hash_input
+			&& _is_init    == rhs._is_init
+			&& _material   == rhs._material
+			&& _to_move    == rhs._to_move
+			&& _ply        == rhs._ply;
 
-			same = same
-				&& _castle_rights[i][player_t::black] ==
-					rhs._castle_rights[i][player_t::black];
-
-			same = same
-				&& _castle_rights[i][player_t::white] ==
-					rhs._castle_rights[i][player_t::white];
-
-			same = same && _ep_info[i]
-				== rhs._ep_info[i];
+		for (int i = 0; i < 64; i++)
+		{
+			same = same && _pieces[i] ==
+				rhs._pieces[i];
 		}
 
 		return same;
@@ -222,11 +216,10 @@ namespace Chess
 	/**
 	 * Compare this Position with another at a given ply
 	 *
-	 * @note A Position stores internal data indexed by ply; if Position
-	 *       P makes/unmakes a move, then its data at the *next* ply
-	 *       will be different, and the equality (==) operator will note
-	 *       that P has changed. Here, we are interested in comparing
-	 *       the data located at index \a ply
+	 * @note Certain data structures are indexed by ply; this performs
+	 *       comparisons such that if two positions are byte-wise
+	 *       equal at a given ply, then they are considered equal, and
+	 *       this method returns true
 	 *
 	 * @param[in] rhs The Position to compare against
 	 * @param[in] ply The ply at which to perform the comparison
@@ -237,46 +230,39 @@ namespace Chess
 	{
 		bool same = true;
 
-		for (int i = 0; i < 64; i++)
-		{
-			same = same && ( _pieces[i] == rhs._pieces[i] );
-		}
-
-		same = same
-			&& _full_move[ply]  == rhs._full_move[ply]
-			&& _half_move[ply]  == rhs._half_move[ply]
-			&& _hash_input      == rhs._hash_input
-			&& _is_init         == rhs._is_init
-			&& _material[ply]   == rhs._material[ply]
-			&& _to_move[ply]    == rhs._to_move[ply]
-			&& _ply             == rhs._ply;
-
-		for (int i = 0; i < 2; i++)
+		for (int j = 0; j < 2; j++)
 		{
 			same = same
-				&& _bishops[ply][i]  == rhs._bishops[ply][i]
-				&& _kings[ply][i]    == rhs._kings[ply][i]
-			 	&& _king_sq[ply][i]  == rhs._king_sq[ply][i]
-			 	&& _knights[ply][i]  == rhs._knights[ply][i]
-			 	&& _occupied[ply][i] == rhs._occupied[ply][i]
-			 	&& _pawns[ply][i]    == rhs._pawns[ply][i]
-			 	&& _queens[ply][i]   == rhs._queens[ply][i]
-			 	&& _rooks[ply][i]    == rhs._rooks[ply][i];
+				&& _bishops[j]  == rhs._bishops[j]
+				&& _kings[j]    == rhs._kings[j]
+			 	&& _king_sq[j]  == rhs._king_sq[j]
+			 	&& _knights[j]  == rhs._knights[j]
+			 	&& _occupied[j] == rhs._occupied[j]
+			 	&& _pawns[j]    == rhs._pawns[j]
+			 	&& _queens[j]   == rhs._queens[j]
+			 	&& _rooks[j]    == rhs._rooks[j];
 		}
 
 		same = same
-			&& _save_hash[ply] == rhs._save_hash[ply];
+			&& _ep_info[_ply]          == rhs._ep_info[_ply]
+			&& _castle_rights[_ply][0] == rhs._castle_rights[_ply][0]
+			&& _castle_rights[_ply][1] == rhs._castle_rights[_ply][1]
+			&& _save_hash[_ply]        == rhs._save_hash[_ply];
 
 		same = same
-			&& _castle_rights[ply][player_t::black] ==
-				rhs._castle_rights[ply][player_t::black];
+			&& _full_move  == rhs._full_move
+			&& _half_move  == rhs._half_move
+			&& _hash_input == rhs._hash_input
+			&& _is_init    == rhs._is_init
+			&& _material   == rhs._material
+			&& _to_move    == rhs._to_move
+			&& _ply        == rhs._ply;
 
-		same = same
-			&& _castle_rights[ply][player_t::white] ==
-				rhs._castle_rights[ply][player_t::white];
-
-		same = same && _ep_info[ply]
-			== rhs._ep_info[ply];
+		for (int i = 0; i < 64; i++)
+		{
+			same = same && _pieces[i] ==
+				rhs._pieces[i];
+		}	
 
 		return same;
 	}
@@ -322,7 +308,7 @@ namespace Chess
 		if (_ep_info[_ply].target != square_t::BAD_SQUARE)
 			signature ^= _hash_input.en_passant[get_file(_ep_info[_ply].target)];
 
-		if (_to_move[_ply] == player_t::white)
+		if (_to_move == player_t::white)
 			signature ^= _hash_input.to_move;
 
 		if (_castle_rights[_ply][player_t::white] & castle_K)
@@ -344,7 +330,7 @@ namespace Chess
 		{
 			if (_pieces[i] != piece_t::empty)
 			{
-				if (_occupied[_ply][player_t::black] & tables.set_mask[i])
+				if (_occupied[player_t::black] & tables.set_mask[i])
 				{
 					signature ^=
 						_hash_input.piece[ player_t::black ][ _pieces[i] ][i];
@@ -380,7 +366,7 @@ namespace Chess
 			{
 				bool whitePiece =
 					static_cast<bool>(tables.set_mask[i]
-						& _occupied[_ply][player_t::white]);
+						& _occupied[player_t::white]);
 
 				if (empty != 0)
 				{
@@ -425,7 +411,7 @@ namespace Chess
 			}
 		}
 
-		if (_to_move[_ply] == player_t::white)
+		if (_to_move == player_t::white)
 			fen += " w ";
 		else
 			fen += " b ";
@@ -453,8 +439,8 @@ namespace Chess
 		char halfMove_s[8];
 		char fullMove_s[8];
 
-		std::sprintf(halfMove_s, "%d", _half_move[_ply]);
-		std::sprintf(fullMove_s, "%d", _full_move[_ply]);
+		std::sprintf(halfMove_s, "%d", _half_move);
+		std::sprintf(fullMove_s, "%d", _full_move);
 
 		std::string space = " ";
 
@@ -472,7 +458,7 @@ namespace Chess
 	 */
 	int Position::get_fullmove_number() const
 	{
-		return _full_move[_ply];
+		return _full_move;
 	}
 
 	/**
@@ -514,7 +500,7 @@ namespace Chess
 						break;
 				}
 
-				if (_occupied[_ply][player_t::black] & (one << sq))
+				if (_occupied[player_t::black] & (one << sq))
 					piece = Util::to_lower(piece);
 
 				_output->write("| %c ", piece);
@@ -567,41 +553,41 @@ namespace Chess
 					_pieces[square] = piece2enum(c);
 
 					if (Util::to_lower(c) == c)
-						_occupied[_ply][player_t::black] |= mask;
+						_occupied[player_t::black] |= mask;
 					else
-						_occupied[_ply][player_t::white] |= mask;
+						_occupied[player_t::white] |= mask;
 					square -= 1;
 
 					switch (c)
 					{
 						case 'p':
-							_pawns  [_ply][player_t::black] |= mask; break;
+							_pawns  [player_t::black] |= mask; break;
 						case 'P':
-							_pawns  [_ply][player_t::white] |= mask; break;
+							_pawns  [player_t::white] |= mask; break;
 						case 'r':
-							_rooks  [_ply][player_t::black] |= mask; break;
+							_rooks  [player_t::black] |= mask; break;
 						case 'R':
-							_rooks  [_ply][player_t::white] |= mask; break;
+							_rooks  [player_t::white] |= mask; break;
 						case 'n':
-							_knights[_ply][player_t::black] |= mask; break;
+							_knights[player_t::black] |= mask; break;
 						case 'N':
-							_knights[_ply][player_t::white] |= mask; break;
+							_knights[player_t::white] |= mask; break;
 						case 'b':
-							_bishops[_ply][player_t::black] |= mask; break;
+							_bishops[player_t::black] |= mask; break;
 						case 'B':
-							_bishops[_ply][player_t::white] |= mask; break;
+							_bishops[player_t::white] |= mask; break;
 						case 'q':
-							_queens [_ply][player_t::black] |= mask; break;
+							_queens [player_t::black] |= mask; break;
 						case 'Q':
-							_queens [_ply][player_t::white] |= mask; break;
+							_queens [player_t::white] |= mask; break;
 						case 'k':
-							_kings[_ply][player_t::black]   |= mask;
-							_king_sq[_ply][player_t::black]  =
+							_kings[player_t::black]   |= mask;
+							_king_sq[player_t::black]  =
 								static_cast<square_t>(Util::get_lsb(mask));
 							break;
 						case 'K':
-							_kings[_ply][player_t::white]   |= mask;
-							_king_sq[_ply][player_t::white]  =
+							_kings[player_t::white]   |= mask;
+							_king_sq[player_t::white]  =
 								static_cast<square_t>(Util::get_lsb(mask));
 							break;
 						default:
@@ -657,8 +643,8 @@ namespace Chess
 		std::vector<std::string> posn_info;
 		Util::split(tokens.back(), posn_info, " ");
 
-		_half_move[_ply] = 0;
-		_full_move[_ply] = 1;
+		_half_move = 0;
+		_full_move = 1;
 
 		switch (posn_info.size())
 		{
@@ -666,7 +652,7 @@ namespace Chess
 				// Ignore anything beyond the 6th token instead of
 				// returning an error
 			case 6:
-				if (!Util::from_string(posn_info[5], _full_move[_ply]))
+				if (!Util::from_string(posn_info[5], _full_move))
 				{
 					if (verbosity >= Verbosity::terse && _output)
 					{
@@ -678,7 +664,7 @@ namespace Chess
 					return false;
 				}
 			case 5:
-				if (!Util::from_string(posn_info[4], _half_move[_ply]))
+				if (!Util::from_string(posn_info[4], _half_move))
 				{
 					if (verbosity >= Verbosity::terse && _output)
 					{
@@ -759,7 +745,7 @@ namespace Chess
 					*this = backup;
 					return false;
 				}
-				_to_move[_ply] =
+				_to_move =
 					posn_info[1] == "w" ? player_t::white : player_t::black;
 				break;
 			case 1:
@@ -776,17 +762,16 @@ namespace Chess
 		/*
 		 * Set the squares from which we can capture via en passant:
 		 */
-		uint64 src = 0; int victim;
+		uint64 src = 0;
 
 		auto& tables = DataTables::get();
 		
 		if (_ep_info[_ply].target != square_t::BAD_SQUARE)
 		{
-			victim = (_to_move[_ply] == player_t::white) ? 
-				_ep_info[_ply].target-8 : _ep_info[_ply].target+8;
+			const square_t victim =
+				tables.minus_8[ _to_move ][_ep_info[_ply].target];
 
-			src =
-				_pawns[_ply][ _to_move[_ply] ] & tables.rank_adjacent[victim];
+			src = _pawns[_to_move] & tables.rank_adjacent[victim];
 
 			if (src & (tables.set_mask[victim+1]))
 				_ep_info[_ply].src[0] =
@@ -811,19 +796,19 @@ namespace Chess
 		 * Compute the material balance. This avoids
 		 * having to do so during static eval
 		 */
-		_material[_ply] =
-			Util::bit_count(_pawns[_ply][player_t::white])   * pawn_value   +
-			Util::bit_count(_knights[_ply][player_t::white]) * knight_value + 
-			Util::bit_count(_bishops[_ply][player_t::white]) * bishop_value + 
-			Util::bit_count(_rooks[_ply][player_t::white])   * rook_value   +
-			Util::bit_count(_queens[_ply][player_t::white])  * queen_value;
+		_material  =
+			Util::bit_count(_pawns[player_t::white])   * pawn_value   +
+			Util::bit_count(_knights[player_t::white]) * knight_value + 
+			Util::bit_count(_bishops[player_t::white]) * bishop_value + 
+			Util::bit_count(_rooks[player_t::white])   * rook_value   +
+			Util::bit_count(_queens[player_t::white])  * queen_value;
 
-		_material[_ply] -=
-			Util::bit_count(_pawns[_ply][player_t::black])   * pawn_value   + 
-			Util::bit_count(_knights[_ply][player_t::black]) * knight_value + 
-			Util::bit_count(_bishops[_ply][player_t::black]) * bishop_value + 
-			Util::bit_count(_rooks[_ply][player_t::black])   * rook_value   +
-			Util::bit_count(_queens[_ply][player_t::black])  * queen_value;
+		_material -=
+			Util::bit_count(_pawns[player_t::black])   * pawn_value   + 
+			Util::bit_count(_knights[player_t::black]) * knight_value + 
+			Util::bit_count(_bishops[player_t::black]) * bishop_value + 
+			Util::bit_count(_rooks[player_t::black])   * rook_value   +
+			Util::bit_count(_queens[player_t::black])  * queen_value;
 
 		/*
 		 * Generate a hash signature for this position
@@ -841,33 +826,32 @@ namespace Chess
 	{
 		for (int i = 0; i < 64; i++ ) _pieces[i] = piece_t::empty;
 
+		for (int i = 0; i < 2; i++)
+		{
+			_bishops[i]  = 0;
+			_kings[i]    = 0;
+			_king_sq[i]  = square_t::BAD_SQUARE;
+			_knights[i]  = 0;
+			_occupied[i] = 0;
+			_pawns[i]    = 0;
+			_queens[i]   = 0;
+			_rooks[i]    = 0;
+		}
+
+		_full_move = -1;
+		_half_move = -1;
+
+		_material = 0;
+		_to_move  = player_t::white;
+
 		for (int i = 0; i < max_ply; i++)
 		{
-			for (int j = 0; j < 2; j++)
-			{
-				_bishops[i][j]  = 0;
-				_kings[i][j]    = 0;
-				_king_sq[i][j]  = square_t::BAD_SQUARE;
-				_knights[i][j]  = 0;
-				_occupied[i][j] = 0;
-				_pawns[i][j]    = 0;
-				_queens[i][j]   = 0;
-				_rooks[i][j]    = 0;
-			}
-
-			_full_move[i] = -1;
-			_half_move[i] = -1;
-
-			
-			_material[i] = 0;
-			_to_move[i]  = player_t::white;
-
 			_ep_info[i].clear();
 
 			_castle_rights[i][player_t::black] = 0;
 			_castle_rights[i][player_t::white] = 0;
 
-			_save_hash[i] = 0;
+			_save_hash[i]  =  0;
 		}
 
 		_hash_input.clear();
@@ -896,8 +880,10 @@ namespace Chess
 	 */
 	bool Position::_validate(const std::string& fen) const
 	{
+		auto& tables = DataTables::get();
+
 		// Rule 1:
-		if ((_pawns[_ply][player_t::black] | _pawns[_ply][player_t::white]) & (rank_1 | rank_8))
+		if ((_pawns[player_t::black] | _pawns[player_t::white]) & (rank_1 | rank_8))
 		{
 			if (verbosity >= Verbosity::terse && _output)
 			{
@@ -909,8 +895,8 @@ namespace Chess
 		}
 
 		// Rule 2:
-		if ((Util::bit_count(_kings[_ply][player_t::white]) != 1) ||
-			(Util::bit_count(_kings[_ply][player_t::black]) != 1))
+		if ((Util::bit_count(_kings[player_t::white]) != 1) ||
+			(Util::bit_count(_kings[player_t::black]) != 1))
 		{
 			if (verbosity >= Verbosity::terse && _output)
 			{
@@ -922,7 +908,7 @@ namespace Chess
 		}
 
 		// Rule 3:
-		if (in_check(flip(_to_move[_ply])))
+		if (in_check(flip(_to_move)))
 		{
 			if (verbosity >= Verbosity::terse && _output)
 			{
@@ -936,7 +922,7 @@ namespace Chess
 		// Rule 4:
 		int castle_mask = castle_K | castle_Q;
 
-		if (!(_kings[_ply][player_t::white] & Util::get_bit< uint64 >(square_t::E1)))
+		if (!(_kings[player_t::white] & Util::get_bit< uint64 >(square_t::E1)))
 		{
 			if (_castle_rights[_ply][player_t::white] & castle_mask)
 			{
@@ -952,7 +938,7 @@ namespace Chess
 		else
 		{
 			if ((_castle_rights[_ply][player_t::white] & castle_K)
-				 && !(_rooks[_ply][player_t::white] & Util::get_bit<uint64>(square_t::H1)))
+				 && !(_rooks[player_t::white] & Util::get_bit<uint64>(square_t::H1)))
 			{
 				if (verbosity >= Verbosity::terse && _output)
 				{
@@ -964,7 +950,7 @@ namespace Chess
 			}
 
 			if ((_castle_rights[_ply][player_t::white] & castle_Q)
-				 && !(_rooks[_ply][player_t::white] & Util::get_bit<uint64>(square_t::A1)))
+				 && !(_rooks[player_t::white] & Util::get_bit<uint64>(square_t::A1)))
 			{
 				if (verbosity >= Verbosity::terse && _output)
 				{
@@ -976,7 +962,7 @@ namespace Chess
 			}
 		}
 
-		if (!(_kings[_ply][player_t::black] & Util::get_bit< uint64 >(square_t::E8)))
+		if (!(_kings[player_t::black] & Util::get_bit< uint64 >(square_t::E8)))
 		{
 			if (_castle_rights[_ply][player_t::black] & castle_mask)
 			{
@@ -992,7 +978,7 @@ namespace Chess
 		else
 		{
 			if ((_castle_rights[_ply][player_t::black] & castle_K)
-				 && !(_rooks[_ply][player_t::black] & Util::get_bit<uint64>(square_t::H8)))
+				 && !(_rooks[player_t::black] & Util::get_bit<uint64>(square_t::H8)))
 			{
 				if (verbosity >= Verbosity::terse && _output)
 				{
@@ -1004,7 +990,7 @@ namespace Chess
 			}
 
 			if ((_castle_rights[_ply][player_t::black] & castle_Q)
-				 && !(_rooks[_ply][player_t::black] & Util::get_bit<uint64>(square_t::A8)))
+				 && !(_rooks[player_t::black] & Util::get_bit<uint64>(square_t::A8)))
 			{
 				if (verbosity >= Verbosity::terse && _output)
 				{
@@ -1019,28 +1005,12 @@ namespace Chess
 		// Rule 5:
 		if (_ep_info[_ply].target != square_t::BAD_SQUARE)
 		{
-			bool bad_ep = false;
+			const square_t target
+				= _ep_info[_ply].target;
 
-			if (_to_move[_ply] == player_t::white)
-			{
-				if (get_rank(_ep_info[_ply].target) != 5 ||
-					!(_pawns[_ply][player_t::black] &
-						Util::get_bit<uint64>(_ep_info[_ply].target-8)))
-				{
-					bad_ep = true;
-				}
-			}
-			else
-			{
-				if (get_rank(_ep_info[_ply].target) != 2 ||
-					!(_pawns[_ply][player_t::white] &
-						Util::get_bit<uint64>(_ep_info[_ply].target+8)))
-				{
-					bad_ep = true;
-				}
-			}
-
-			if (bad_ep)
+			if (!(tables.set_mask[target] & tables._3rd_rank[flip(_to_move)]) ||
+				!(_pawns[flip(_to_move)]
+					& tables.set_mask[tables.minus_8[_to_move][target]]))
 			{
 				if (verbosity >= Verbosity::terse && _output)
 				{
@@ -1053,8 +1023,8 @@ namespace Chess
 		}
 
 		// Rule 6:
-		if (Util::bit_count<uint64>(_pawns[_ply][player_t::white]) > 8 || 
-			Util::bit_count<uint64>(_pawns[_ply][player_t::black]) > 8)
+		if (Util::bit_count<uint64>(_pawns[player_t::white]) > 8 || 
+			Util::bit_count<uint64>(_pawns[player_t::black]) > 8)
 		{
 			if (verbosity >= Verbosity::terse && _output)
 			{
@@ -1066,8 +1036,8 @@ namespace Chess
 		}
 
 		// Rule 7:
-		if (Util::bit_count<uint64>(_knights[_ply][player_t::white]) > 10 ||
-			Util::bit_count<uint64>(_knights[_ply][player_t::black]) > 10)
+		if (Util::bit_count<uint64>(_knights[player_t::white]) > 10 ||
+			Util::bit_count<uint64>(_knights[player_t::black]) > 10)
 		{
 			if (verbosity >= Verbosity::terse && _output)
 			{
@@ -1078,8 +1048,8 @@ namespace Chess
 			return false;
 		}
 
-		if (Util::bit_count<uint64>(_rooks[_ply][player_t::white]) > 10 ||
-			Util::bit_count<uint64>(_rooks[_ply][player_t::black]) > 10)
+		if (Util::bit_count<uint64>(_rooks[player_t::white]) > 10 ||
+			Util::bit_count<uint64>(_rooks[player_t::black]) > 10)
 		{
 			if (verbosity >= Verbosity::terse && _output)
 			{
@@ -1090,8 +1060,8 @@ namespace Chess
 			return false;
 		}
 
-		if (Util::bit_count<uint64>(_queens[_ply][player_t::white]) > 10 ||
-			Util::bit_count<uint64>(_queens[_ply][player_t::black]) > 10)
+		if (Util::bit_count<uint64>(_queens[player_t::white]) > 10 ||
+			Util::bit_count<uint64>(_queens[player_t::black]) > 10)
 		{
 			if (verbosity >= Verbosity::terse && _output)
 			{
@@ -1102,8 +1072,8 @@ namespace Chess
 			return false;
 		}
 
-		if (Util::bit_count<uint64>(_bishops[_ply][player_t::white]) > 10 ||
-			Util::bit_count<uint64>(_bishops[_ply][player_t::black]) > 10)
+		if (Util::bit_count<uint64>(_bishops[player_t::white]) > 10 ||
+			Util::bit_count<uint64>(_bishops[player_t::black]) > 10)
 		{
 			if (verbosity >= Verbosity::terse && _output)
 			{
