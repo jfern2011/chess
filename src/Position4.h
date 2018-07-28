@@ -214,7 +214,7 @@ namespace Chess
 		 * The half-move clock (see FEN notation). Note that we do not
 		 * increment this for null moves
 		 */
-		int _half_move;
+		BUFFER(int, _half_move, max_ply);
 
 		/**
 		 * A set of 64-bit integers used to generate a Zobrist hash key
@@ -1374,9 +1374,9 @@ namespace Chess
 		 *     clock. Otherwise, reset it to zero
 		 */
 		if (moved == piece_t::pawn || captured != piece_t::empty)
-			_half_move  = 0;
+			_half_move[_ply] = 0;
 		else
-			_half_move += 1;
+			_half_move[_ply] = _half_move[_ply-1] + 1;
 
 		/*
 		 * 13. Increment the full-move number if black played
@@ -1469,79 +1469,191 @@ namespace Chess
 	inline bool Position::unmake_move(int32 move)
 	{
 		/*
-		 * 1. Back up 1 ply. This will restore all internal members (save
-		 *    for _pieces) to their values at the previous ply
+		 * Back up to the previous ply to restore castling,
+		 * en passant info, hash signature, and half-move clock
 		 */
 		_ply--;
 
+		_to_move = flip(_to_move);
+
 		/*
-		 * 2. If this is a null move, we are done
+		 * If this is a null move, we are done
 		 */
 		if (move == 0) return true;
 
-		/*
-		 * 3. Extract the 21-bit packed move data
-		 */
 		const piece_t captured = extract_captured(move);
-		const int from         = extract_from(move);
+		const square_t from    = extract_from(move);
 		const piece_t moved    = extract_moved(move);
-		const int to           = extract_to(move);
+		const piece_t promote  = extract_promote(move);
+		const square_t to      = extract_to(move);
 
 		/*
-		 * 4. Restore the piece moved and the captured piece in the board
-		 *    square array
+		 * Restore the piece locations
 		 */
-		_pieces[from] = moved;
-		_pieces[to]   = captured;
+		_pieces[from] = static_cast<piece_t>(moved);
+		_pieces[to]   =
+					 static_cast<piece_t>(captured);
+
+		int delta_material = 0;
 
 		/*
-		 * 5. If this was a castling move, restore the associated
-		 *    rook in the board squares array
+		 * Restore the occupancy bits for this player
 		 */
-		if (moved == piece_t::king && abs(from-to) == 2)
+		clear_set64(to, from, _occupied[_to_move]);
+
+		auto& tables = DataTables::get();
+
+		switch (moved)
 		{
-			if (_to_move == player_t::white)
-			{
-				if (to == square_t::G1)
+			case piece_t::pawn:
+				_pawns[_to_move] |= tables.set_mask[from];
+
+				if (promote != piece_t::empty)
 				{
-					_pieces[square_t::F1] = piece_t::empty;
-					_pieces[square_t::H1] = piece_t::rook;
+					delta_material +=
+						tables.piece_value[promote] - pawn_value;
 				}
-				else // Queenside castle
+
+				switch (promote)
 				{
-					_pieces[square_t::D1] = piece_t::empty;
-					_pieces[square_t::A1] = piece_t::rook;
+					case piece_t::knight:
+						_knights[_to_move]
+							&= tables.clear_mask[to];
+						break;
+					case piece_t::rook:
+						_rooks[_to_move]
+							&= tables.clear_mask[to];
+						break;
+					case piece_t::queen:
+						_queens[_to_move]  
+							&= tables.clear_mask[to];
+						break;
+					case piece_t::bishop:
+						_bishops[_to_move] 
+							&= tables.clear_mask[to];
+						break;
+					default:
+						_pawns[ _to_move ]
+							&= tables.clear_mask[to];
 				}
-			}
-			else
-			{
-				if (to == square_t::G8)
+
+				break;
+
+			case piece_t::knight:
+				clear_set64(to, from, _knights[_to_move]);
+				break;
+
+			case piece_t::rook:
+				clear_set64( to, from, _rooks[_to_move] );
+				break;
+
+			case piece_t::bishop:
+				clear_set64(to, from, _bishops[_to_move]);
+				break;
+
+			case piece_t::queen:
+				clear_set64( to, from, _queens[_to_move]);
+				break;
+
+			case piece_t::king:
+				clear_set64( to, from, _kings[_to_move] );
+				_king_sq[_to_move] = from;
+
+				/*
+				 * Check if this was a castle move and update
+				 * the rook bits accordingly:
+				 */
+				if (abs(from-to) == 2)
 				{
-					_pieces[square_t::F8] = piece_t::empty;
-					_pieces[square_t::H8] = piece_t::rook;
+					if (to == tables.castle_OO_dest[_to_move])
+					{
+						_pieces[to-1] = piece_t::rook;
+						_pieces[to+1] = piece_t::empty;
+
+						clear_set64(to+1, to-1, _occupied[_to_move]);
+						clear_set64(to+1, to-1, _rooks[_to_move]);
+					}
+					else // Queenside castle
+					{
+						_pieces[to+2] = piece_t::rook;
+						_pieces[to-1] = piece_t::empty;
+
+						clear_set64(to-1, to+2, _occupied[_to_move]);
+						clear_set64(to-1, to+2, _rooks[_to_move]);
+					}
 				}
-				else // Queenside castle
-				{
-					_pieces[square_t::D8] = piece_t::empty;
-					_pieces[square_t::A8] = piece_t::rook;
-				}
-			}
+			default:
+				break;
 		}
 
 		/*
-		 * 6. If this was an en passant capture, replace the enemy
-		 *    pawn in the board squares array
+		 * Restore the opponent's board info if this
+		 * was a capture
 		 */
-		else if (captured != piece_t::empty
-					&& to == _ep_info[_ply].target)
+		if (captured != piece_t::empty)
 		{
-			if (_to_move == player_t::white)
-				_pieces[to-8] = piece_t::pawn;
-			else
-				_pieces[to+8] = piece_t::pawn;
+			delta_material += tables.piece_value[captured];
 
-			_pieces[to] = piece_t::empty;
+			/*
+			 * Restore the enemy occupancy:
+			 */
+			_occupied[flip(_to_move)]
+				|= tables.set_mask[ to ];
+
+			switch (captured)
+			{
+				case piece_t::pawn:
+
+					if (to == _ep_info[_ply].target)
+					{
+						//  This was an en passant capture:
+
+						_occupied[flip(_to_move)] &=
+					  				tables.clear_mask[to];
+
+					  	const square_t vic = tables.minus_8[_to_move][to];
+
+					  	_pieces[vic] = piece_t::pawn;
+
+					  	_occupied[flip(_to_move)] |=tables.set_mask[vic];
+					  	_pawns[flip(_to_move)]    |= tables.set_mask[vic];
+
+						_pieces[to] = piece_t::empty;
+					}
+					else
+					{
+						_pawns[flip(_to_move)] |=
+							tables.set_mask[to];
+					}
+
+					break;
+
+				case piece_t::knight:
+					_knights[flip(_to_move)] |= tables.set_mask[to];
+					break;
+				case piece_t::queen:
+					_queens[flip(_to_move)]  |= tables.set_mask[to];
+					break;
+				case piece_t::rook:
+					_rooks[ flip(_to_move) ] |= tables.set_mask[to];
+					break;
+				case piece_t::bishop:
+					_bishops[flip(_to_move)] |= tables.set_mask[to];
+				default:
+					break;
+			}
 		}
+
+		if (_to_move == player_t::black)
+			_full_move--;
+
+		/*
+		 * Restore the material balance:
+		 */
+		if (_to_move == player_t::white)
+			_material -= delta_material;
+		else
+			_material += delta_material;
 
 		return true;
 	}

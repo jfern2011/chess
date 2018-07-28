@@ -100,7 +100,11 @@ namespace Chess
 			}
 
 			_full_move  = rhs._full_move;
-			_half_move  = rhs._half_move;
+
+			for (int i = 0; i < max_ply; i++)
+			{
+				_half_move[i] = rhs._half_move[i];
+			}
 
 			_hash_input = rhs._hash_input;
 			_is_init    = rhs._is_init;
@@ -190,6 +194,7 @@ namespace Chess
 		{
 			same = same
 				&& _ep_info[i]          == rhs._ep_info[i]
+				&& _half_move[i]        == rhs._half_move[i]
 				&& _castle_rights[i][0] == rhs._castle_rights[i][0]
 				&& _castle_rights[i][1] == rhs._castle_rights[i][1]
 				&& _save_hash[i]        == rhs._save_hash[i];
@@ -197,7 +202,6 @@ namespace Chess
 
 		same = same
 			&& _full_move  == rhs._full_move
-			&& _half_move  == rhs._half_move
 			&& _hash_input == rhs._hash_input
 			&& _is_init    == rhs._is_init
 			&& _material   == rhs._material
@@ -245,13 +249,13 @@ namespace Chess
 
 		same = same
 			&& _ep_info[_ply]          == rhs._ep_info[_ply]
+			&& _half_move[_ply]        == rhs._half_move[_ply]
 			&& _castle_rights[_ply][0] == rhs._castle_rights[_ply][0]
 			&& _castle_rights[_ply][1] == rhs._castle_rights[_ply][1]
 			&& _save_hash[_ply]        == rhs._save_hash[_ply];
 
 		same = same
 			&& _full_move  == rhs._full_move
-			&& _half_move  == rhs._half_move
 			&& _hash_input == rhs._hash_input
 			&& _is_init    == rhs._is_init
 			&& _material   == rhs._material
@@ -439,7 +443,7 @@ namespace Chess
 		char halfMove_s[8];
 		char fullMove_s[8];
 
-		std::sprintf(halfMove_s, "%d", _half_move);
+		std::sprintf(halfMove_s, "%d", _half_move[_ply]);
 		std::sprintf(fullMove_s, "%d", _full_move);
 
 		std::string space = " ";
@@ -643,8 +647,8 @@ namespace Chess
 		std::vector<std::string> posn_info;
 		Util::split(tokens.back(), posn_info, " ");
 
-		_half_move = 0;
-		_full_move = 1;
+		_half_move[_ply] = 0;
+		_full_move       = 1;
 
 		switch (posn_info.size())
 		{
@@ -664,7 +668,7 @@ namespace Chess
 					return false;
 				}
 			case 5:
-				if (!Util::from_string(posn_info[4], _half_move))
+				if (!Util::from_string(posn_info[4], _half_move[_ply]))
 				{
 					if (verbosity >= Verbosity::terse && _output)
 					{
@@ -839,7 +843,6 @@ namespace Chess
 		}
 
 		_full_move = -1;
-		_half_move = -1;
 
 		_material = 0;
 		_to_move  = player_t::white;
@@ -851,6 +854,7 @@ namespace Chess
 			_castle_rights[i][player_t::black] = 0;
 			_castle_rights[i][player_t::white] = 0;
 
+			_half_move[i]  = -1;
 			_save_hash[i]  =  0;
 		}
 
