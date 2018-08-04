@@ -16,12 +16,15 @@ namespace Chess
 		/**
 		 * Generate legal moves from the position. This is general code
 		 * used by both \ref generate_captures() and \ref
-		 * generate_non_captures()
+		 * generate_noncaptures()
 		 *
 		 * @note Generally, this function should not get called directly
 		 *       but rather indirectly by the other move generators.
-		 *       This does not handle pawn or king moves as those pieces
-		 *       move uniquely (e.g. castle, en passant)
+		 *       This does not handle castling or pawn moves since those
+		 *       are specific to the king and pawn, respectively
+		 *
+		 * @note This function does not correctly handle cases where the
+		 *       king is in check; see generate_check_evasions()
 		 *
 		 * @param[in]  pos    The current position
 		 * @param[in]  target The target squares to move to
@@ -268,8 +271,11 @@ namespace Chess
 		}
 
 		/**
-		 * Generate captures from a position, all of which are strictly
-		 * legal. Note this also includes pawn promotions
+		 * Generates captures from a position, all of which are
+		 * strictly legal. Note this also includes pawn promotions
+		 *
+		 * @note This function does not correctly handle cases where the
+		 *       king is in check; see generate_check_evasions()
 		 *
 		 * @param[in]  pos      The input position
 		 * @param[out] captures The list of captures
@@ -311,7 +317,7 @@ namespace Chess
 					continue;
 				}
 
-				if (tables.set_mask[to] & tables.back_rank[to_move])
+				if (tables.set_mask[to] & tables.back_rank[flip(to_move)])
 				{
 					captures[count++] = pack_move(pos.piece_on(to),
 												  from,
@@ -368,7 +374,7 @@ namespace Chess
 					continue;
 				}
 
-				if (tables.set_mask[to] & tables.back_rank[to_move])
+				if (tables.set_mask[to] & tables.back_rank[flip(to_move)])
 				{
 					captures[count++] = pack_move(pos.piece_on(to),
 												  from,
@@ -532,12 +538,15 @@ namespace Chess
 		 * Generate non-captures from a position, all of which are
 		 * strictly legal
 		 *
+		 * @note This function does not correctly handle cases where the
+		 *       king is in check; see generate_check_evasions()
+		 *
 		 * @param[in]  pos   The input position
 		 * @param[out] moves The list of non-captures
 		 *
 		 * @return The number of moves found
 		 */
-		inline size_t generate_non_captures(const Position& pos,
+		inline size_t generate_noncaptures(const Position& pos,
 			int32* moves)
 		{
 			const player_t to_move = pos.get_turn();
@@ -661,7 +670,7 @@ namespace Chess
 			BUFFER(int32, moves, max_moves);
 
 			size_t count = generate_captures(pos, moves);
-			count += generate_non_captures(pos, &moves[count]);
+			count += generate_noncaptures(pos, &moves[count]);
 
 			if (depth <= 1) return count;
 

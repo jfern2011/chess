@@ -1738,8 +1738,7 @@ namespace Chess
 		}
 
 		/*
-		 * 10. If black played, decrement the full
-		 *     move number
+		 * 10. If black played, decrement the full move number
 		 */
 		if (_to_move == player_t::black)
 			_full_move--;

@@ -46,6 +46,35 @@ namespace Chess
 	}
 
 	/**
+	 * Convert a piece enumeration to its equivalent character
+	 * representation in Algebraic notation
+	 *
+	 * @param[in] piece The piece to convert
+	 *
+	 * @return The upper case character equivalent
+	 */
+	inline std::string enum2piece(piece_t piece)
+	{
+		switch (piece)
+		{
+		case piece_t::pawn:
+			return "P";
+		case piece_t::knight:
+			return "N";
+		case piece_t::bishop:
+			return "B";
+		case piece_t::rook:
+			return "R";
+		case piece_t::queen:
+			return "Q";
+		case piece_t::king:
+			return "K";
+		default:
+			return "";
+		}
+	}
+
+	/**
 	 * @defgroup move_bits Move bit packing
 	 *
 	 * Moves are packed in 21 bits:
@@ -131,6 +160,58 @@ namespace Chess
 	inline player_t flip(int player)
 	{
 		return static_cast<player_t>(player ^ 1);
+	}
+
+	/**
+	 * Format a move in standard algebraic notation
+	 *
+	 * @param [in] move         The move to format
+	 * @param [in] file_or_rank If two pieces of the same type can
+	 *                          move to the same square, this
+	 *                          disambiguates that move, e.g. Ngf3
+	 *                          specifies the file
+	 * @param [in] in_check     If true, then append "+"
+	 *
+	 * @return The formatted string
+	 */
+	inline std::string format_san(int move, std::string file_or_rank,
+								  bool in_check=false)
+	{
+		const piece_t captured = extract_captured(move);
+		const square_t from    = extract_from(move);
+		const piece_t moved    = extract_moved(move);
+		const piece_t promote  = extract_promote(move);
+		const square_t to      = extract_to(move);
+
+		std::string out = "";
+
+		if (moved == piece_t::king && abs(from-to) == 2)
+		{
+			if (to > from) return "O-O-O";
+			return "O-O";
+		}
+		else if (moved == piece_t::pawn
+				 && captured != piece_t::empty)
+			out += square_str[from][0];
+		else if (moved != piece_t::pawn)
+		{
+			out += enum2piece(moved);
+			out += file_or_rank;
+		}
+
+		if (captured != piece_t::empty) out += "x";
+
+		out += square_str[to];
+
+		if (in_check) out += "+";
+
+		if (promote != piece_t::empty)
+		{
+			out += "=" +
+				std::string( enum2piece(promote) );
+		}
+		
+		return out;
 	}
 
 	/**
@@ -293,6 +374,34 @@ namespace Chess
 	}
 
 	/**
+	 * Get a human-readable form for a piece given as a piece_t
+	 *
+	 * @param[in] piece The piece
+	 *
+	 * @return The string representation for this piece
+	 */
+	inline std::string piece2str(piece_t piece)
+	{
+		switch (piece)
+		{
+			case piece_t::knight:
+				return "knight";
+			case piece_t::bishop:
+				return "bishop";
+			case piece_t::pawn:
+				return "pawn";
+			case piece_t::rook:
+				return "rook";
+			case piece_t::king:
+				return "king";
+			case piece_t::queen:
+				return "queen";
+			default:
+				return "";
+		}
+	}
+
+	/**
 	 * Returns the population count (number of bits set) in a 64-bit
 	 * word in constant time
 	 *
@@ -319,6 +428,29 @@ namespace Chess
     			tables.pop[(qword >> 16) & 0xffff] +
     			tables.pop[(qword >> 32) & 0xffff] +
     				tables.pop[(qword >> 48) & 0xffff]);
+	}
+
+	/**
+	 * Get the human-readable form of a 21-bit packed move
+	 *
+	 * @param[in] move The move to parse
+	 */
+	inline std::string print_move(int32 move)
+	{
+		const piece_t captured = extract_captured(move);
+		const square_t from    = extract_from(move);
+		const piece_t moved    = extract_moved(move);
+		const piece_t promote  = extract_promote(move);
+		const square_t to      = extract_to(move);
+
+		std::string out;
+		out += "captured: " + piece2str(captured)           + "\n";
+		out += "from:     " + std::string(square_str[from]) + "\n";
+		out += "moved:    " + piece2str(moved)              + "\n";
+		out += "promote:  " + piece2str(promote)            + "\n";
+		out += "to:       " + std::string( square_str[to] ) + "\n";
+
+		return out;
 	}
 
 	/**
