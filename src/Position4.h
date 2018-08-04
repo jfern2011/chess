@@ -1028,10 +1028,10 @@ namespace Chess
 		 * 5. Extract the 21-bit packed move data
 		 */
 		const piece_t captured = extract_captured(move);
-		const int from         = extract_from(move);
+		const square_t from    = extract_from(move);
 		const piece_t moved    = extract_moved(move);
 		const piece_t promote  = extract_promote(move);
-		const int to           = extract_to(move);
+		const square_t to      = extract_to(move);
 
 		/*
 		 * 6. Reset the material change, which will be used to compute
@@ -1209,7 +1209,7 @@ namespace Chess
 			/*
 			 * 10.6.2 Update the king's location
 			 */
-			_king_sq[_to_move] = static_cast<square_t>(to);
+			_king_sq[_to_move] = to;
 
 			/*
 			 * 10.6.3 Handle castling moves
@@ -1469,18 +1469,24 @@ namespace Chess
 	inline bool Position::unmake_move(int32 move)
 	{
 		/*
-		 * Back up to the previous ply to restore castling,
-		 * en passant info, hash signature, and half-move clock
+		 * 1. Back up to the previous ply to restore castling,
+		 *    en passant info, hash, and half-move clock
 		 */
 		_ply--;
 
+		/*
+		 * 2. Restore the turn to the player who moved
+		 */
 		_to_move = flip(_to_move);
 
 		/*
-		 * If this is a null move, we are done
+		 * 3. If this is a null move, we are done
 		 */
 		if (move == 0) return true;
 
+		/*
+		 * 4. Extract the 21-bit packed move data
+		 */
 		const piece_t captured = extract_captured(move);
 		const square_t from    = extract_from(move);
 		const piece_t moved    = extract_moved(move);
@@ -1488,169 +1494,260 @@ namespace Chess
 		const square_t to      = extract_to(move);
 
 		/*
-		 * Restore the piece locations
+		 * 5. Restore the piece array by returning the moved
+		 *    piece to its original location
 		 */
-		_pieces[from] = static_cast<piece_t>(moved);
-		_pieces[to]   =
-					 static_cast<piece_t>(captured);
+		_pieces[to]   = captured;
+		_pieces[from] = moved;
 
+		/*
+		 * 6. Initialize the change in material balance
+		 */
 		int delta_material = 0;
 
 		/*
-		 * Restore the occupancy bits for this player
+		 * 7. Restore the occupancy bits for the player
+		 *    that moved
 		 */
 		clear_set64(to, from, _occupied[_to_move]);
 
+		/*
+		 * 8. Perform piece-specific restorations
+		 */
 		auto& tables = DataTables::get();
 
-		switch (moved)
+		if (moved == piece_t::pawn)
 		{
-			case piece_t::pawn:
-				_pawns[_to_move] |= tables.set_mask[from];
+			/*
+			 * 8.1.1 A pawn was moved. Reset the bit for its
+			 *       origin square
+			 */
+			_pawns[_to_move] |= tables.set_mask[from];
 
-				if (promote != piece_t::empty)
-				{
-					delta_material +=
-						tables.piece_value[promote] - pawn_value;
-				}
+			/*
+			 * 8.1.2 If the pawn was a promoted, restore the
+			 *       material balance
+			 */
+			if (promote != piece_t::empty)
+			{
+				delta_material +=
+					tables.piece_value[promote] - pawn_value;
+			}
 
-				switch (promote)
-				{
-					case piece_t::knight:
-						_knights[_to_move]
-							&= tables.clear_mask[to];
-						break;
-					case piece_t::rook:
-						_rooks[_to_move]
-							&= tables.clear_mask[to];
-						break;
-					case piece_t::queen:
-						_queens[_to_move]  
-							&= tables.clear_mask[to];
-						break;
-					case piece_t::bishop:
-						_bishops[_to_move] 
-							&= tables.clear_mask[to];
-						break;
-					default:
-						_pawns[ _to_move ]
-							&= tables.clear_mask[to];
-				}
-
-				break;
-
-			case piece_t::knight:
-				clear_set64(to, from, _knights[_to_move]);
-				break;
-
-			case piece_t::rook:
-				clear_set64( to, from, _rooks[_to_move] );
-				break;
-
-			case piece_t::bishop:
-				clear_set64(to, from, _bishops[_to_move]);
-				break;
-
-			case piece_t::queen:
-				clear_set64( to, from, _queens[_to_move]);
-				break;
-
-			case piece_t::king:
-				clear_set64( to, from, _kings[_to_move] );
+			/*
+			 * 8.1.3  Clear the "to" bit in the bitboard for
+			 *        the piece that was promoted to
+			 */
+			switch (promote)
+			{
+				case piece_t::knight:
+					_knights[_to_move]
+						&= tables.clear_mask[to];
+					break;
+				case piece_t::rook:
+					_rooks[_to_move]
+						&= tables.clear_mask[to];
+					break;
+				case piece_t::queen:
+					_queens[_to_move]  
+						&= tables.clear_mask[to];
+					break;
+				case piece_t::bishop:
+					_bishops[_to_move] 
+						&= tables.clear_mask[to];
+					break;
+				default:
+					_pawns[ _to_move ]
+						&= tables.clear_mask[to];
+			}
+		}
+		else if (moved == piece_t::knight)
+		{
+			/*
+			 * 8.2 A knight was moved. Clear the "to" bit and
+			 *     set the origin bit in the knight board
+			 */
+			clear_set64(to, from, _knights[_to_move]);
+		}
+		else if (moved == piece_t::rook)
+		{
+			/*
+			 * 8.3 A rook was moved. Clear the "to" bit and
+			 *     set the origin bit in the rook board
+			 */
+			clear_set64( to, from, _rooks[_to_move] );
+		}
+		else if (moved == piece_t::bishop)
+		{
+			/*
+			 * 8.4 A bishop was moved. Clear the "to" bit and
+			 *     set the origin bit in the bishop board
+			 */
+			clear_set64(to, from, _bishops[_to_move]);
+		}
+		else if (moved == piece_t::queen)
+		{
+			/*
+			 * 8.5 A queen was moved. Clear the "to" bit and
+			 *     set the origin bit in the queen board
+			 */
+			clear_set64( to, from, _queens[_to_move]);
+		}
+		else if (moved == piece_t::king)
+		{
+			/*
+			 * 8.6 A king was moved. Clear the "to" bit and
+			 *     set the origin bit in the king board
+			 */
+			clear_set64( to, from, _kings[_to_move] );
 				_king_sq[_to_move] = from;
 
-				/*
-				 * Check if this was a castle move and update
-				 * the rook bits accordingly:
-				 */
-				if (abs(from-to) == 2)
+			/*
+			 * 8.6.1 Handle castling moves
+			 */
+			if (abs(from-to) == 2)
+			{
+				if (to == tables.castle_OO_dest[_to_move])
 				{
-					if (to == tables.castle_OO_dest[_to_move])
-					{
-						_pieces[to-1] = piece_t::rook;
-						_pieces[to+1] = piece_t::empty;
+					/*
+					 * 8.6.1.1 This move castles short. Remove
+					 *         the rook from the F1 (or F8) square
+					 *         and place it on its home square
+					 */
+					_pieces[to-1] = piece_t::rook;
+					_pieces[to+1] = piece_t::empty;
 
-						clear_set64(to+1, to-1, _occupied[_to_move]);
-						clear_set64(to+1, to-1, _rooks[_to_move]);
-					}
-					else // Queenside castle
-					{
-						_pieces[to+2] = piece_t::rook;
-						_pieces[to-1] = piece_t::empty;
-
-						clear_set64(to-1, to+2, _occupied[_to_move]);
-						clear_set64(to-1, to+2, _rooks[_to_move]);
-					}
+					clear_set64(to+1, to-1, _rooks[_to_move]);
+					clear_set64(to+1, to-1,
+						_occupied[ _to_move ]);
 				}
-			default:
-				break;
+				else
+				{
+					/*
+					 * 8.6.1.2 This move castles long. Remove
+					 *         the rook from the D1 (or D8) square
+					 *         and place it on its home square
+					 */
+					_pieces[to+2] = piece_t::rook;
+					_pieces[to-1] = piece_t::empty;
+
+					clear_set64(to-1, to+2, _rooks[_to_move]);
+					clear_set64(to-1, to+2,
+						_occupied[ _to_move ]);
+					
+				}
+			}
+		}
+		else // invalid piece was moved
+		{
+			Abort(false);
 		}
 
 		/*
-		 * Restore the opponent's board info if this
-		 * was a capture
+		 * 9. Handle captures
 		 */
 		if (captured != piece_t::empty)
 		{
+			/*
+			 * 9.1 Add the captured piece's value back into the
+			 *     material balance
+			 */
 			delta_material += tables.piece_value[captured];
 
 			/*
-			 * Restore the enemy occupancy:
+			 * 9.2  Restore the enemy occupancy bitboard if the
+			 *      captured piece was NOT a pawn, since en
+			 *      passant captures must be handled separately
 			 */
-			_occupied[flip(_to_move)]
-				|= tables.set_mask[ to ];
-
-			switch (captured)
+			if (captured != piece_t::pawn)
 			{
-				case piece_t::pawn:
+				_occupied[flip(_to_move)]
+					|= tables.set_mask[ to ];
+			}
 
-					if (to == _ep_info[_ply].target)
-					{
-						//  This was an en passant capture:
+			/*
+			 * 9.3 Captured piece-specific restorations:
+			 */
+			if (captured == piece_t::pawn)
+			{
+				/*
+				 * 9.3.1 A pawn was captured
+				 */
+				if (to == _ep_info[_ply].target)
+				{
+					/*
+					 * 9.3.1.1 If this was an en passant capture,
+					 *         restore the captured pawn to its double
+					 *         advanced location, and update the
+					 *         enemy occupancy
+					 */
+				  	const square_t vic = tables.minus_8[_to_move][to];
 
-						_occupied[flip(_to_move)] &=
-					  				tables.clear_mask[to];
+				  	_pieces[vic] = piece_t::pawn;
 
-					  	const square_t vic = tables.minus_8[_to_move][to];
+				  	_occupied[flip(_to_move)] |= tables.set_mask[vic];
+				  	_pawns[flip(_to_move)]    |= tables.set_mask[vic];
 
-					  	_pieces[vic] = piece_t::pawn;
-
-					  	_occupied[flip(_to_move)] |=tables.set_mask[vic];
-					  	_pawns[flip(_to_move)]    |= tables.set_mask[vic];
-
-						_pieces[to] = piece_t::empty;
-					}
-					else
-					{
-						_pawns[flip(_to_move)] |=
-							tables.set_mask[to];
-					}
-
-					break;
-
-				case piece_t::knight:
-					_knights[flip(_to_move)] |= tables.set_mask[to];
-					break;
-				case piece_t::queen:
-					_queens[flip(_to_move)]  |= tables.set_mask[to];
-					break;
-				case piece_t::rook:
-					_rooks[ flip(_to_move) ] |= tables.set_mask[to];
-					break;
-				case piece_t::bishop:
-					_bishops[flip(_to_move)] |= tables.set_mask[to];
-				default:
-					break;
+					_pieces[to] = piece_t::empty;
+				}
+				else
+				{
+					/*
+					 * 9.3.1.2 Otherwise, this was a normal capture;
+					 *         restore the captured pawn to its diagonal
+					 *         offset and update the enemy occupancy
+					 */
+					_occupied[flip(_to_move)]
+						|= tables.set_mask[ to ];
+					_pawns[flip(_to_move)]
+						|= tables.set_mask[ to ];
+				}
+			}
+			else if (captured == piece_t::knight)
+			{
+				/*
+				 * 9.3.2 If this was a knight capture, reset the "to"
+				 *       bit in the enemy knights bitboard
+				 */
+				_knights[flip(_to_move)] |= tables.set_mask[to];
+			}
+			else if (captured == piece_t::queen)
+			{
+				/*
+				 * 9.3.3 If this was a queen capture, reset the "to"
+				 *       bit in the enemy queens bitboard
+				 */
+				_queens[flip(_to_move)] |= tables.set_mask[to];
+			}
+			else if (captured == piece_t::rook)
+			{
+				/*
+				 * 9.3.4 If this was a rook capture, reset the "to"
+				 *       bit in the enemy rooks bitboard
+				 */
+				_rooks[flip(_to_move)] |= tables.set_mask[to];
+			}
+			else if (captured == piece_t::bishop)
+			{
+				/*
+				 * 9.3.5 If this was a bishop capture, reset the "to"
+				 *       bit in the enemy bishops bitboard
+				 */
+				_bishops[flip(_to_move)] |= tables.set_mask[to];
 			}
 		}
 
+		/*
+		 * 10. If black played, decrement the full
+		 *     move number
+		 */
 		if (_to_move == player_t::black)
 			_full_move--;
 
 		/*
-		 * Restore the material balance:
+		 * 11. Restore the material balance
 		 */
-		if (_to_move == player_t::white)
+		if ( _to_move == player_t::white )
 			_material -= delta_material;
 		else
 			_material += delta_material;
