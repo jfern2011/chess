@@ -474,4 +474,230 @@ namespace
 				<< moves_str;
 		}
 	}
+
+	TEST(MoveGen, rook)
+	{
+		Handle<std::ostream>
+			stream(new std::ostream(std::cout.rdbuf()));
+
+		Position pos(stream);
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"6K1/8/4pq1r/8/3pR3/8/8/4b1k1 w - - 0 1"));
+
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_noncaptures(pos, actual);
+
+			const square_t to_rook[]    =  {square_t::E2,
+											square_t::E3,
+											square_t::E5,
+											square_t::F4,
+											square_t::G4,
+											square_t::H4};
+
+			std::vector<int32> expected;
+
+			for (int i = 0; i < 6; i++)
+			{
+				expected.push_back(pack_move(piece_t::empty,
+											 square_t::E4,
+											 piece_t::rook,
+											 piece_t::empty,
+											 to_rook[i]));
+			}
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			EXPECT_EQ(n_moves, expected.size())
+				<< moves_str;
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"6K1/8/4pq1r/8/3pR3/8/8/4b1k1 w - - 0 1"));
+
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_captures(pos, actual);
+
+			const square_t to_rook[]    =  {square_t::E1,
+											square_t::D4,
+											square_t::E6};
+
+			const piece_t captured[]    =  {piece_t::pawn,
+											piece_t::pawn,
+											piece_t::bishop};
+
+			std::vector<int32> expected;
+
+			for (int i = 0; i < 3; i++)
+			{
+				expected.push_back(pack_move(captured[i],
+											 square_t::E4,
+											 piece_t::rook,
+											 piece_t::empty,
+											 to_rook[i]));
+			}
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			EXPECT_EQ(n_moves, expected.size())
+				<< moves_str;
+		}
+	}
+
+	TEST(MoveGen, knight)
+	{
+		Handle<std::ostream>
+			stream(new std::ostream(std::cout.rdbuf()));
+
+		Position pos(stream);
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"7K/3pr1r1/6p1/4N3/2p5/5p2/8/7k w - - 0 1"));
+
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_noncaptures(pos, actual);
+
+			const square_t to_knight[]  =  {square_t::F7,
+											square_t::C6,
+											square_t::G4,
+											square_t::D3};
+
+			std::vector<int32> expected;
+
+			for (int i = 0; i < 4; i++)
+			{
+				expected.push_back(pack_move(piece_t::empty,
+											 square_t::E5,
+											 piece_t::knight,
+											 piece_t::empty,
+											 to_knight[i]));
+			}
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			EXPECT_EQ(n_moves, expected.size())
+				<< moves_str;
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"7K/3pr1r1/6p1/4N3/2p5/5p2/8/7k w - - 0 1"));
+
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_captures(pos, actual);
+
+			const square_t to_knight[]  =  {square_t::G6,
+											square_t::D7,
+											square_t::C4,
+											square_t::F3};
+
+			std::vector<int32> expected;
+
+			for (int i = 0; i < 4; i++)
+			{
+				expected.push_back(pack_move(piece_t::pawn,
+											 square_t::E5,
+											 piece_t::knight,
+											 piece_t::empty,
+											 to_knight[i]));
+			}
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			EXPECT_EQ(n_moves, expected.size())
+				<< moves_str;
+		}
+	}
+
+	TEST(MoveGen, bishop)
+	{
+		Handle<std::ostream>
+			stream(new std::ostream(std::cout.rdbuf()));
+
+		Position pos(stream);
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"7K/p3r1r1/3p4/2B5/8/8/8/6bk w - - 0 1"));
+
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_noncaptures(pos, actual);
+
+			const square_t to_bishop[]  =  {square_t::B6,
+											square_t::A3,
+											square_t::B4,
+											square_t::F2,
+											square_t::E3,
+											square_t::D4};
+
+			std::vector<int32> expected;
+
+			for (int i = 0; i < 6; i++)
+			{
+				expected.push_back(pack_move(piece_t::empty,
+											 square_t::C5,
+											 piece_t::bishop,
+											 piece_t::empty,
+											 to_bishop[i]));
+			}
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			EXPECT_EQ(n_moves, expected.size())
+				<< moves_str;
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"7K/p3r1r1/3p4/2B5/8/8/8/6bk w - - 0 1"));
+
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_captures(pos, actual);
+
+			const square_t to_bishop[]  =  {square_t::A7,
+											square_t::D6,
+											square_t::G1};
+
+			const piece_t captured[]    =  {piece_t::pawn,
+											piece_t::pawn,
+											piece_t::bishop};
+
+			std::vector<int32> expected;
+
+			for (int i = 0; i < 3; i++)
+			{
+				expected.push_back(pack_move(captured[i],
+											 square_t::C5,
+											 piece_t::bishop,
+											 piece_t::empty,
+											 to_bishop[i]));
+			}
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			EXPECT_EQ(n_moves, expected.size())
+				<< moves_str;
+		}
+	}
 }
