@@ -665,27 +665,930 @@ namespace Chess
 			return count;
 		}
 
-		inline int64 perft(Position& pos, int depth)
+		/**
+		 * Generate moves that get a king out of check. It's assumed that if
+		 * this method is called, the player on move is in check. Note all
+		 * generated moves are strictly legal
+		 *
+		 * @param[in] pos     The current position
+		 * @param[out] moves  The set of moves
+		 *
+		 * @return  The total number of moves that were generated that evade
+		 *          check
+		 */
+		inline size_t MoveGen::generate_check_evasions(
+			const Position& pos, int32* moves) const
 		{
-			BUFFER(int32, moves, max_moves);
+			const uint64 occupied = pos.get_occupied(player_t::white) |
+									pos.get_occupied(player_t::black);
 
-			size_t count = generate_captures(pos, moves);
-			count += generate_noncaptures(pos, &moves[count]);
+			const player_t to_move = pos.get_turn();
 
-			if (depth <= 1) return count;
+			const square_t king_square = pos.get_king_square(to_move);
 
-			int64 nodes = 0;
+			const auto & tables = DataTables::get();
 
-			for (size_t i = 0; i < count; ++i)
+			size_t count = 0;
+
+			/*
+			 * Step 1: Gather all enemy squares attacking our king
+			 */
+			const uint64 attacks_king =
+				pos.attacks_to(king_square, flip(to_move));
+
+			/*
+			 * Step 2: Generate king moves that get out of check
+			 */
+			uint64 _moves = pos.attacks_from<piece_t::king>(king_square)
+								& (~pos.get_occupied(to_move));
+
+			while (_moves)
 			{
-				pos.make_move(moves[i]);
+				const int to = Util::msb64(_moves);
+				Util::clear_bit64(to, _moves);
 
-				nodes += perft(pos, depth-1);
+				const uint64 attack_dir =
+					tables.ray_extend[king_square][to] & attacks_king;
 
-				pos.unmake_move(moves[i]);
+				const uint64 rooks_queens =
+					pos.get_bitboard<piece_t::queen >(flip(to_move)) |
+					pos.get_bitboard<piece_t::rook  >(flip(to_move));
+
+				const uint64 bishops_queens =
+					pos.get_bitboard<piece_t::queen >(flip(to_move)) |
+					pos.get_bitboard<piece_t::bishop>(flip(to_move));
+
+				/*
+				 * This says if we're in check by a sliding piece, then
+				 * do not move along the line of attack unless it is to
+				 * capture the checking piece
+				 */
+				if (((attack_dir & rooks_queens) || (attack_dir & bishops_queens))
+							&& !(tables.set_mask[to] & attacks_king))
+					continue;
+
+				if (!pos.under_attack(to, flip(to_move)))
+				{
+					moves[count++] = pack(pos.piece_on(to),
+										  king_square,
+										  piece_t::king,
+										  piece_t::empty,
+										  to);
+				}
 			}
 
-			return nodes;
+			/*
+			 * Step 3a: If the king is attacked twice, we are done
+			 */
+			if (attacks_king & (attacks_king-1))
+		 	   return count;
+
+		 	/*
+			 * Step 3b: Otherwise, (1) get the square the attacking piece
+			 *          is on (the "to" square for capture moves), and
+			 *          (2) a bitboard connecting the king square and the
+			 *          attacking piece for interposing moves
+			 */
+		 	const int attacker  = Util::msb64(attacks_king);
+		 	const uint64 target =
+		 		  	tables.ray_segment[king_square][attacker];
+
+		 	const uint64 pinned =
+		 		pos.get_pinned_pieces(to_move);
+
+		 	/*
+		 	 * Step 4: Generate knight, rook, bishop, and queen moves:
+		 	 */
+		 	count += generate(pos, target | tables.set_mask[attacker],
+							  pinned, &moves[count]);
+
+			/*
+			 * Step 5: Generate pawn moves
+			 */
+			pieces = pos.get_bitboard<piece_t::pawn>(to_move)
+						& (~pinned);
+
+			/*
+			 * Step 5a: Generate pawn moves that capture the checking
+			 *          piece
+			 */
+			const uint64 r_caps =
+				shift_pawns<7>(pieces, to_move) & attacks_king;
+			const uint64 l_caps =
+				shift_pawns<9>(pieces, to_move) & attacks_king;
+
+			if (r_caps)
+			{
+				const square_t from = tables.minus_7[to_move][to];
+
+				if (tables.set_mask[attacker] & tables.back_rank[flip(to_move)])
+				{
+					moves[count++] = pack_move(pos.piece_on(to),
+											   from,
+											   piece_t::pawn,
+											   piece_t::knight,
+											   to);
+
+					moves[count++] = pack_move(pos.piece_on(to),
+											   from,
+											   piece_t::pawn,
+											   piece_t::bishop,
+											   to);
+
+					moves[count++] = pack_move(pos.piece_on(to),
+											   from,
+											   piece_t::pawn,
+											   piece_t::rook,
+											   to);
+
+					moves[count++] = pack_move(pos.piece_on(to),
+											   from,
+											   piece_t::pawn,
+											   piece_t::queen,
+											   to);
+				}
+				else
+				{
+					moves[count++] = pack_move(pos.piece_on(to),
+											   from,
+											   piece_t::pawn,
+											   piece_t::empty,
+											   to);
+				}
+			}
+
+			if (l_caps)
+			{
+				const square_t from = tables.minus_9[to_move][to];
+
+				if (tables.set_mask[attacker] & tables.back_rank[flip(to_move)])
+				{
+					moves[count++] = pack_move(pos.piece_on(to),
+											   from,
+											   piece_t::pawn,
+											   piece_t::knight,
+											   to);
+
+					moves[count++] = pack_move(pos.piece_on(to),
+											   from,
+											   piece_t::pawn,
+											   piece_t::bishop,
+											   to);
+
+					moves[count++] = pack_move(pos.piece_on(to),
+											   from,
+											   piece_t::pawn,
+											   piece_t::rook,
+											   to);
+
+					moves[count++] = pack_move(pos.piece_on(to),
+											   from,
+											   piece_t::pawn,
+											   piece_t::queen,
+											   to);
+				}
+				else
+				{
+					moves[count++] = pack_move(pos.piece_on(to),
+											   from,
+											   piece_t::pawn,
+											   piece_t::empty,
+											   to);
+				}
+			}
+
+			/*
+			 * Step 5b: Generate en passant captures
+			 */
+			if (pos.ep_data().target != square_t::BAD_SQUARE
+					&& pos.piece_on(attacker) == piece_t::pawn)
+			{
+				const square_t from1 = pos.ep_data().src[0];
+				const square_t from2 = pos.ep_data().src[1];
+
+				const square_t to = pos.ep_data().target;
+
+				if ((from1 != square_t::BAD_SQUARE)
+						&& ! (tables.set_mask[from1] & pinned))
+				{
+					moves[count++] = pack(piece_t::pawn,
+										  from1,
+										  piece_t::pawn,
+										  piece_t::empty,
+										  to);
+				}
+
+				if ((from2 != square_t::BAD_SQUARE)
+						&& ! (tables.set_mask[from2] & pinned))
+				{
+					moves[count++] = pack(piece_t::pawn,
+										  from2,
+										  piece_t::pawn,
+										  piece_t::empty,
+										  to);
+				}
+			}
+
+			/*
+			 * If we're in check by a knight or pawn then we're
+			 * done (it makes no sense to check for interposing
+			 * moves here)
+			 */
+			if (pos.piece_on(attacker) == piece_t::knight ||
+				pos.piece_on(attacker) == piece_t::pawn)
+				return count;
+
+			/*
+			 * Step 5c: Generate interposing pawn moves
+			 */
+			uint64 advances1 = 
+				shift_pawns<8>(pos.get_bitboard<piece_t::pawn>(to_move),
+					to_move) & (~occupied) & target;
+
+			uint64 promotions =
+				advances1 & tables.back_rank[flip(to_move)];
+
+			advances1 ^= promotions;
+
+			uint64 advances2
+				= shift_pawns<8>(advances1 & tables._3rd_rank[ to_move],
+					to_move) & (~occupied) & target;
+
+		    while (advances1)
+		    {
+		        const square_t to   = msb64(advances1);
+		        const square_t from = tables.minus_8[to_move][to];
+
+		        clear_bit64(to, advances1);
+
+		        if (pinned & tables.set_mask[from])
+		        	continue;
+
+		        if (tables.set_mask[to] & (rank_8 | rank_1))
+		        {
+		        	moves[count++] = pack_move(piece_t::empty,
+											   from,
+											   piece_t::pawn,
+											   piece_t::knight,
+											   to);
+
+					moves[count++] = pack_move(piece_t::empty,
+											   from,
+											   piece_t::pawn,
+											   piece_t::bishop,
+											   to);
+
+					moves[count++] = pack_move(piece_t::empty,
+											   from,
+											   piece_t::pawn,
+											   piece_t::rook,
+											   to);
+
+					moves[count++] = pack_move(piece_t::empty,
+											   from,
+											   piece_t::pawn,
+											   piece_t::queen,
+											   to);
+		        }
+		        else
+		        {
+		        	moves[count++] = pack_move(piece_t::empty,
+											   from,
+											   piece_t::pawn,
+											   piece_t::empty,
+											   to);
+		        }
+		    }
+
+		    while (advances2)
+		    {
+		        const square_t to   = msb64(advances2);
+		        const square_t from = tables.minus_16[to_move][to];
+
+		        clear_bit64(to, advances2);
+		        
+		        if (pinned & tables.set_mask[from])
+		            continue;
+		        
+		        moves[count++] = pack(piece_t::empty,
+		        					  from,
+		        					  piece_t::pawn,
+		        					  piece_t::empty,
+		        					  to);
+		    }
+
+		    return count;
+		}
+
+		/**
+		 * Generate a set of strictly legal moves that deliver check, but are
+		 * neither captures nor pawn promotions since those are already
+		 * generated in \ref generate_captures()
+		 *
+		 * @param[in] pos     The current position
+		 * @param[out] moves  The set of checks
+		 *
+		 * @return The total number of moves that were generated that deliver
+		 *         check
+		 */
+		inline size_t MoveGen::generate_checks(const Position& pos,
+			int32* moves) const
+		{
+			const uint64 occupied = pos.get_occupied(player_t::white) |
+									pos.get_occupied(player_t::black);
+
+			const player_t to_move  = pos.get_turn();
+			const player_t opponent = flip(to_move);
+
+			const square_t king_square  = pos.get_king_square(to_move);
+			const square_t xking_square = pos.get_king_square(opponent);
+
+			const uint64 target = ~occupied;
+
+			const auto & tables = DataTables::get();
+
+			const uint64 pinned  = pos.get_pinned_pieces(to_move);
+			const uint64 xpinned = pos.get_discover_ready(opponent);
+
+			size_t count = 0;
+
+			/*
+			 * 1. Generate pawn non-captures and non-promotions that uncover
+			 *    check:
+			 */
+
+			/*
+			 * 1.1 Generate discovered checks:
+			 */
+			const uint64 candidates =
+				pos.get_bitboard<piece_t::pawn>(to_move) & xpinned;
+
+			uint64 advances1 = shift_pawns< 8 >(candidates, to_move)
+								& (~tables.back_rank[opponent])
+								& (~occupied);
+
+			uint64 advances2 = shift_pawns<8>(
+				advances1 & _3rd_rank[to_move], to_move)
+					& (~occupied);
+
+			while (advances1)
+			{
+				const square_t to    = msb64(advances1);
+				const square_t from = tables.minus_8[to_move][to];
+
+				/*
+				 * Don't include this move if (1) our pawn in pinned and
+				 * we're not moving in the "pin" direction, or (2) the
+				 * opponent's king is on the same file as the moved pawn,
+				 * which cannot possibly result in a discovered check:
+				 */
+				if (((tables.set_mask[from] & pinned) &&
+					 tables.directions[from][king_square ] !=
+						direction_t::along_file) ||
+					(tables.directions[from][xking_square] ==
+						direction_t::along_file))
+				{
+					clear_bit64(to, advances1);
+					continue;
+				}
+				else
+				{
+					moves[count++] = pack(piece_t::empty,
+										  from,
+										  piece_t::pawn,
+										  piece_t::empty,
+										  to);
+				}
+
+				clear_bit64(to, advances1);
+			}
+
+			while (advances2)
+			{
+				const square_t to   = msb64(advances2);
+				const square_t from = tables.minus_16[to_move][to];
+
+				/*
+				 * Don't include this move if (1) our pawn in pinned and
+				 * we're not moving in the "pin" direction, or (2) the
+				 * opponent's king is on the same file as the moved pawn,
+				 * which cannot possibly result in a discovered check:
+				 */
+				if (((tables.set_mask[from] & pinned) &&
+					 tables.directions[from][king_square ] !=
+						direction_t::along_file) ||
+					(tables.directions[from][xking_square] ==
+						direction_t::along_file))
+				{
+					clear_bit64(to, advances2);
+					continue;
+				}
+				else
+				{
+					moves[count++] = pack(piece_t::empty,
+										  from,
+										  piece_t::pawn,
+										  piece_t::empty,
+										  to);
+				}
+
+				clear_bit64(to, advances2);
+			}
+
+			/*
+			 * 1.2 Generate direct checks:
+			 */
+			const uint64 attack_mask =
+				tables.pawn_attacks[opponent][xking_square];
+
+			uint64 pawn_adv1 =
+				shift_pawns<8>(
+					pos.get_bitboard< piece_t::pawn >(to_move), to_move)
+						& (~occupied) & (~tables.back_rank[opponent]);
+
+			uint64 pawn_adv2 =
+				shift_pawns<8>( pawn_adv1 & _3rd_rank[to_move], to_move)
+					& (~occupied);
+
+			pawn_adv1 &= attack_mask;
+			pawn_adv2 &= attack_mask;
+
+			while (pawn_adv1)
+			{
+				const square_t to   = msb64(pawn_adv1);
+				const square_t from = tables.minus_8[to_move][to];
+
+				if ((tables.set_mask[from] & pinned) &&
+					(tables.directions[from][king_square] !=
+						direction_t::along_file))
+				{
+					clear_bit64(to, pawn_adv1);
+					continue;
+				}
+				else
+				{
+					moves[count++] = pack(piece_t::empty,
+										  from,
+										  piece_t::pawn,
+										  piece_t::empty,
+										  to);
+				}
+
+				clear_bit64(to, pawn_adv1);
+			}
+
+			while (pawn_adv2)
+			{
+				const square_t to   = msb64(pawn_adv2);
+				const square_t from = tables.minus_16[to_move][to];
+
+				if ((tables.set_mask[from] & pinned) &&
+					(tables.directions[from][king_square] !=
+						direction_t::along_file))
+				{
+					clear_bit64(to, pawn_adv2);
+					continue;
+				}
+				else
+				{
+					moves[count++] = pack(piece_t::empty,
+										  from,
+										  piece_t::pawn,
+										  piece_t::empty,
+										  to);
+				}
+
+				clear_bit64(to, pawn_adv2);
+			}
+
+			/*
+			 * 2.1 Generate knight non-captures that deliver discovered
+			 *     check
+			 */
+			uint64 pieces =
+				pos.get_bitboard<piece_t::knight >(to_move) & xpinned & (~pinned);
+			while (pieces)
+			{
+				const square_t from = msb64(pieces);
+				uint64 attacks = tables.knight_attacks[from] & target;
+
+				while (attacks)
+				{
+					const square_t to = msb64(attacks);
+					moves[count++] = pack(piece_t::empty,
+										  from,
+										  piece_t::knight,
+										  piece_t::empty,
+										  to);
+
+					clear_bit64(to, attacks);
+				}
+
+				clear_bit64(from, pieces);
+			}
+
+			/*
+			 * 2.2 Generate knight non-captures that deliver direct
+			 *     check
+			 */
+			pieces =
+				pos.get_bitboard<piece_t::knight>(to_move) & ~xpinned & (~pinned);
+
+			const uint64 attacksTo =
+					tables.knight_attacks[xking_square];
+			while (pieces)
+			{
+				const square_t from = msb64(pieces);
+				uint64 attacks =
+					tables.knight_attacks[from] & target & attacksTo;
+
+				while (attacks)
+				{
+					const square_t to = msb64(attacks);
+					moves[count++] = pack(piece_t::empty,
+										  from,
+										  piece_t::knight,
+										  piece_t::empty,
+										  to);
+
+					clear_bit64(to, attacks);
+				}
+
+				clear_bit64(from, pieces);
+			}
+
+			/*
+			 * 3.1 Generate king non-captures that deliver discovered
+			 *     check
+			 */
+			pieces = pos.get_bitboard<piece_t::king>(to_move) & xpinned;
+			while (pieces)
+			{
+				const square_t from = msb64(pieces);
+
+				uint64 attacks = tables.king_attacks[from] & target;
+
+				while (attacks)
+				{
+					const square_t to = msb64(attacks);
+
+					if (pos.under_attack(to, xside) ||
+						tables.directions[to][king_square] ==
+						    tables.directions[king_square][xking_square])
+					{
+						clear_bit64(to, attacks);
+						continue;
+					}
+					moves[count++] = pack(piece_t::empty,
+										  from,
+										  piece_t::king,
+										  piece_t::empty,
+										  to);
+
+					clear_bit64(to, attacks);
+				}
+
+				clear_bit64(from, pieces);
+			}
+
+			/*
+			 * 3.2 Generate castle moves that deliver direct check
+			 */ 
+			if (pos.can_castle_short(to_move))
+			{
+				if (!(occupied & tables.kingside[to_move])
+					&& !pos.under_attack(tables.castle_OO_path[to_move][0],
+										 xside)
+					&& !pos.under_attack(tables.castle_OO_path[to_move][1],
+										 xside))
+				{
+					const square_t F_ =
+						to_move == player_t::white ? square_t::F1 : square_t::F8;
+
+					if (pos.attacks_from_rook(
+						F_, occupied ^ pos.get_bitboard<piece_t::king>(to_move))
+							& pos.get_bitboard<piece_t::king>(xside))
+					{
+						moves[count++] =
+							pack_move(piece_t::empty,
+									  tables.king_home[to_move],
+									  piece_t::king,
+									  piece_t::empty,
+									  tables.castle_OO_dest[to_move]);
+					}
+				}
+			}
+
+			if (pos.can_castle_long(to_move))
+			{
+				if (!(occupied & tables.queenside[to_move])
+					&& !pos.under_attack(tables.castle_OOO_path[to_move][0],
+										 xside)
+					&& !pos.under_attack(tables.castle_OOO_path[to_move][1],
+										 xside))
+				{
+					const square_t D_ =
+						to_move == player_t::white ? square_t::D1 : square_t::D8;
+
+					if (pos.attacks_from_rook(
+						D_, occupied ^ pos.get_bitboard<piece_t::king>(to_move))
+							& pos.get_bitboard<piece_t::king>(xside))
+					{
+						moves[count++] =
+							pack_move(piece_t::empty,
+									  tables.king_home[to_move],
+									  piece_t::king,
+									  piece_t::empty,
+									  tables.castle_OOO_dest[to_move]);
+					}
+				}
+			}
+
+			/*
+			 * 4.1 Generate bishop non-captures that deliver discovered
+			 *     check
+			 */
+			pieces = pos.get_bitboard<piece_t::bishop>(to_move) & xpinned;
+			while (pieces)
+			{
+				const square_t from = msb64(pieces);
+
+				/*
+				 * If the bishop is pinned along a file or rank then we cannot
+				 * move it, so don't bother generating an attacks_from
+				 * bitboard. If it's pinned along an a1-h8 diagonal, clear the
+				 * h1-a8 bits of its attacks_from bitboard to ensure we only
+				 * keep moves along the direction of the pin (similar idea for
+				 * when pinned along an h1-a8 direction):
+				 */
+				uint64 restrictAttacks = ~0;
+
+				if (tables.set_mask[from] & pinned)
+				{
+					switch (tables.directions[from][king_square])
+					{
+					case direction_t::along_file:
+					case direction_t::along_rank:
+						clear_bit64(from, pieces);
+						continue;
+					case direction_t::along_a1h8:
+						restrictAttacks = tables.a1h8_64[from];
+						break;
+					default:
+						restrictAttacks = tables.h1a8_64[from];
+					}
+				}
+
+				uint64 attacks =
+					pos.attacks_from<piece_t::bishop>(from) & target
+						& restrictAttacks;
+
+				while (attacks)
+				{
+					const square_t to = msb64(attacks);
+
+					moves[count++] = pack(piece_t::empty,
+										  from,
+										  piece_t::bishop,
+										  piece_t::empty,
+										  to);
+
+					clear_bit64(to, attacks);
+				}
+
+				clear_bit64(from, pieces);
+			}
+
+			/*
+			 * 4.2 Generate bishop non-captures that deliver direct
+			 *     check
+			 */
+			const uint64 diagTarget = 
+					pos.attacks_from<piece_t::bishop>(xking_square);
+
+			pieces = pos.get_bitboard<piece_t::bishop>(to_move) & (~xpinned);
+
+			while (pieces)
+			{
+				const square_t from = msb64(pieces);
+
+				/*
+				 * If the bishop is pinned along a file or rank then we cannot
+				 * move it, so don't bother generating an attacks_from
+				 * bitboard. If it's pinned along an a1-h8 diagonal, clear the
+				 * h1-a8 bits of its attacks_from bitboard to ensure we only
+				 * keep moves along the direction of the pin (similar idea for
+				 * when pinned along an h1-a8 direction):
+				 */
+				uint64 restrictAttacks = ~0;
+
+				if (tables.set_mask[from] & pinned)
+				{
+					switch (_tables.directions[from][king_square])
+					{
+					case direction_t::along_file:
+					case direction_t::along_rank:
+						clear_bit64(from, pieces);
+						continue;
+					case direction_t::along_a1h8:
+						restrictAttacks = tables.a1h8_64[from];
+						break;
+					default:
+						restrictAttacks = tables.h1a8_64[from];
+					}
+				}
+
+				uint64 attacks =
+					pos.attacks_from<piece_t::bishop>(from) & target
+						& diagTarget & restrictAttacks;
+
+				while (attacks)
+				{
+					const square_t to = msb64(attacks);
+					
+					moves[count++] = pack(piece_t::empty,
+										  from,
+										  piece_t:;bishop,
+										  piece_t::empty,
+										  to);
+
+					clear_bit64(to, attacks);
+				}
+
+				clear_bit64(from, pieces);
+			}
+
+			/*
+			 * 5.1 Generate rook non-captures that deliver discovered
+			 *     check
+			 */
+			pieces = pos.get_bitboard<piece_t::rook>(to_move) & xpinned;
+			while (pieces)
+			{
+				const square_t from = msb64(pieces);
+
+				/*
+				 * If this rook is pinned along a diagonal then we cannot move
+				 * it, so don't bother generating an attacks_from bitboard.
+				 * If pinned along a rank then clear the file bits of its
+				 * attacks_from bitboard to ensure we only keep moves along
+				 * the direction of the pin (similar reasoning for when pinned
+				 * along a file):
+				 */
+				uint64 restrictAttacks = ~0;
+
+				if (tables.set_mask[from] & pinned)
+				{
+					switch (tables.directions[from][king_square])
+					{
+					case direction_t::along_a1h8:
+					case direction_t::along_h1a8:
+						clear_bit64(from, pieces);
+						continue;
+					case direction_t::along_rank:
+						restrictAttacks = tables.ranks64[from];
+						break;
+					default:
+						restrictAttacks = tables.files64[from];
+					}
+				}
+
+				uint64 attacks =
+					pos.attacks_from<piece_t::rook>(from) & target
+						& restrictAttacks;
+
+				while (attacks)
+				{
+					const square_t to = msb64(attacks);
+
+					moves[count++] = pack(piece_t::empty,
+										  from,
+										  piece_t::rook,
+										  piece_t::empty,
+										  to);
+
+					clear_bit64(to, attacks);
+				}
+
+				clear_bit64(from, pieces);
+			}
+
+			/*
+			 * 5.2 Generate rook non-captures that deliver direct
+			 *     check
+			 */
+			const uint64 rookTarget = 
+				pos.attacks_from<piece_t::rook>(xking_square);
+
+			pieces = pos.get_bitboard<piece_t::rook>(to_move) & (~xpinned);
+
+			while (pieces)
+			{
+				const square_t from = msb64( pieces );
+
+				/*
+				 * If this rook is pinned along a diagonal then we cannot move
+				 * it, so don't bother generating an attacks_from bitboard.
+				 * If pinned along a rank then clear the file bits of its
+				 * attacks_from bitboard to ensure we only keep moves along
+				 * the direction of the pin (similar reasoning for when pinned
+				 * along a file):
+				 */
+				uint64 restrictAttacks = ~0;
+
+				if (tables.set_mask[from] & pinned)
+				{
+					switch (tables.directions[from][king_square])
+					{
+					case direction_t::along_a1h8:
+					case direction_t::along_h1a8:
+						clear_bit64(from, pieces);
+						continue;
+					case direction_t::along_rank:
+						restrictAttacks = tables.ranks64[from];
+						break;
+					default:
+						restrictAttacks = tables.files64[from];
+					}
+				}
+
+				uint64 attacks =
+					pos.attacks_from<piece_t::rook>(from) & target
+						& rookTarget & restrictAttacks;
+
+				while (attacks)
+				{
+					const square_t to = msb64(attacks);
+
+					moves[count++] = pack(piece_t::empty,
+										  from,
+										  piece_t::rook,
+										  piece_t::empty,
+										  to);
+
+					clear_bit64(to, attacks);
+				}
+
+				clear_bit64(from, pieces);
+			}
+
+			/*
+			 * 6. Generate queen non-captures that deliver direct check (queens
+			 *    cannot uncover check):
+			 */
+			const uint64 queenTarget = diagTarget | rookTarget;
+
+			pieces = pos.get_bitboard<piece_t::queen>(to_move);
+
+			while (pieces)
+			{
+				const square_t from = msb64(pieces);
+
+				/*
+				 * If the queen is pinned, then restrict its motion to along
+				 * the direction of the pin:
+				 */
+				uint64 restrictAttacks = ~0;
+
+				if (tables.set_mask[from] & pinned)
+				{
+					switch (tables.directions[from][king_square])
+					{
+					case direction_t::along_a1h8:
+						restrictAttacks = tables.a1h8_64[from];
+						break;
+					case direction_t::along_h1a8:
+						restrictAttacks = tables.h1a8_64[from];
+						break;
+					case direction_t::along_rank:
+						restrictAttacks = tables.ranks64[from];
+						break;
+					default:
+						restrictAttacks = tables.files64[from];
+					}
+				}
+
+				uint64 attacks =
+					pos.attacks_from<piece_t::queen>(from) & target
+						& queenTarget & restrictAttacks;
+
+				while (attacks)
+				{
+					const square_t to = msb64(attacks);
+
+					moves[count++] = pack(piece_t::empty,
+										  from,
+										  piece_t::queen,
+										  piece_t::empty,
+										  to);
+
+					clear_bit64(to, attacks);
+				}
+
+				clear_bit64(from, pieces);
+			}
+
+			return count;
 		}
 	}
 }
