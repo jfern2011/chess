@@ -26,15 +26,16 @@ namespace Chess
 		 * @note This function does not correctly handle cases where the
 		 *       king is in check; see generate_check_evasions()
 		 *
-		 * @param[in]  pos    The current position
-		 * @param[in]  target The target squares to move to
-		 * @param[in]  pinned Pinned (potentially unmovable) pieces
-		 * @param[out] moves  The list of legal moves
+		 * @param[in]  pos      The current position
+		 * @param[in]  target   The target squares to move to
+		 * @param[in]  pinned   Pinned (potentially unmovable) pieces
+		 * @param[out] moves    The list of legal moves
+		 * @param[in]  gen_king If true, generate king moves
 		 *
 		 * @return The number of moves found
 		 */
 		inline size_t generate(const Position& pos, const uint64 target,
-			const uint64 pinned, int32* moves)
+			const uint64 pinned, int32* moves, bool gen_king=true)
 		{
 			const player_t to_move = pos.get_turn();
 
@@ -244,6 +245,7 @@ namespace Chess
 			/*
 			 * Generate king non-castle moves
 			 */
+			if (gen_king)
 			{
 				const square_t from = pos.get_king_square(to_move);
 
@@ -760,7 +762,7 @@ namespace Chess
 		 	 * Step 4: Generate knight, rook, bishop, and queen moves:
 		 	 */
 		 	count += generate(pos, target | tables.set_mask[attacker],
-							  pinned, &moves[count]);
+							  pinned, &moves[count], false);
 
 			/*
 			 * Step 5: Generate pawn moves

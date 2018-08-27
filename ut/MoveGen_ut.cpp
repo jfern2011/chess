@@ -11,6 +11,18 @@ using namespace Chess;
 
 namespace
 {
+	/*
+	 * Returns true if a move is in a list of moves
+	 */
+	bool in_move_list(int32 move, const int32* list, size_t size)
+	{
+		for (size_t i = 0; i < size; i++)
+		{
+			if (list[i] == move) return true;
+		}
+		return false;
+	}
+
 	TEST(MoveGen, promotions)
 	{
 		Handle<std::ostream>
@@ -194,6 +206,19 @@ namespace
 
 		EXPECT_EQ(n_moves, expected.size())
 			<< moves_str;
+
+		/* Special case for en passant: */
+
+		ASSERT_TRUE(pos.reset(
+			"4k3/8/8/2KPp1r1/8/8/8/8 w - e6 0 1"));
+
+		n_moves = MoveGen::generate_captures(pos, actual);
+
+		moves_str.clear();
+		for (size_t i = 0; i < n_moves; i++)
+			moves_str += format_san(actual[i], "") + "\n";
+
+		ASSERT_EQ(n_moves, 0) << moves_str;
 	}
 
 	TEST(MoveGen, pawn_advances)
@@ -698,6 +723,272 @@ namespace
 
 			EXPECT_EQ(n_moves, expected.size())
 				<< moves_str;
+		}
+	}
+
+	TEST(MoveGen, evasions)
+	{
+		Handle<std::ostream>
+			stream(new std::ostream(std::cout.rdbuf()));
+
+		Position pos(stream);
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"4k3/8/8/3q4/4K3/5r2/8/8 w - - 0 1"));
+
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_check_evasions(pos, actual);
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			ASSERT_EQ(n_moves, 1) << moves_str;
+
+			ASSERT_EQ(actual[0], pack_move(piece_t::queen,
+										   square_t::E4,
+										   piece_t::king,
+										   piece_t::empty,
+										   square_t::D5));
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"B3k1B1/1b5R/P6R/2N5/3PK3/1QN5/8/8 w - - 0 1"));
+
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_check_evasions(pos, actual);
+
+			std::vector<int32> expected;
+
+			const square_t from[]   =  {square_t::A6,
+										square_t::D4,
+										square_t::C3,
+										square_t::C5,
+										square_t::A8,
+										square_t::G8,
+										square_t::H6,
+										square_t::H7,
+										square_t::B3,
+										square_t::B3,
+										square_t::E4,
+										square_t::E4,
+										square_t::E4,
+										square_t::E4,
+										square_t::E4};
+
+			const square_t to[]     =  {square_t::B7,
+										square_t::D5,
+										square_t::D5,
+										square_t::B7,
+										square_t::B7,
+										square_t::D5,
+										square_t::C6,
+										square_t::B7,
+										square_t::B7,
+										square_t::D5,
+										square_t::D3,
+										square_t::E3,
+										square_t::F4,
+										square_t::E5,
+										square_t::F5};
+
+			const piece_t moved[]   =  {piece_t::pawn,
+										piece_t::pawn,
+										piece_t::knight,
+										piece_t::knight,
+										piece_t::bishop,
+										piece_t::bishop,
+										piece_t::rook,
+										piece_t::rook,
+										piece_t::queen,
+										piece_t::queen,
+										piece_t::king,
+										piece_t::king,
+										piece_t::king,
+										piece_t::king,
+										piece_t::king};
+
+			const piece_t captured[] = {piece_t::bishop,
+									    piece_t::empty,
+									    piece_t::empty,
+									    piece_t::bishop,
+									    piece_t::bishop,
+									    piece_t::empty,
+									    piece_t::empty,
+									    piece_t::bishop,
+									    piece_t::bishop,
+									    piece_t::empty,
+									    piece_t::empty,
+									    piece_t::empty,
+									    piece_t::empty,
+									    piece_t::empty,
+									    piece_t::empty};
+
+			for (int i = 0; i < 15; i++)
+			{
+				expected.push_back(pack_move(captured[i],
+											 from[i],
+											 moved[i],
+											 piece_t::empty,
+											 to[i]));
+			}
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			EXPECT_EQ(n_moves, expected.size())
+				<< moves_str;
+
+			for (size_t i = 0; i < expected.size(); i++)
+			{
+				EXPECT_TRUE( in_move_list(expected[i], actual,
+					n_moves)) << moves_str;
+			}
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"4k3/8/8/3q4/4Kr2/8/3Q4/8 w - - 0 1"));
+
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_check_evasions(pos, actual);
+
+			std::vector<int32> expected;
+
+			expected.push_back(pack_move(piece_t::rook,
+										 square_t::E4,
+										 piece_t::king,
+										 piece_t::empty,
+										 square_t::F4));
+
+			expected.push_back(pack_move(piece_t::queen,
+										 square_t::E4,
+										 piece_t::king,
+										 piece_t::empty,
+										 square_t::D5));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E4,
+										 piece_t::king,
+										 piece_t::empty,
+										 square_t::E3));
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			EXPECT_EQ(n_moves, expected.size())
+				<< moves_str;
+
+			for (size_t i = 0; i < expected.size(); i++)
+			{
+				EXPECT_TRUE( in_move_list(expected[i], actual,
+					n_moves)) << moves_str;
+			}
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"4k2b/8/8/3PpP2/5K2/8/8/8 w - e6 0 1"));
+
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_check_evasions(pos, actual);
+
+			std::vector<int32> expected;
+
+			expected.push_back(pack_move(piece_t::pawn,
+										 square_t::D5,
+										 piece_t::pawn,
+										 piece_t::empty,
+										 square_t::E6));
+
+			expected.push_back(pack_move(piece_t::pawn,
+										 square_t::F5,
+										 piece_t::pawn,
+										 piece_t::empty,
+										 square_t::E6));
+
+			const square_t king_to[] = {square_t::G5,
+										square_t::E4,
+										square_t::G4,
+										square_t::E3,
+										square_t::F3,
+										square_t::G3};
+
+			for (int i = 0; i < 6; i++)
+			{
+				expected.push_back(pack_move(piece_t::empty,
+											 square_t::F4,
+											 piece_t::king,
+											 piece_t::empty,
+											 king_to[i]));
+			}
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			ASSERT_EQ(n_moves, expected.size())
+				<< moves_str;
+
+			for (size_t i = 0; i < expected.size(); i++)
+			{
+				ASSERT_TRUE( in_move_list(expected[i], actual,
+					n_moves)) << moves_str;
+			}
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"4k2b/5r2/8/3PpP2/5K2/8/8/8 w - e6 0 1"));
+
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_check_evasions(pos, actual);
+
+			std::vector<int32> expected;
+
+			expected.push_back(pack_move(piece_t::pawn,
+										 square_t::D5,
+										 piece_t::pawn,
+										 piece_t::empty,
+										 square_t::E6));
+
+			const square_t king_to[] = {square_t::G5,
+										square_t::E4,
+										square_t::G4,
+										square_t::E3,
+										square_t::F3,
+										square_t::G3};
+
+			for (int i = 0; i < 6; i++)
+			{
+				expected.push_back(pack_move(piece_t::empty,
+											 square_t::F4,
+											 piece_t::king,
+											 piece_t::empty,
+											 king_to[i]));
+			}
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			ASSERT_EQ(n_moves, expected.size())
+				<< moves_str;
+
+			for (size_t i = 0; i < expected.size(); i++)
+			{
+				ASSERT_TRUE( in_move_list(expected[i], actual,
+					n_moves)) << moves_str;
+			}
 		}
 	}
 }
