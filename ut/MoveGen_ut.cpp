@@ -990,5 +990,93 @@ namespace
 					n_moves)) << moves_str;
 			}
 		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"2r4K/6P1/2k5/8/8/8/8/8 w - - 0 1"));
+
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_check_evasions(pos, actual);
+
+			std::vector<int32> expected;
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::H8,
+										 piece_t::king,
+										 piece_t::empty,
+										 square_t::H7));
+
+			const piece_t promote[] =  {piece_t::knight,
+										piece_t::bishop,
+										piece_t::rook,
+										piece_t::queen};
+
+			for (int i = 0; i < 4; i++)
+			{
+				expected.push_back(pack_move(piece_t::empty,
+											 square_t::G7,
+											 piece_t::pawn,
+											 promote[i],
+											 square_t::G8));
+			}
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			ASSERT_EQ(n_moves, expected.size())
+				<< moves_str;
+
+			for (size_t i = 0; i < expected.size(); i++)
+			{
+				ASSERT_TRUE( in_move_list(expected[i], actual,
+					n_moves)) << moves_str;
+			}
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"8/8/2k5/8/2r4K/8/6P1/8 w - - 0 1"));
+
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_check_evasions(pos, actual);
+
+			std::vector<int32> expected;
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::G2,
+										 piece_t::pawn,
+										 piece_t::empty,
+										 square_t::G4));
+
+			const square_t king_to[] =  {square_t::H5,
+										 square_t::G5,
+										 square_t::G3,
+										 square_t::H3};
+
+			for (int i = 0; i < 4; i++)
+			{
+				expected.push_back(pack_move(piece_t::empty,
+											 square_t::H4,
+											 piece_t::king,
+											 piece_t::empty,
+											 king_to[i]));
+			}
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			ASSERT_EQ(n_moves, expected.size())
+				<< moves_str;
+
+			for (size_t i = 0; i < expected.size(); i++)
+			{
+				ASSERT_TRUE( in_move_list(expected[i], actual,
+					n_moves)) << moves_str;
+			}
+		}
 	}
 }

@@ -905,16 +905,13 @@ namespace Chess
 			 */
 			uint64 advances1 = 
 				shift_pawns<8>(pos.get_bitboard<piece_t::pawn>(to_move),
-					to_move) & (~occupied) & target;
-
-			uint64 promotions =
-				advances1 & tables.back_rank[flip(to_move)];
-
-			advances1 ^= promotions;
+					to_move) & (~occupied);
 
 			uint64 advances2
 				= shift_pawns<8>(advances1 & tables._3rd_rank[ to_move],
 					to_move) & (~occupied) & target;
+
+			advances1 &= target; // finish computing advances1
 
 		    while (advances1)
 		    {
