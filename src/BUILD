@@ -7,6 +7,7 @@ cc_library(
 		"//util:util",
 	],
 	visibility = [
+		"//perft:__pkg__",
 		"//ut:__pkg__",
 	],
 )

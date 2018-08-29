@@ -1,8 +1,7 @@
 cc_library(
-	name = "types",
-	hdrs = ["types.h"],
+	name = "abort",
+	hdrs = ["abort.h"],
 	visibility = [
 		"//CommandLine:__pkg__",
-		"//src:__pkg__",
 	],
 )
