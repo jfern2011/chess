@@ -1,9 +1,11 @@
 #include <cstdlib>
+#include <iomanip>
 #include <iostream>
 
 #include "abort/abort.h"
 #include "CommandLine/CommandLine.h"
 #include "src/chess4.h"
+#include "src/Timer.h"
 #include "perft.h"
 
 bool init_options(CommandLineOptions& options)
@@ -51,10 +53,17 @@ bool run(int argc, char** argv)
 	Chess::Position pos(stream);
 	AbortIfNot(pos.reset(fen), false);
 
-	std::int64_t nodes = Chess::perft(pos, depth);
+	Chess::Timer timer;
 
-	std::cout << "nodes = " << nodes
-		<< std::endl;
+	timer.start();
+	std::int64_t nodes = Chess::perft(pos, depth);
+	timer.stop();
+
+	double dt = timer.elapsed() / 1.0e9;
+
+	std::cout << "nodes = " << nodes << ", time = ";
+	std::cout << std::fixed << std::setprecision(6);
+	std::cout << dt << "s" << std::endl;
 
 	return true;
 }

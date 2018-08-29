@@ -2,6 +2,7 @@ cc_library(
 	name = "chess",
 	srcs = glob(["**/*.cpp"]),
 	hdrs = glob(["**/*.h"]),
+	#copts = ["-O4"],
 	deps = [
 		"//types:types",
 		"//util:util",
