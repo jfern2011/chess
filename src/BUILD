@@ -2,7 +2,7 @@ cc_library(
 	name = "chess",
 	srcs = glob(["**/*.cpp"]),
 	hdrs = glob(["**/*.h"]),
-	#copts = ["-O4"],
+	#copts = ["-O4"], #32 or 64-bit?
 	deps = [
 		"//types:types",
 		"//util:util",

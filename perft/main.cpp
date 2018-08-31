@@ -17,6 +17,9 @@ bool init_options(CommandLineOptions& options)
 		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 		"The FEN position"), false);
 
+	AbortIfNot(options.add<bool>("divide", false,
+		"Show the number of nodes per move"), false);
+
 	AbortIfNot(options.add<bool>("help", false,
 		"Print this help message"), false);
 
@@ -47,6 +50,10 @@ bool run(int argc, char** argv)
 	int depth;
 	AbortIfNot(cmd.get("depth", depth), false);
 
+	bool divide = false;
+	AbortIfNot(cmd.get("divide", divide),
+		false);
+
 	Chess::Handle<std::ostream> stream(
 		new std::ostream( std::cout.rdbuf()) );
 
@@ -55,9 +62,20 @@ bool run(int argc, char** argv)
 
 	Chess::Timer timer;
 
-	timer.start();
-	std::int64_t nodes = Chess::perft(pos, depth);
-	timer.stop();
+	std::int64_t nodes;
+
+	if (divide)
+	{
+		timer.start();
+		nodes = Chess::divide(pos, depth);
+		timer.stop();
+	}
+	else
+	{
+		timer.start();
+		nodes = Chess::perft (pos, depth);
+		timer.stop();
+	}
 
 	double dt = timer.elapsed() / 1.0e9;
 
