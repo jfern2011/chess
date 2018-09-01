@@ -1159,7 +1159,8 @@ namespace Chess
 			 *        is no longer possible. Remove the castling
 			 *        rights associated with this rook
 			 */
-			if ((_castle_rights[_ply][_to_move]))
+			if (_castle_rights[_ply][_to_move] &&
+				(tables.back_rank[_to_move] & tables.set_mask[from]))
 			{
 				switch (get_file(from))
 				{
