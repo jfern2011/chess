@@ -1342,7 +1342,8 @@ namespace Chess
 					 * 11.6.2 Update the opponent's castling rights if he
 					 *        could have castled with this rook
 					 */
-					if ((_castle_rights[_ply][xside]))
+					if (_castle_rights[_ply][xside] &&
+							(tables.back_rank[xside] & tables.set_mask[to]))
 					{
 						switch (get_file(to))
 						{
