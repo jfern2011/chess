@@ -356,7 +356,7 @@ namespace Chess
 	 */
 	std::string Position::get_fen() const
 	{
-		int empty = 0; char empty_s[8];
+		int empty = 0; char empty_s[16];
 
 		std::string fen = "";
 		AbortIfNot( _is_init, fen );
@@ -485,7 +485,7 @@ namespace Chess
 
 			if (_pieces[sq] != piece_t::empty)
 			{
-				char piece;
+				char piece = ' ';
 				switch (_pieces[sq])
 				{
 					case piece_t::pawn:

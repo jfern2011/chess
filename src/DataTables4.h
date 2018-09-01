@@ -148,6 +148,8 @@ namespace Chess
 		/**
 		 *  Material exchange[piece captured][piece moved]. A positive
 		 *  value indicates material was gained
+		 *
+		 *  @note The 7th "piece" is an empty square
 		 */
 		BUFFER(int, exchange, 7, 7);
 
@@ -247,7 +249,7 @@ namespace Chess
 		/**
 		 * The values of each type of piece. See \ref value_t
 		 */
-		BUFFER(int, piece_value, 6);
+		BUFFER(int, piece_value, 7);
 
 		/**
 		 * The square arrived at by advancing 1 pawn step

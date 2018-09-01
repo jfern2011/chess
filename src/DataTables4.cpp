@@ -1031,6 +1031,8 @@ namespace Chess
 	 */
 	void DataTables::_init_piece_values()
 	{
+		piece_value[piece_t::empty ]
+			= 0;
 		piece_value[piece_t::pawn  ]
 			= pawn_value;
 		piece_value[piece_t::rook  ]
