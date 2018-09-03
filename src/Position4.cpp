@@ -546,6 +546,58 @@ namespace Chess
 			return false;
 		}
 
+		/*
+		 * Make sure the pieces/squares in each rank add
+		 * up to 8:
+		 */
+		for (size_t i = 0; i < tokens.size(); i++)
+		{
+			int sum = 0;
+			std::string rank = tokens[i];
+			for (size_t j = 0; j < rank.size(); j++)
+			{
+				if (is_piece(rank[j]))
+					sum += 1;
+				else if (std::isdigit(rank[j]))
+				{
+					int val = 0;
+					if (!Util::from_string(std::string(&rank[j],1),val))
+					{
+						*this = backup;
+						return false;
+					}
+
+					sum += val;
+				}
+				else if (std::isspace(rank[j])) break;
+				else
+				{
+					if (verbosity >= Verbosity::terse && _output)
+					{
+						_output->write(
+							"Invalid FEN (unexpected character '%c'): %s\n",
+							rank[j], fen.c_str());
+					}
+					
+					*this = backup;
+					return false;
+				}
+			}
+
+			if (sum != 8)
+			{
+				if (verbosity >= Verbosity::terse && _output)
+				{
+					_output->write("Invalid FEN (pieces/squares in rank %d "
+								   "is wrong): %s\n",
+						8-i, fen.c_str());
+				}
+
+				*this = backup;
+				return false;
+			}
+		}
+
 		for (size_t i = 0; i < 8; i++)
 		{
 			for (size_t j = 0; j < tokens[i].size(); j++)
@@ -601,28 +653,10 @@ namespace Chess
 				}
 				else
 				{
-					if (std::isdigit(c))
-					{
-						int val;
-						if (!Util::from_string(std::string(&c,1),val))
-						{
-							*this = backup;
-							return false;
-						}
-						else
-							square -= val;
-					}
-					else
-					{
-						if (verbosity >= Verbosity::terse && _output)
-						{
-							_output->write("Invalid FEN (unexpected character '%c'): %s\n",
-								c, fen.c_str());
-						}
-						
-						*this = backup;
-						return false;
-					}
+					/*
+					 * Throws invalid_argument exception on error
+					 */
+					square -= std::stoi(std::string(&c, 1));
 				}
 
 				if ((square < 0 && i != 7) || square < -1)
