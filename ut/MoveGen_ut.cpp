@@ -1079,4 +1079,48 @@ namespace
 			}
 		}
 	}
+
+	TEST(MoveGen, checks)
+	{
+		Handle<std::ostream>
+			stream(new std::ostream(std::cout.rdbuf()));
+
+		Position pos(stream);
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"8/8/8/8/7k/8/7N/6KR w - - 0 1"));
+
+			std::vector<int32> expected;
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::H2,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::G4));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::H2,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::F3));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::H2,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::F1));
+			
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_checks(pos, actual);
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			EXPECT_EQ(n_moves, expected.size())
+				<< moves_str;
+		}
+	}
 }
