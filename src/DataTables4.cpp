@@ -7,13 +7,57 @@ namespace Chess
 	/**
 	 * The global lookup tables used to reduce on-the-fly computations
 	 */
-	Handle<DataTables> DataTables::_tables;
+	Handle<DataTables> DataTables::_tables(new DataTables());
 
 	/**
 	 * Constructor
 	 */
 	DataTables::DataTables()
 	{
+		_init_magics();
+
+		/*
+		 * Initialize sliding piece attack databases:
+		 */
+		_create_diag_attacks_database();
+		_create_rook_attacks_database();
+
+		/*
+		 * Initialize en passant target squares:
+		 */
+		_init_ep_targets();
+
+		/*
+		 * Initialize king attack database:
+		 */
+		_init_king_attacks();
+
+		/*
+		 * Initialize knight attack database:
+		 */
+		_init_knight_attacks();
+
+		/*
+		 * Initialize pawn attack databases:
+		 */
+		_init_pawn_attacks();
+
+		/*
+		 * Initialize pawn advances databases:
+		 */
+		_init_pawn_advances();
+
+		/*
+	 	 * Initialize the bitscan tables:
+	 	 */
+		_init_xsb();
+
+		_init_piece_values();
+
+		/*
+	 	 * Initialize general-purpose tables:
+	 	 */
+		_init_misc_masks();
 	}
 
 	/**
