@@ -14,6 +14,10 @@
 
 #ifndef DOXYGEN_SKIP
 
+#ifdef _WIN64
+#define __PRETTY_FUNCTION__ __FUNCSIG__
+#endif
+
 #define AbortIf_2(cond, ret)                           \
 {                                                      \
 	if (cond)                                          \
@@ -108,9 +112,11 @@
  * additional arguments (optional) will be used to create an error
  * message
  */
+#ifndef _WIN64
 #define Abort(ret, ...) \
 	_select(AbortIf, \
 		va_size(0, ##__VA_ARGS__))(true, ret, ##__VA_ARGS__)
+#endif
 
 /**
  * @def AbortIfNot(cond, ret, ...)

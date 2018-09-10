@@ -2,6 +2,10 @@
 
 #include "Timer.h"
 
+#ifdef _WIN64
+#include <windows.h>
+#endif
+
 namespace Chess
 {
 	/**
@@ -67,11 +71,23 @@ namespace Chess
 	 */
 	int64 Timer::_t_now() const
 	{
+#ifdef _WIN64
+		LARGE_INTEGER now, freq;
+
+		QueryPerformanceFrequency(&freq);
+		QueryPerformanceCounter(&now);
+
+		/*
+		 * Convert number of clock ticks to nanoseconds
+		 */
+		return now.QuadPart * billion / freq.QuadPart;
+#else
 		struct timespec ts;
 		if (::clock_gettime(CLOCK_MONOTONIC_RAW, &ts) < 0)
 			return -1;
 
 		return ts.tv_sec * billion
 				+ ts.tv_nsec;
+#endif
 	}
 }

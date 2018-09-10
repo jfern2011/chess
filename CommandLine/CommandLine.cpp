@@ -66,7 +66,7 @@ void CommandLineOptions::print(const char* prog_name) const
  */
 bool CommandLineOptions::_add_option(const std::string& name) const
 {
-    AbortIf ( name.empty(), false );
+    AbortIf_2 (name.empty(), false);
 
     auto iter = _options.find(name);
 
@@ -110,25 +110,25 @@ CommandLine::~CommandLine()
 bool CommandLine::get_opt_val(int argc, char** argv,
             std::map<std::string,std::string>& opt_val)
 {
-    AbortIf(argc <= 0, false);
+    AbortIf_2(argc <= 0, false);
     opt_val.clear();
 
-    if (argc < 2) return true;
+    if ( argc < 2 ) return true;
 
     types::str_v tokens;
 
     for (int i = 1; i < argc; i++)
         tokens.push_back( Util::trim( argv[i] ) );
 
-    AbortIf(tokens.size() == 0,
+    AbortIf_2(tokens.size() == 0,
         false);
 
     /*
      * Make sure the first entry starts with "--":
      */
-    AbortIf(tokens[0].size() <= 2 ||
-            tokens[0][0] != '-' ||
-            tokens[0][1] != '-', false);
+    AbortIf_2(tokens[0].size() <= 2 ||
+              tokens[0][0] != '-' ||
+              tokens[0][1] != '-', false);
 
     std::string cmdline =
         Util::build_string(tokens, " ");
@@ -143,7 +143,7 @@ bool CommandLine::get_opt_val(int argc, char** argv,
         /*
          * Make sure a stray '--' isn't found
          */
-        AbortIf(option_ind+2 >= cmdline.size() ||
+        AbortIf_2(option_ind+2 >= cmdline.size() ||
                 cmdline[option_ind+2] == ' ',
             false);
 
@@ -166,7 +166,7 @@ bool CommandLine::get_opt_val(int argc, char** argv,
             value_ind =
                 cmdline.find_first_not_of( " =", value_ind );
 
-            AbortIfNot(value_ind < next_option,
+            AbortIfNot_2(value_ind < next_option,
                 false);
 
             size_t start = option_ind+2;
@@ -222,7 +222,7 @@ bool CommandLine::parse(int argc, char** argv)
 {
     std::map<std::string,std::string>
         cmdline;
-    AbortIfNot(get_opt_val( argc, argv, cmdline ), false);
+    AbortIfNot_2(get_opt_val(argc, argv, cmdline), false);
 
     for (auto iter = cmdline.begin(), end = cmdline.end();
          iter != end; ++iter)
@@ -254,10 +254,10 @@ bool CommandLine::parse(int argc, char** argv)
                 value = false;
             else
             {
-                Abort(false);
+                AbortIf_2(true, false);
             }
 
-            AbortIfNot(_options.set(iter->first, value),
+            AbortIfNot_2(_options.set(iter->first, value),
                 false);
         }
         else if (type == "char")
@@ -266,28 +266,28 @@ bool CommandLine::parse(int argc, char** argv)
             if (val.size() == 1)
             {
                 value = val[0];
-                AbortIfNot(_options.set(iter->first,
+                AbortIfNot_2(_options.set(iter->first,
                     value), false);
             }
             else
             {
-                Abort(false);
+                AbortIf_2(true, false);
             }
         }
         else if (type == "int16")
         {
             types::int16 value;
-            AbortIfNot(Util::from_string(val, value), false);
+            AbortIfNot_2(Util::from_string(val, value), false);
 
-            AbortIfNot(_options.set(iter->first, value),
+            AbortIfNot_2(_options.set(iter->first, value),
                 false);
         }
         else if (type == "int32")
         {
             types::int32 value;
-            AbortIfNot(Util::from_string(val, value), false);
+            AbortIfNot_2(Util::from_string(val, value), false);
 
-            AbortIfNot(_options.set(iter->first, value),
+            AbortIfNot_2(_options.set(iter->first, value),
                 false);
         }
         else if (type == "uchar")
@@ -297,54 +297,54 @@ bool CommandLine::parse(int argc, char** argv)
             if (val.size() == 1)
             {
                 value = val[ 0 ];
-                AbortIfNot(_options.set(iter->first,value),
+                AbortIfNot_2(_options.set(iter->first,value),
                     false);
             }
             else
             {
-                Abort(false);
+                AbortIf_2(true, false);
             }
         }
         else if (type == "uint16")
         {
             types::uint16 value;
-            AbortIfNot(Util::from_string(val, value), false);
+            AbortIfNot_2(Util::from_string(val, value), false);
 
-            AbortIfNot(_options.set(iter->first, value),
+            AbortIfNot_2(_options.set(iter->first, value),
                 false);
         }
         else if (type == "uint32")
         {
             types::uint32 value;
-            AbortIfNot(Util::from_string(val, value), false);
+            AbortIfNot_2(Util::from_string(val, value), false);
 
-            AbortIfNot(_options.set(iter->first, value),
+            AbortIfNot_2(_options.set(iter->first, value),
                 false);
         }
         else if (type == "float")
         {
             float value;
-            AbortIfNot(Util::from_string(val, value), false);
+            AbortIfNot_2(Util::from_string(val, value), false);
 
-            AbortIfNot(_options.set(iter->first, value),
+            AbortIfNot_2(_options.set(iter->first, value),
                 false);
         }
         else if (type == "double")
         {
             double value;
-            AbortIfNot(Util::from_string(val, value), false);
+            AbortIfNot_2(Util::from_string(val, value), false);
 
-            AbortIfNot(_options.set(iter->first, value),
+            AbortIfNot_2(_options.set(iter->first, value),
                 false);
         }
         else if (type == "string")
         {
-            AbortIfNot(_options.set(iter->first,
+            AbortIfNot_2(_options.set(iter->first,
                 iter->second), false);
         }
         else
         {
-            Abort(false, "unsupported type '%s'",
+            AbortIf(true, false, "unsupported type '%s'",
                 type.c_str());
         }
     }

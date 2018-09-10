@@ -1248,7 +1248,7 @@ namespace Chess
 
 		else // invalid piece was moved
 		{
-			Abort(false);
+			AbortIf_2(true, false);
 		}
 
 		/*
@@ -1360,7 +1360,7 @@ namespace Chess
 
 					break;
 				default:
-					Abort(false);
+					AbortIf_2(true, false);
 			}
 
 			/*
@@ -1642,7 +1642,7 @@ namespace Chess
 		}
 		else // invalid piece was moved
 		{
-			Abort(false);
+			AbortIf_2(true, false);
 		}
 
 		/*

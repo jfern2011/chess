@@ -58,11 +58,11 @@ namespace Chess
 			std::vsnprintf(buf, buf_size, format_s.c_str(),
 				args);
 
-		AbortIf(nchars < 0, false);
+		AbortIf_2(nchars < 0, false);
 
 		va_end(args);
 
-		AbortIfNot(_stream, false);
+		AbortIfNot_2(_stream, false);
 
 			_stream->write(buf, nchars);
 		

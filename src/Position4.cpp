@@ -1,3 +1,5 @@
+#include <cctype>
+
 #include "util/bit_tools.h"
 #include "Position4.h"
 #include "util/str_util.h"
@@ -359,7 +361,7 @@ namespace Chess
 		int empty = 0; char empty_s[16];
 
 		std::string fen = "";
-		AbortIfNot( _is_init, fen );
+		AbortIfNot_2( _is_init, fen );
 
 		auto& tables = DataTables::get();
 

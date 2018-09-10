@@ -10,17 +10,17 @@
 
 bool init_options(CommandLineOptions& options)
 {
-	AbortIfNot(options.add<int>("depth", 1, "Max depth, in plies"),
+	AbortIfNot_2(options.add<int>("depth",1,"Max depth, in plies"),
 		false);
 
-	AbortIfNot(options.add<std::string>("fen",
+	AbortIfNot_2(options.add<std::string>("fen",
 		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 		"The FEN position"), false);
 
-	AbortIfNot(options.add<bool>("divide", false,
+	AbortIfNot_2(options.add<bool>("divide", false,
 		"Show the number of nodes per move"), false);
 
-	AbortIfNot(options.add<bool>("help", false,
+	AbortIfNot_2(options.add<bool>("help", false,
 		"Print this help message"), false);
 
 	return true;
@@ -29,14 +29,14 @@ bool init_options(CommandLineOptions& options)
 bool run(int argc, char** argv)
 {
 	CommandLineOptions opts;
-	AbortIfNot(init_options(opts),
+	AbortIfNot_2(init_options(opts),
 		false);
 
 	CommandLine cmd(opts);
-	AbortIfNot(cmd.parse(argc, argv), false);
+	AbortIfNot_2(cmd.parse(argc, argv), false);
 
 	bool help = false;
-	AbortIfNot(cmd.get("help", help), false);
+	AbortIfNot_2(cmd.get("help", help), false);
 
 	if (help)
 	{
@@ -45,20 +45,20 @@ bool run(int argc, char** argv)
 	}
 
 	std::string fen;
-	AbortIfNot(cmd.get("fen", fen), false);
+	AbortIfNot_2(cmd.get("fen", fen), false);
 
 	int depth;
-	AbortIfNot(cmd.get("depth", depth), false);
+	AbortIfNot_2(cmd.get("depth", depth), false);
 
 	bool divide = false;
-	AbortIfNot(cmd.get("divide", divide),
+	AbortIfNot_2(cmd.get("divide", divide),
 		false);
 
 	Chess::Handle<std::ostream> stream(
 		new std::ostream( std::cout.rdbuf()) );
 
 	Chess::Position pos(stream);
-	AbortIfNot(pos.reset(fen), false);
+	AbortIfNot_2(pos.reset(fen), false);
 
 	Chess::Timer timer;
 
@@ -88,6 +88,6 @@ bool run(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-	AbortIfNot(run(argc, argv), EXIT_FAILURE);
+	AbortIfNot_2(run(argc, argv), EXIT_FAILURE);
 	return EXIT_SUCCESS;
 }

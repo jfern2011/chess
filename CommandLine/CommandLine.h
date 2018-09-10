@@ -153,7 +153,7 @@ public:
         std::string name =
             Util::trim(Util::to_lower(_name));
 
-        AbortIfNot(_add_option(name), false );
+        AbortIfNot_2(_add_option(name),false);
 
         _options[name].reset(
                     new Option<T>(default_value, name, desc));
@@ -192,7 +192,7 @@ public:
         auto ptr =  std::dynamic_pointer_cast<
             Option<T>>(option);
 
-        AbortIfNot(ptr, false);
+        AbortIfNot_2(ptr, false);
         value = ptr->value;
 
         return true;
@@ -224,7 +224,7 @@ public:
         auto ptr =  std::dynamic_pointer_cast<
             Option<T>>(option);
 
-        AbortIfNot(ptr, false);
+        AbortIfNot_2(ptr, false);
         ptr->value = value;
 
         return true;
@@ -271,7 +271,7 @@ public:
     template<typename T>
     bool get(const std::string& _name, T& value) const
     {
-        AbortIfNot(_options.get<T>(_name, value),
+        AbortIfNot_2(_options.get<T>(_name, value),
             false);
 
         return true;

@@ -15,7 +15,7 @@ namespace Chess
 	using uint32 = std::uint32_t;
 	using int32  = std::int32_t;
 	using uint16 = std::uint16_t;
-	using uint8 = std::uint8_t;
+	using uint8  = std::uint8_t;
 
 	const int max_ply      = 512;
 	const int max_moves    = 256;
@@ -129,17 +129,36 @@ namespace Chess
 
 #ifndef DOXYGEN_SKIP
 	#define num_args(_0, _1, _2, nargin, ...) nargin
+
+#ifdef _WIN64
+	/*
+	 * This dummy macro forces the stupid MSVC preprocessor to expand
+	 * __VA_ARGS__ *prior* to passing it to subsequent macros:
+	 *
+	 * https://stackoverflow.com/questions/38209120/invalid-argument-count-in-a-variadic-macro
+	 */
+	#define EXPAND(x) x
 	#define get_buf_dim(...) \
-					  num_args(__VA_ARGS__, 3, 2, 1)
+		EXPAND(num_args(__VA_ARGS__, 3, 2, 1))
+#else
+	#define get_buf_dim(...) \
+				num_args(__VA_ARGS__, 3, 2, 1)
+#endif
 #endif
 
 	/**
 	 * Generic buffer selection. Use this to declare a buffer of 1, 2, or
 	 * 3 dimensions
 	 */
+#ifdef _WIN64
 	#define BUFFER(type, name, ...) \
-		_select(BUFFER, \
-			get_buf_dim(__VA_ARGS__))(type, name, __VA_ARGS__)
+		EXPAND(_select(BUFFER, \
+			get_buf_dim(__VA_ARGS__))(type, name, __VA_ARGS__))
+#else
+	#define BUFFER(type, name, ...) \
+		(_select(BUFFER, \
+			get_buf_dim(__VA_ARGS__))(type, name, __VA_ARGS__))
+#endif
 }
 
 #endif
