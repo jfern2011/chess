@@ -6,3 +6,12 @@
    - 50-move rule
 3. Is unmake_move() really required? Can't we just decrement ply?
 4. Check SEE algorithm
+
+#------------------------------------------------
+# Windows Garbage
+#------------------------------------------------
+
+1. Unit tests won't build
+2. Built with MS Visual Studio 2017, but had to edit urlmon.h:
+	C:\Program Files (x86)\Windows Kits\10\Include\10.0.16299.0\um\
+3. 
