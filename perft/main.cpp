@@ -23,6 +23,10 @@ bool init_options(CommandLineOptions& options)
 	AbortIfNot(options.add<bool>("help", false,
 		"Print this help message"), false);
 
+	AbortIfNot(options.add<bool>("gen_checks", false,
+			"Test the checking moves generator"),
+		false);
+
 	return true;
 }
 
@@ -64,8 +68,18 @@ bool run(int argc, char** argv)
 
 	std::int64_t nodes;
 
+	bool do_checks;
+	AbortIfNot(cmd.get("gen_checks", do_checks),
+		false);
+
 	if (divide)
 	{
+		if (do_checks)
+		{
+			std::cout << "'divide' option does not generate checks"
+				<< std::endl;
+		}
+
 		timer.start();
 		nodes = Chess::divide(pos, depth);
 		timer.stop();
@@ -73,7 +87,10 @@ bool run(int argc, char** argv)
 	else
 	{
 		timer.start();
-		nodes = Chess::perft (pos, depth);
+		if (do_checks)
+			nodes = Chess::perft_checks(pos, depth);
+		else
+			nodes = Chess::perft (pos, depth);
 		timer.stop();
 	}
 

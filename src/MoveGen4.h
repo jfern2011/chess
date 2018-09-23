@@ -1044,7 +1044,7 @@ namespace Chess
 			const uint64 candidates =
 				pos.get_bitboard<piece_t::pawn>(to_move) & xpinned;
 
-			uint64 advances1 = shift_pawns<8 >(candidates, to_move)
+			uint64 advances1 = shift_pawns<8>( candidates, to_move)
 								& (~tables.back_rank[opponent])
 								& (~occupied);
 
@@ -1462,12 +1462,12 @@ namespace Chess
 					static_cast<square_t>(msb64(pieces));
 
 				/*
-				 * If this rook is pinned along a diagonal then we cannot move
+				 * If this rook is pinned along a diagonal, we can't move
 				 * it, so don't bother generating an attacks_from bitboard.
 				 * If pinned along a rank then clear the file bits of its
 				 * attacks_from bitboard to ensure we only keep moves along
-				 * the direction of the pin (similar reasoning for when pinned
-				 * along a file):
+				 * the direction of the pin (similar reasoning for when
+				 * pinned along a file):
 				 */
 				uint64 restrictAttacks = ~0;
 
@@ -1524,12 +1524,12 @@ namespace Chess
 					static_cast<square_t>(msb64(pieces));
 
 				/*
-				 * If this rook is pinned along a diagonal then we cannot move
+				 * If this rook is pinned along a diagonal, we can't move
 				 * it, so don't bother generating an attacks_from bitboard.
 				 * If pinned along a rank then clear the file bits of its
 				 * attacks_from bitboard to ensure we only keep moves along
-				 * the direction of the pin (similar reasoning for when pinned
-				 * along a file):
+				 * the direction of the pin (similar reasoning for when
+				 * pinned along a file):
 				 */
 				uint64 restrictAttacks = ~0;
 
@@ -1571,8 +1571,8 @@ namespace Chess
 			}
 
 			/*
-			 * 6. Generate queen non-captures that deliver direct check (queens
-			 *    cannot uncover check):
+			 * 6.  Generate queen non-captures that deliver direct check (queens
+			 *     cannot uncover check):
 			 */
 			const uint64 queenTarget = diagTarget | rookTarget;
 
@@ -1584,8 +1584,8 @@ namespace Chess
 					static_cast<square_t>(msb64(pieces));
 
 				/*
-				 * If the queen is pinned, then restrict its motion to along
-				 * the direction of the pin:
+				 * If the queen is pinned, then restrict its motion to along the
+				 * direction of the pin:
 				 */
 				uint64 restrictAttacks = ~0;
 

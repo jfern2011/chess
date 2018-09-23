@@ -1122,5 +1122,323 @@ namespace
 			EXPECT_EQ(n_moves, expected.size())
 				<< moves_str;
 		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"8/8/8/8/8/8/1k2P2R/4K3 w - - 0 1"));
+
+			std::vector<int32> expected;
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E2,
+										 piece_t::pawn,
+										 piece_t::empty,
+										 square_t::E3));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E2,
+										 piece_t::pawn,
+										 piece_t::empty,
+										 square_t::E4));
+			
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_checks(pos, actual);
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			EXPECT_EQ(n_moves, expected.size())
+				<< moves_str;
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"8/8/8/8/3k4/8/4P3/4K3 w - - 0 1"));
+
+			std::vector<int32> expected;
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E2,
+										 piece_t::pawn,
+										 piece_t::empty,
+										 square_t::E3));
+			
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_checks(pos, actual);
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			EXPECT_EQ(n_moves, expected.size())
+				<< moves_str;
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"8/8/8/5k2/8/8/4P3/4K3 w - - 0 1"));
+
+			std::vector<int32> expected;
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E2,
+										 piece_t::pawn,
+										 piece_t::empty,
+										 square_t::E4));
+			
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_checks(pos, actual);
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			EXPECT_EQ(n_moves, expected.size())
+				<< moves_str;
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"8/8/k7/8/8/8/4N3/5B1K w - - 0 1"));
+
+			std::vector<int32> expected;
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E2,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::G1));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E2,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::C1));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E2,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::G3));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E2,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::C3));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E2,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::D4));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E2,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::F4));
+
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_checks(pos, actual);
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			EXPECT_EQ(n_moves, expected.size())
+				<< moves_str;
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"8/8/8/1k6/8/8/4N3/7K w - - 0 1"));
+
+			std::vector<int32> expected;
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E2,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::C3));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E2,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::D4));
+			
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_checks(pos, actual);
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			EXPECT_EQ(n_moves, expected.size())
+				<< moves_str;
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"8/8/4k3/8/4N3/8/8/4R2K w - - 0 1"));
+
+			std::vector<int32> expected;
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E4,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::F2));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E4,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::D2));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E4,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::C3));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E4,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::G3));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E4,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::C5));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E4,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::G5));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E4,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::D6));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::E4,
+										 piece_t::knight,
+										 piece_t::empty,
+										 square_t::F6));
+			
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_checks(pos, actual);
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			EXPECT_EQ(n_moves, expected.size())
+				<< moves_str;
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"7R/8/5P2/3k4/8/3p1R1P/6B1/5K2 w - - 0 1"));
+
+			std::vector<int32> expected;
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::F3,
+										 piece_t::rook,
+										 piece_t::empty,
+										 square_t::E3));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::F3,
+										 piece_t::rook,
+										 piece_t::empty,
+										 square_t::G3));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::F3,
+										 piece_t::rook,
+										 piece_t::empty,
+										 square_t::F2));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::F3,
+										 piece_t::rook,
+										 piece_t::empty,
+										 square_t::F4));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::F3,
+										 piece_t::rook,
+										 piece_t::empty,
+										 square_t::F5));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::H8,
+										 piece_t::rook,
+										 piece_t::empty,
+										 square_t::H5));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::H8,
+										 piece_t::rook,
+										 piece_t::empty,
+										 square_t::D8));
+			
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_checks(pos, actual);
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			EXPECT_EQ(n_moves, expected.size())
+				<< moves_str;
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"3K4/3Q4/8/8/8/8/7k/3r4 w - - 0 1"));
+
+			std::vector<int32> expected;
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::D7,
+										 piece_t::queen,
+										 piece_t::empty,
+										 square_t::D2));
+
+			expected.push_back(pack_move(piece_t::empty,
+										 square_t::D7,
+										 piece_t::queen,
+										 piece_t::empty,
+										 square_t::D6));
+
+			int32 actual[max_moves];
+
+			size_t n_moves = MoveGen::generate_checks(pos, actual);
+
+			std::string moves_str;
+			for (size_t i = 0; i < n_moves; i++)
+				moves_str += format_san(actual[i], "") + "\n";
+
+			EXPECT_EQ(n_moves, expected.size())
+				<< moves_str;
+		}
 	}
 }

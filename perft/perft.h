@@ -7,6 +7,8 @@ namespace Chess
 {
 	int64 divide(Position& pos, int depth);
 	int64 perft (Position& pos, int depth);
+
+	int64 perft_checks(Position& pos, int depth);
 }
 
 #endif
