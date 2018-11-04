@@ -1441,4 +1441,138 @@ namespace
 				<< moves_str;
 		}
 	}
+
+	TEST(MoveGen, validate_move)
+	{
+		Handle<std::ostream>
+			stream(new std::ostream(std::cout.rdbuf()));
+
+		Position pos(stream);
+
+		{
+			ASSERT_TRUE(pos.reset(
+					"4k3/4r3/8/2p5/8/8/4NB2/4K3 w - - 0 1"));
+
+			std::vector<int32> moves;
+
+			moves.push_back(pack_move(piece_t::empty,
+									  square_t::F2,
+									  piece_t::bishop,
+									  piece_t::empty,
+									  square_t::B6));
+
+			moves.push_back(pack_move(piece_t::empty,
+									  square_t::E2,
+									  piece_t::knight,
+									  piece_t::empty,
+									  square_t::F4));
+
+			for (auto& move : moves)
+			{
+				EXPECT_FALSE(MoveGen::validate_move(
+					pos, move, false));
+			}
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+					"4k3/4r3/8/2p5/8/8/4RB2/4K3 w - - 0 1"));
+
+			std::vector<int32> moves;
+
+			moves.push_back(pack_move(piece_t::rook,
+									  square_t::E2,
+									  piece_t::rook,
+									  piece_t::empty,
+									  square_t::E7));
+
+			for (auto& move : moves)
+			{
+				EXPECT_TRUE(MoveGen::validate_move(
+					pos, move, false));
+			}
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+					"4k3/7p/6B1/3n4/8/4R3/8/4K3 b - - 0 1"));
+
+			std::vector<int32> moves;
+
+			moves.push_back(pack_move(piece_t::rook,
+									  square_t::D5,
+									  piece_t::knight,
+									  piece_t::empty,
+									  square_t::E3));
+
+			moves.push_back(pack_move(piece_t::bishop,
+									  square_t::H7,
+									  piece_t::pawn,
+									  piece_t::empty,
+									  square_t::G6));
+
+			for (auto& move : moves)
+			{
+				EXPECT_FALSE(MoveGen::validate_move(
+					pos, move, true));
+			}
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+					"4k3/7p/8/3n4/8/4R3/8/4K3 b - - 0 1"));
+
+			std::vector<int32> moves;
+
+			moves.push_back(pack_move(piece_t::rook,
+									  square_t::D5,
+									  piece_t::knight,
+									  piece_t::empty,
+									  square_t::E3));
+
+			for (auto& move : moves)
+			{
+				EXPECT_TRUE(MoveGen::validate_move(
+					pos, move, true));
+			}
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+					"4k3/7p/6B1/3n4/8/8/8/4K3 b - - 0 1"));
+
+			std::vector<int32> moves;
+
+			moves.push_back(pack_move(piece_t::bishop,
+									  square_t::H7,
+									  piece_t::pawn,
+									  piece_t::empty,
+									  square_t::G6));
+
+			for (auto& move : moves)
+			{
+				EXPECT_TRUE(MoveGen::validate_move(
+					pos, move, true));
+			}
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+					"4k3/8/8/8/8/8/8/4K3 w - - 0 1"));
+
+			std::vector<int32> moves;
+
+			moves.push_back(pack_move(piece_t::empty,
+									  square_t::E1,
+									  piece_t::king,
+									  piece_t::empty,
+									  square_t::G1));
+
+			for (auto& move : moves)
+			{
+				EXPECT_FALSE(MoveGen::validate_move(
+					pos, move, false));
+			}
+		}
+	}
 }

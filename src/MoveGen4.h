@@ -1823,6 +1823,11 @@ namespace Chess
 							return false;
 						}
 					}
+					else
+					{
+						/* Can't castle short or long */
+						return false;
+					}
 				}
 
 				/*
