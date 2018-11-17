@@ -56,8 +56,7 @@ namespace Chess
 	 	 */
 		uint64 occupied = pos.get_occupied();
 
-		while (attackers[player_t::white]
-				&& attackers[player_t::black])
+		while (attackers[to_move])
 		{
 			uint64 pieces;
 			scores[n_moves++] = piece_value[last_capture];

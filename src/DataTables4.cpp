@@ -1087,6 +1087,8 @@ namespace Chess
 			= bishop_value;
 		piece_value[piece_t::queen ]
 			= queen_value;
+		piece_value[piece_t::king  ]
+			= king_value;
 	}
 
 	/**
