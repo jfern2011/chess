@@ -24,7 +24,8 @@ namespace Chess
 	inline int see(const Position& pos, player_t to_move,
 				   square_t square)
 	{
-		int scores[max_moves]; scores[0] = scores[1] = 0;
+		BUFFER(int,scores,64); scores[0] = scores[1] = 0;
+
 		int n_moves = 0;
 
 		const auto& tables = DataTables::get();

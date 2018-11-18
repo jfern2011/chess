@@ -1,2 +1,2 @@
 # chess
-An xBoard-compliant chess engine
+A UCI-compliant chess engine
