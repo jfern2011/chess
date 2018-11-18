@@ -1,6 +1,8 @@
 #ifndef __SEE_H__
 #define __SEE_H__
 
+#include <algorithm>
+
 #include "Position4.h"
 
 namespace Chess
@@ -22,7 +24,7 @@ namespace Chess
 	inline int see(const Position& pos, player_t to_move,
 				   square_t square)
 	{
-		int scores[max_moves];
+		int scores[max_moves]; scores[0] = scores[1] = 0;
 		int n_moves = 0;
 
 		const auto& tables = DataTables::get();
@@ -42,13 +44,8 @@ namespace Chess
 		attackers[black] =
 			pos.attacks_to(square, player_t::black);
 
-		/*
-		 * If no piece is attacking this square, we are done
-		 */
-		if (!attackers[white] && !attackers[black])
-			return 0;
-
-		piece_t last_capture = pos.piece_on(square);
+		piece_t last_capture
+			= pos.piece_on( square );
 
 		/*
 	 	 * Bitmap of the occupied squares. We'll update this
@@ -59,7 +56,17 @@ namespace Chess
 		while (attackers[to_move])
 		{
 			uint64 pieces;
-			scores[n_moves++] = piece_value[last_capture];
+
+			n_moves++;
+			scores[ n_moves ] = tables.piece_value[ last_capture ]
+				- scores[ n_moves-1 ];
+
+			/*
+			 * Pruning: if the material gained still results
+			 * in an overall loss, we can quit:
+			 */
+			if (std::max(-scores[n_moves-1],scores[n_moves])
+					< 0) break;
 
 			do {
 
@@ -191,8 +198,18 @@ namespace Chess
 		}
 
 		/*
-		 * 2nd pass: 
+		 * Compute the optimal score via negamax propagation of
+		 * the best score up to the root, i.e. scores[1]. This tree
+		 * looks like a binary tree where at every node we either
+		 * capture or choose not to
 		 */
+		for (int i = n_moves; i > 1; --i)
+		{
+			scores[i-1] = -std::max(-scores[i-1],
+				scores[i]);
+		}
+
+		return scores[1];
 	}
 }
 
