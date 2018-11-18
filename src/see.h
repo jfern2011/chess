@@ -39,9 +39,9 @@ namespace Chess
 
 		BUFFER(uint64, attackers, 2);
 
-		attackers[white] =
+		attackers[player_t::white] =
 			pos.attacks_to(square, player_t::white);
-		attackers[black] =
+		attackers[player_t::black] =
 			pos.attacks_to(square, player_t::black);
 
 		piece_t last_capture
@@ -51,7 +51,8 @@ namespace Chess
 	 	 * Bitmap of the occupied squares. We'll update this
 	 	 * as captures are made
 	 	 */
-		uint64 occupied = pos.get_occupied();
+		uint64 occupied = pos.get_occupied(player_t::white) |
+						  pos.get_occupied(player_t::black);
 
 		while (attackers[to_move])
 		{
@@ -140,7 +141,8 @@ namespace Chess
 			}
 			else
 			{
-				const int from = msb64(pieces);
+				const square_t from =
+					static_cast<square_t>(msb64(pieces));
 				uint64 new_attacker;
 
 				const bool queen_attacks_diag =
@@ -175,7 +177,7 @@ namespace Chess
 				 * Make sure we only add 1 new attacker. This is
 				 * required if the target square is empty
 				 */
-				new_attacker &= -new_attacker
+				new_attacker &= -new_attacker;
 
 				/*
 				 * Avoid tagging the piece sitting on the
