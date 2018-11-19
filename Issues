@@ -6,3 +6,5 @@
    - 50-move rule
 3. Is unmake_move() really required? Can't we just decrement ply?
 4. Check SEE algorithm
+   - Note that we can enable pruning (which only returns an upper bound) for
+     a possible speed-up; test later

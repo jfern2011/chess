@@ -38,7 +38,7 @@ cc_test(
 	name  = "see_ut",
 	srcs  = ["ut_main.cpp", "see_ut.cpp"],
 	copts = [
-		"-DDEBUG", "-Wall", "-DSAFE_BUFFER"
+		"-DDEBUG", "-Wall", "-DSAFE_BUFFER", "-DSEE_TEST"
 	],
 	deps  = [
 		"@googletest//:gtest_main",
@@ -50,10 +50,10 @@ cc_test(
 	name  = "test_all",
 	srcs  = [
 		"DataTables_ut.cpp", "Position_ut.cpp", "MoveGen_ut.cpp",
-		"ut_main.cpp"
+		"see_ut.cpp", "ut_main.cpp"
 	],
 	copts = [
-		"-DDEBUG", "-Wall", "-DSAFE_BUFFER"
+		"-DDEBUG", "-Wall", "-DSAFE_BUFFER", "-DSEE_TEST"
 	],
 	deps  = [
 		"@googletest//:gtest_main",

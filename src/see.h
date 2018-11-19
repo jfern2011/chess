@@ -8,6 +8,28 @@
 namespace Chess
 {
 	/**
+	 * Used to play back a sequence of captures
+	 */
+	struct see_record
+	{
+		/** Constructor */
+		see_record() : moved(), captured()
+		{
+		}
+
+		/**
+		 * The piece that performed the capture
+		 */
+		std::vector<piece_t> moved;
+
+		/**
+		 * The piece that was captured
+		 */
+		std::vector<piece_t>
+			captured;
+	};
+
+	/**
 	 * Static exchange evaluation. This computes the outcome of a sequence
 	 * of captures on \a square
 	 *
@@ -22,7 +44,11 @@ namespace Chess
 	 * @return Optimal value of the capture sequence
 	 */
 	inline int see(const Position& pos, player_t to_move,
-				   square_t square)
+				   square_t square
+#ifdef SEE_TEST
+				   , see_record& record
+#endif
+				   )
 	{
 		BUFFER(int,scores,64); scores[0] = scores[1] = 0;
 
@@ -32,10 +58,14 @@ namespace Chess
 
 		const uint64 bishops_queens =
 			pos.get_bitboard<piece_t::bishop>(player_t::white) |
+			pos.get_bitboard<piece_t::queen >(player_t::white) |
+			pos.get_bitboard<piece_t::bishop>(player_t::black) |
 			pos.get_bitboard<piece_t::queen >(player_t::black);
 
 		const uint64 rooks_queens =
 			pos.get_bitboard< piece_t::rook >(player_t::white) |
+			pos.get_bitboard< piece_t::queen>(player_t::white) |
+			pos.get_bitboard< piece_t::rook >(player_t::black) |
 			pos.get_bitboard< piece_t::queen>(player_t::black);
 
 		BUFFER(uint64, attackers, 2);
@@ -63,12 +93,16 @@ namespace Chess
 			scores[ n_moves ] = tables.piece_value[ last_capture ]
 				- scores[ n_moves-1 ];
 
+#ifdef SEE_TEST
+			record.captured.push_back(last_capture);
+#endif
+
 			/*
 			 * Pruning: if the material gained still results
 			 * in an overall loss, we can quit:
-			 */
+			 *
 			if (std::max(-scores[n_moves-1],scores[n_moves])
-					< 0) break;
+					< 0) break;*/
 
 			do {
 
@@ -128,6 +162,10 @@ namespace Chess
 
 			} while (0);
 
+#ifdef SEE_TEST
+			record.moved.push_back( last_capture );
+#endif
+
 			/*
 			 * Add X-ray attackers
 			 */
@@ -144,7 +182,7 @@ namespace Chess
 			{
 				const square_t from =
 					static_cast<square_t>(msb64(pieces));
-				uint64 new_attacker;
+				uint64 new_attackers;
 
 				const bool queen_attacks_diag =
 					last_capture == piece_t::queen &&
@@ -157,7 +195,7 @@ namespace Chess
 					last_capture == piece_t::bishop ||
 					queen_attacks_diag)
 				{
-					new_attacker =
+					new_attackers =
 						pos.attacks_from<piece_t::bishop>(
 							from, occupied)
 								& tables.ray_extend[from][square]
@@ -165,7 +203,7 @@ namespace Chess
 				}
 				else
 				{
-					new_attacker =
+					new_attackers =
 						pos.attacks_from< piece_t::rook >(
 							from, occupied)
 								& tables.ray_extend[from][square]
@@ -175,21 +213,27 @@ namespace Chess
 				clear_bit64(from, occupied);
 
 				/*
-				 * Make sure we only add 1 new attacker. This is
-				 * required if the target square is empty
-				 */
-				new_attacker &= -new_attacker;
-
-				/*
 				 * Avoid tagging the piece sitting on the
 				 * capture square:
 				 */
-				clear_bit64(square, new_attacker);
+				clear_bit64(square, new_attackers);
 
-				if (new_attacker & pos.get_occupied(to_move))
-					attackers[to_move] |= new_attacker;
-				else
-					attackers[flip(to_move)] |= new_attacker;
+				/*
+				 * New attackers have been uncovered. There can be
+				 * no more than two, and they may belong to us or the
+				 * opponent (or both). Sort out who they belong to
+				 * and update each side's attackers
+				 */
+
+				const player_t opponent = flip(to_move);
+
+				uint64 new_attacker_0 =
+					new_attackers & pos.get_occupied(to_move );
+				uint64 new_attacker_1 =
+					new_attackers & pos.get_occupied(opponent);
+
+				attackers[to_move ] |= new_attacker_0;
+				attackers[opponent] |= new_attacker_1;
 
 				/*
 				 * Clear the least valuable attacker
