@@ -17,6 +17,13 @@ namespace Chess
 		{
 		}
 
+		/** Clear this record */
+		void clear()
+		{
+			captured.clear();
+			moved.clear();
+		}
+
 		/**
 		 * The piece that performed the capture
 		 */
@@ -56,13 +63,13 @@ namespace Chess
 
 		const auto& tables = DataTables::get();
 
-		const uint64 bishops_queens =
+		uint64 bishops_queens =
 			pos.get_bitboard<piece_t::bishop>(player_t::white) |
 			pos.get_bitboard<piece_t::queen >(player_t::white) |
 			pos.get_bitboard<piece_t::bishop>(player_t::black) |
 			pos.get_bitboard<piece_t::queen >(player_t::black);
 
-		const uint64 rooks_queens =
+		uint64 rooks_queens =
 			pos.get_bitboard< piece_t::rook >(player_t::white) |
 			pos.get_bitboard< piece_t::queen>(player_t::white) |
 			pos.get_bitboard< piece_t::rook >(player_t::black) |
@@ -200,6 +207,11 @@ namespace Chess
 							from, occupied)
 								& tables.ray_extend[from][square]
 									& bishops_queens;
+
+					/*
+					 * Prevent reusing the same attacker
+					 */
+					clear_bit64(from, bishops_queens);
 				}
 				else
 				{
@@ -208,13 +220,18 @@ namespace Chess
 							from, occupied)
 								& tables.ray_extend[from][square]
 									& rooks_queens;
+
+					/*
+					 * Prevent reusing the same attacker
+					 */
+					clear_bit64(from, rooks_queens);
 				}
 
 				clear_bit64(from, occupied);
 
 				/*
-				 * Avoid tagging the piece sitting on the
-				 * capture square:
+				 * Avoid tagging the piece sitting on
+				 * the capture square:
 				 */
 				clear_bit64(square, new_attackers);
 
@@ -227,9 +244,9 @@ namespace Chess
 
 				const player_t opponent = flip(to_move);
 
-				uint64 new_attacker_0 =
+				const uint64 new_attacker_0 =
 					new_attackers & pos.get_occupied(to_move );
-				uint64 new_attacker_1 =
+				const uint64 new_attacker_1 =
 					new_attackers & pos.get_occupied(opponent);
 
 				attackers[to_move ] |= new_attacker_0;

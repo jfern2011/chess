@@ -92,5 +92,64 @@ namespace
 				EXPECT_EQ(record.moved[i], expected.moved[i]);
 			}
 		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"4b2k/7b/6B1/1B5b/2B5/1b1B4/4B3/3B3K w - - 0 1"));
+
+			see_record record;
+			EXPECT_EQ(-325, see(pos, pos.get_turn(), square_t::C6, record));
+
+			ASSERT_EQ(record.captured.size(), 2) << record_to_string(record);
+			ASSERT_EQ(record.moved.size(), 2) << record_to_string(record);
+
+			EXPECT_EQ(piece_t::empty, record.captured[0]);
+			EXPECT_EQ(piece_t::bishop, record.moved[0]);
+
+			EXPECT_EQ(piece_t::bishop, record.captured[1]);
+			EXPECT_EQ(piece_t::bishop, record.moved[1]);
+
+			record.clear();
+			EXPECT_EQ(-325, see(pos, pos.get_turn(), square_t::D5, record));
+
+			ASSERT_EQ(record.captured.size(), 2) << record_to_string(record);
+			ASSERT_EQ(record.moved.size(), 2) << record_to_string(record);
+
+			EXPECT_EQ(piece_t::empty, record.captured[0]);
+			EXPECT_EQ(piece_t::bishop, record.moved[0]);
+
+			EXPECT_EQ(piece_t::bishop, record.captured[1]);
+			EXPECT_EQ(piece_t::bishop, record.moved[1]);
+
+			record.clear();
+			EXPECT_EQ(0, see(pos, pos.get_turn(), square_t::E4, record));
+
+			ASSERT_EQ(record.captured.size(), 3) << record_to_string(record);
+			ASSERT_EQ(record.moved.size(), 3) << record_to_string(record);
+
+			EXPECT_EQ(piece_t::empty, record.captured[0]);
+			EXPECT_EQ(piece_t::bishop, record.moved[0]);
+
+			EXPECT_EQ(piece_t::bishop, record.captured[1]);
+			EXPECT_EQ(piece_t::bishop, record.moved[1]);
+
+			EXPECT_EQ(piece_t::bishop, record.captured[2]);
+			EXPECT_EQ(piece_t::bishop, record.moved[2]);
+
+			record.clear();
+			EXPECT_EQ(0, see(pos, pos.get_turn(), square_t::F3, record));
+
+			ASSERT_EQ(record.captured.size(), 3) << record_to_string(record);
+			ASSERT_EQ(record.moved.size(), 3) << record_to_string(record);
+
+			EXPECT_EQ(piece_t::empty, record.captured[0]);
+			EXPECT_EQ(piece_t::bishop, record.moved[0]);
+
+			EXPECT_EQ(piece_t::bishop, record.captured[1]);
+			EXPECT_EQ(piece_t::bishop, record.moved[1]);
+
+			EXPECT_EQ(piece_t::bishop, record.captured[2]);
+			EXPECT_EQ(piece_t::bishop, record.moved[2]);
+		}
 	}
 }
