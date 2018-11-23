@@ -151,5 +151,119 @@ namespace
 			EXPECT_EQ(piece_t::bishop, record.captured[2]);
 			EXPECT_EQ(piece_t::bishop, record.moved[2]);
 		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"3kr3/1q2r3/2b5/2n2pN1/4P3/3PRP2/4r1Q1/3KR2B b - - 0 1"));
+
+			see_record record;
+			EXPECT_EQ(0, see(pos, pos.get_turn(), square_t::E4, record));
+
+			ASSERT_TRUE(record.captured.size() == 14) << record_to_string(record);
+			ASSERT_TRUE(record.moved.size() == 14) << record_to_string(record);
+
+			std::vector<piece_t> moved({
+				piece_t::pawn,
+				piece_t::pawn,
+				piece_t::knight,
+				piece_t::pawn,
+				piece_t::bishop,
+				piece_t::knight,
+				piece_t::rook,
+				piece_t::rook,
+				piece_t::rook,
+				piece_t::queen,
+				piece_t::rook,
+				piece_t::bishop,
+				piece_t::queen,
+				piece_t::rook
+			});
+
+			std::vector<piece_t> captured({
+				piece_t::pawn,
+				piece_t::pawn,
+				piece_t::pawn,
+				piece_t::knight,
+				piece_t::pawn,
+				piece_t::bishop,
+				piece_t::knight,
+				piece_t::rook,
+				piece_t::rook,
+				piece_t::rook,
+				piece_t::queen,
+				piece_t::rook,
+				piece_t::bishop,
+				piece_t::queen
+			});
+
+			for (size_t i = 0; i < moved.size(); i++)
+			{
+				EXPECT_EQ(captured[i], record.captured[i]);
+				EXPECT_EQ(moved[i], record.moved[i]);
+			}
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"8/4Q3/4R3/5K2/8/4rk2/4r3/4R3 w - - 0 1"));
+
+			see_record record;
+			EXPECT_EQ(-475, see(pos, pos.get_turn(), square_t::E4, record));
+
+			ASSERT_TRUE(record.captured.size() == 7)
+				<< record_to_string(record);
+			ASSERT_TRUE(record.moved.size() == 7)
+				<< record_to_string(record);
+
+			std::vector<piece_t> moved({
+				piece_t::rook,
+				piece_t::rook,
+				piece_t::queen,
+				piece_t::rook,
+				piece_t::rook,
+				piece_t::king,
+				piece_t::king
+			});
+
+			std::vector<piece_t> captured({
+				piece_t::empty,
+				piece_t::rook,
+				piece_t::rook,
+				piece_t::queen,
+				piece_t::rook,
+				piece_t::rook,
+				piece_t::king
+			});
+
+			for (size_t i = 0; i < moved.size(); i++)
+			{
+				EXPECT_EQ(captured[i], record.captured[i]);
+				EXPECT_EQ(moved[i], record.moved[i]);
+			}
+		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+				"4k3/8/8/8/8/8/8/4K3 w - - 0 1"));
+
+			see_record record;
+			EXPECT_EQ(0, see(pos, pos.get_turn(), square_t::E4, record));
+
+			ASSERT_TRUE(record.captured.size() == 0)
+				<< record_to_string(record);
+			ASSERT_TRUE(record.moved.size() == 0)
+				<< record_to_string(record);
+
+			record.clear();
+			EXPECT_EQ(0, see(pos, pos.get_turn(), square_t::E2, record));
+
+			ASSERT_TRUE(record.captured.size() == 1)
+				<< record_to_string(record);
+			ASSERT_TRUE(record.moved.size() == 1)
+				<< record_to_string(record);
+
+			EXPECT_EQ(piece_t::empty, record.captured[0]);
+			EXPECT_EQ(piece_t::king, record.moved[0]);
+		}
 	}
 }
