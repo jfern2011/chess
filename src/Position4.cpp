@@ -124,7 +124,10 @@ namespace Chess
 			_knights[player_t::black]  =
 				rhs._knights[player_t::black];
 
-			_material = rhs._material;
+			_material[player_t::white] =
+				rhs._material[player_t::white];
+			_material[player_t::black] =
+				rhs._material[player_t::black];
 
 			_occupied[player_t::white] =
 				rhs._occupied[player_t::white];
@@ -204,7 +207,10 @@ namespace Chess
 			&& _full_move  == rhs._full_move
 			&& _hash_input == rhs._hash_input
 			&& _is_init    == rhs._is_init
-			&& _material   == rhs._material
+			&& _material[player_t::white] 
+				== rhs._material[player_t::white]
+			&& _material[player_t::black]
+				== rhs._material[player_t::black]
 			&& _to_move    == rhs._to_move
 			&& _ply        == rhs._ply;
 
@@ -258,7 +264,10 @@ namespace Chess
 			&& _full_move  == rhs._full_move
 			&& _hash_input == rhs._hash_input
 			&& _is_init    == rhs._is_init
-			&& _material   == rhs._material
+			&& _material[player_t::white]
+				== rhs._material[player_t::white]
+			&& _material[player_t::black]
+				== rhs._material[player_t::black]
 			&& _to_move    == rhs._to_move
 			&& _ply        == rhs._ply;
 
@@ -834,14 +843,14 @@ namespace Chess
 		 * Compute the material balance. This avoids
 		 * having to do so during static eval
 		 */
-		_material  =
+		_material[player_t::white] =
 			Util::bit_count(_pawns[player_t::white])   * pawn_value   +
 			Util::bit_count(_knights[player_t::white]) * knight_value + 
 			Util::bit_count(_bishops[player_t::white]) * bishop_value + 
 			Util::bit_count(_rooks[player_t::white])   * rook_value   +
 			Util::bit_count(_queens[player_t::white])  * queen_value;
 
-		_material -=
+		_material[player_t::black] =
 			Util::bit_count(_pawns[player_t::black])   * pawn_value   + 
 			Util::bit_count(_knights[player_t::black]) * knight_value + 
 			Util::bit_count(_bishops[player_t::black]) * bishop_value + 
@@ -878,7 +887,9 @@ namespace Chess
 
 		_full_move = -1;
 
-		_material = 0;
+		_material[player_t::white] = 0;
+		_material[player_t::black] = 0;
+
 		_to_move  = player_t::white;
 
 		for (int i = 0; i < max_ply; i++)

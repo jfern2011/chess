@@ -245,9 +245,9 @@ namespace Chess
 		BUFFER(uint64, _knights, 2);
 
 		/**
-		 * The material balance. A value of zero indicates even material
+		 * The material balance, per side
 		 */
-		int _material;
+		BUFFER(int, _material, 2);
 
 		/**
 		 *  Bitboards that give the locations of all squares occupied by
@@ -780,7 +780,8 @@ namespace Chess
 	 */
 	inline int Position::get_material() const
 	{
-		return _material;
+		return  _material[player_t::white] -
+				_material[player_t::black];
 	}
 
 	/**
@@ -1389,10 +1390,8 @@ namespace Chess
 		/*
 		 * 14. Update the material balance
 		 */
-		if ( _to_move == player_t::white )
-			_material += delta_material;
-		else
-			_material -= delta_material;
+		_material[ _to_move ] +=
+			delta_material;
 
 		/* 
 		 * 15. Flip the side on move
@@ -1748,10 +1747,8 @@ namespace Chess
 		/*
 		 * 11. Restore the material balance
 		 */
-		if ( _to_move == player_t::white )
-			_material -= delta_material;
-		else
-			_material += delta_material;
+		_material[ _to_move ] -=
+			delta_material;
 
 		return true;
 	}
