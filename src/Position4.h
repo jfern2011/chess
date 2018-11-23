@@ -130,7 +130,7 @@ namespace Chess
 
 		square_t get_king_square (player_t to_move) const;
 
-		int get_material() const;
+		int get_material(player_t to_move)          const;
 
 		template <piece_t type>
 		int get_mobility(square_t square);
@@ -773,15 +773,15 @@ namespace Chess
 	}
 
 	/**
-	 * Get the material balance. A positive value means white has
-	 * more material
+	 * Get the material score for a player
 	 *
-	 * @return The material balance
+	 * @param[in] to_move Get this player's material score
+	 *
+	 * @return The material score for \a to_move
 	 */
-	inline int Position::get_material() const
+	inline int Position::get_material(player_t to_move) const
 	{
-		return  _material[player_t::white] -
-				_material[player_t::black];
+		return  _material[to_move];
 	}
 
 	/**
