@@ -288,6 +288,12 @@ namespace Chess
 		BUFFER(uint64, ranks64, 64);
 
 		/**
+		 * Describes a ray whose origin is at the 1st index and extends
+		 * to the end of the board through the 2nd
+		 */
+		BUFFER(uint64, ray, 64, 64);
+
+		/**
 		 * Similar to \ref ray_segment, but includes the entire "line"
 		 * along that direction, e.g.
 		 *

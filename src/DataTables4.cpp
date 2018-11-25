@@ -801,6 +801,7 @@ namespace Chess
 	 * \ref files64
 	 * \ref h1a8_64
 	 * \ref a1h8_64
+	 * \ref ray
 	 * \ref ray_segment
 	 * \ref ray_extend
 	 * \ref directions
@@ -890,6 +891,38 @@ namespace Chess
 					ray_extend[sq1][sq2]= 0;
 					directions[sq1][sq2]
 						= direction_t::none;
+				}
+
+				ray[sq1][sq2] = one << sq1;
+
+				switch (directions[sq1][sq2])
+				{
+				case direction_t::along_h1a8:
+					if (sq1 < sq2)
+						ray[sq1][sq2] |= northwest_mask[sq1];
+					else
+						ray[sq1][sq2] |= southeast_mask[sq1];
+					break;
+				case direction_t::along_file:
+					if (sq1 < sq2)
+						ray[sq1][sq2] |= north_mask[sq1];
+					else
+						ray[sq1][sq2] |= south_mask[sq1];
+					break;
+				case direction_t::along_a1h8:
+					if (sq1 < sq2)
+						ray[sq1][sq2] |= northeast_mask[sq1];
+					else
+						ray[sq1][sq2] |= southwest_mask[sq1];
+					break;
+				case direction_t::along_rank:
+					if (sq1 < sq2)
+						ray[sq1][sq2] |=  west_mask[sq1];
+					else
+						ray[sq1][sq2] |=  east_mask[sq1];
+					break;
+				default:
+					ray[sq1][sq2] = 0;
 				}
 			}
 		}
