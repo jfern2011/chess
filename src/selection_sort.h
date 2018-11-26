@@ -67,6 +67,16 @@ namespace Chess
 		}
 
 		/**
+		 * Get the number of moves in the array
+		 *
+		 * @return The number of elements
+		 */
+		size_t size() const
+		{
+			return _size;
+		}
+
+		/**
 		 * Compare two moves. Moves are scored by taking the
 		 * difference between the piece captured and the piece moved,
 		 * so a positive value indicates the move gains material

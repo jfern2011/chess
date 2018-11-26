@@ -59,11 +59,24 @@ cc_test(
 )
 
 cc_test(
+	name  = "search_ut",
+	srcs  = ["ut_main.cpp", "search_ut.cpp"],
+	copts = [
+		"-DDEBUG", "-Wall", "-DSAFE_BUFFER"
+	],
+	deps  = [
+		"@googletest//:gtest_main",
+		"//src:chess",
+	],
+)
+
+cc_test(
 	name  = "test_all",
 	srcs  = [
 		"DataTables_ut.cpp",
 		"MoveGen_ut.cpp",
 		"Position_ut.cpp",
+		"search_ut.cpp",
 		"see_ut.cpp",
 		"selection_sort_ut.cpp",
 		"ut_main.cpp"
