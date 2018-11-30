@@ -241,7 +241,8 @@ namespace Chess
 				 * pawn without it getting captured, don't bother
 				 * searching this move
 				 */
-				if (extract_promote(move) != piece_t::empty )
+				if (extract_promote(move)  != piece_t::empty &&
+					extract_captured(move) == piece_t::empty)
 				{
 					pos.make_move  (move);
 					const int score = see(pos, pos.get_turn(),
