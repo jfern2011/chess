@@ -51,13 +51,12 @@ namespace Chess
 	{
 		Position& pos = *_position;
 
-		const player_t to_move = pos.get_turn();
-		const bool in_check = pos.in_check(to_move);
+		const bool in_check = pos.in_check(pos.get_turn());
 
 		/*
 		 * Don't quiece() if we're in check:
 		 */
-		if (_iteration_depth <= depth  && !in_check)
+		if (_iteration_depth <= depth && !in_check)
 			return quiesce(depth, alpha, beta);
 
 		BUFFER(int32, moves, max_moves);
@@ -241,8 +240,8 @@ namespace Chess
 				 * pawn without it getting captured, don't bother
 				 * searching this move
 				 */
-				if (extract_promote(move)  != piece_t::empty &&
-					extract_captured(move) == piece_t::empty)
+				if (extract_captured(move) == piece_t::empty &&
+					extract_promote (move) != piece_t::empty)
 				{
 					pos.make_move  (move);
 					const int score = see(pos, pos.get_turn(),

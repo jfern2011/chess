@@ -26,6 +26,9 @@ namespace Chess
 	const int rook_value   = 500;
 	const int queen_value  = 975;
 
+	/* Required by unit tests */
+	const int empty_value  = 0;
+
 	/*
 	 * Assign the king a large value that still fits within
 	 * 16 bits (signed)

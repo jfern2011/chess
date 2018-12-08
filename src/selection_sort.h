@@ -77,29 +77,36 @@ namespace Chess
 		}
 
 		/**
-		 * Compare two moves. Moves are scored by taking the
-		 * difference between the piece captured and the piece moved,
-		 * so a positive value indicates the move gains material
+		 * Compare two moves
 		 *
-		 * @param[in] move1 The first move
-		 * @param[in] move2 The second move
+		 * @note See \ref score() for a description of how moves are
+		 *       scored
 		 *
-		 * @return The difference between the move scores.
-		 *         A positive value indicates \a move1 is better
+		 * @param[in] move1  A 21-bit packed move
+		 * @param[in] move2  The second move against which to compare
+		 *                   \a move1
+		 *
+		 * @return The difference between the two move scores; if
+		 *         positive, \a move1 is better
 		 */
 		static int compare(int32 move1, int32 move2)
 		{
-			const auto& tables = DataTables::get();
+			return score(move1) - score(move2);
+		}
 
-			const int gain1 =
-				tables.piece_value[extract_captured(move1)] -
-				tables.piece_value[extract_moved(move1)];
-
-			const int gain2 =
-				tables.piece_value[extract_captured(move2)] -
-				tables.piece_value[extract_moved(move2)];
-
-			return gain1 - gain2;
+		/**
+		 * Score a move as the result of the difference in value
+		 * between the piece captured and the piece moved. A positive
+		 * value indicates that playing this move gains material
+		 *
+		 * @param[in] move The move to score
+		 *
+		 * @return The score
+		 */
+		static int score(int32 move)
+		{
+			return DataTables::get().exchange[extract_captured(
+				move)][extract_moved(move)];
 		}
 
 	private:
