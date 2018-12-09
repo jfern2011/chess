@@ -5,6 +5,8 @@
 
 using namespace Chess;
 
+see_record test_record;
+
 namespace
 {
 	std::string record_to_string(const see_record& record)

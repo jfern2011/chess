@@ -48,6 +48,16 @@ namespace Chess
 		}
 
 		/**
+		 * Check if the sorted move list is exhausted
+		 *
+		 * @return True if exhausted
+		 */
+		bool empty() const
+		{
+			return _size <= _iter;
+		}
+
+		/**
 		 * Get the next move in the sorted list. If the list
 		 * is exhausted, outputs the last element
 		 *
@@ -58,7 +68,7 @@ namespace Chess
 		 */
 		bool next(int32& move)
 		{
-			if (_size <= _iter) return false;
+			if (empty()) return false;
 
 			size_t max_i = _iter;
 

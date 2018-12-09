@@ -36,6 +36,10 @@ namespace Chess
 			captured;
 	};
 
+#ifdef SEE_TEST
+	extern see_record test_record;
+#endif
+
 	/**
 	 * Static exchange evaluation. This computes the outcome of a sequence
 	 * of captures on \a square
@@ -53,7 +57,7 @@ namespace Chess
 	inline int see(const Position& pos, player_t to_move,
 				   square_t square
 #ifdef SEE_TEST
-				   , see_record& record
+				   , see_record& record = test_record
 #endif
 				   )
 	{

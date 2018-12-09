@@ -491,6 +491,39 @@ namespace Chess
 	}
 
 	/**
+	 * Score a move as the result of the difference in value
+	 * between the piece captured and the piece moved. A positive
+	 * value indicates that playing this move gains material
+	 *
+	 * @param[in] move The move to score
+	 *
+	 * @return The score
+	 */
+	inline int score(int32 move)
+	{
+		return DataTables::get().exchange[extract_captured(
+			move)][extract_moved(move)];
+	}
+
+	/**
+	 * Compare two moves
+	 *
+	 * @note See \ref score() for a description of how moves are
+	 *       scored
+	 *
+	 * @param[in] move1  A 21-bit packed move
+	 * @param[in] move2  The second move against which to compare
+	 *                   \a move1
+	 *
+	 * @return The difference between the two move scores; if
+	 *         positive, \a move1 is better
+	 */
+	inline int compare_mvv_lva(int32 move1, int32 move2)
+	{
+		return score(move1) - score(move2);
+	}
+
+	/**
 	 * Specialization of \ref shift_pawns(). Shifts the given pawn
 	 * bitboard by 7 (e.g. to compute pawn captures). Pawns that would
 	 * wrap around to the file on the opposite end of the board are

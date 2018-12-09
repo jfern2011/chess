@@ -1,10 +1,13 @@
 #ifndef __SEARCH_H__
 #define __SEARCH_H__
 
+#include <functional>
+
 #include "eval.h"
 #include "MoveGen4.h"
-#include "selection_sort.h"
 #include "see.h"
+#include "selection_sort.h"
+#include "selection_sort2.h"
 
 namespace Chess
 {
@@ -17,6 +20,40 @@ namespace Chess
 
 		~Search();
 
+		/**
+		 * Score a move. This is done as follows:
+		 *
+		 * 1. The score is preliminarily computed as the difference
+		 *    in value between the captured and moved pieces
+		 * 2. If the move is a promotion, see if we can advance the
+		 *    pawn safely. If so, add a bonus equal to the value
+		 *    of the piece promoted to
+		 *
+		 * @param[in] pos  A Position, used to see() captures
+		 * @param[in] move The move to score
+		 *
+		 * @return The score
+		 */
+		static int score(Position& pos, int32 move)
+		{
+			auto& tables = DataTables::get();
+			int score = tables.exchange[extract_captured(move)][
+				extract_moved(move)];
+
+			const piece_t promote = extract_promote(move);
+			if (promote != piece_t::empty)
+			{
+				pos.make_move  (move);
+
+				if (see(pos, pos.get_turn(), extract_to(move)) <= 0)
+					score += tables.piece_value[promote];
+
+				pos.unmake_move(move);
+			}
+
+			return score;
+		}
+
 		bool init(Handle<Position> pos);
 
 		int16 quiesce(int depth, int16 alpha, int16 beta);
@@ -24,7 +61,11 @@ namespace Chess
 		int16 run(int timeout, int depth, int32 best);
 
 		int16 search(int depth, int16 alpha, int16 beta);
-
+/*
+		int16 search_captures(SelectionSort2& sort,
+							  int16& alpha, int16 beta,
+							  int depth);
+*/
 		int16 search_moves(SelectionSort& sort,
 						   int16& alpha, int16 beta,
 						   int depth);
@@ -34,6 +75,9 @@ namespace Chess
 						   int depth);
 
 	private:
+
+		using compare_fn_t =
+			std::function<int(int32,int32)>;
 
 		bool _is_init;
 
@@ -75,47 +119,132 @@ namespace Chess
 			 	 */
 				return depth - king_value;
 			}
+
+			/*
+			 * Search all check evasions in MVV-LVA order
+			 */
+
+			SelectionSort sort(moves, n_moves);
+
+			const int16 score =
+				search_moves( sort, alpha, beta, depth );
+
+			if ( beta <= score )
+				return beta;
+			return alpha;
 		}
 		else
 		{
 			n_moves = MoveGen::generate_captures(
 				pos, moves);
 		}
-		
-		if (n_moves > 0)
+
+		SelectionSort2<compare_fn_t>
+			sort(moves, n_moves, [&pos](int32 mv1, int32 mv2) {
+				return score(pos,mv1) - score(pos,mv2);
+		});
+
+		/*
+		 * 1. Search winning captures
+		 */
+		int32 next_move = 0;
+
+		while (sort.next(next_move))
 		{
-			SelectionSort sort(moves, n_moves);
+			/*
+			 * Exit after we hit the first losing capture
+			 */
+			if (score(pos, next_move) < 0)
+				break;
 
+			++_node_count;
+			pos.make_move  (next_move);
 			const int16 score =
-				search_moves(sort, alpha, beta, depth);
+				-search(depth + 1, -beta, -alpha);
+			pos.unmake_move(next_move);
 
-			if ( beta <= score )
+			if (beta <= score)
 				return beta;
 
-			/*
-			 * If we're in check, all moves have been searched
-			 */
-			if (in_check)
-				return alpha;
+			if ( score > alpha )
+				alpha = score;
 		}
 
-		const bool captures = n_moves > 0;
+		/*
+		 * 2. Search non-captures
+		 */
 
-		n_moves = MoveGen::generate_noncaptures(
-			pos, moves);
+		BUFFER(int32, quiet_moves, max_moves);
 
-		if (n_moves == 0 && !captures)
+		size_t n_quiet = MoveGen::generate_noncaptures(
+			pos, quiet_moves);
+
+		if (n_moves == 0 && n_quiet == 0)
 			return 0; // draw
 
 		const int16 score = search_moves(
-			moves, n_moves, alpha, beta, depth);
+			quiet_moves, n_quiet, alpha, beta, depth );
 
 		if ( beta <= score )
 			return beta;
 
+		/*
+		 * 3. Search losing (remaining) captures
+		 */
+
+		if (next_move && !sort.empty())
+		{
+			do
+			{
+				++_node_count;
+				pos.make_move  (next_move);
+
+				int16 score =
+					-search(depth + 1, -beta, -alpha);
+
+				pos.unmake_move(next_move);
+
+				if ( beta <= score )
+					return beta;
+
+				if ( score > alpha )
+					alpha = score;
+
+			} while (sort.next(
+				next_move));
+		}
+
 		return alpha;
 	}
+/*
+	inline int16 Search::search_captures(CaptureSort& sort,
+										 int16& alpha, int16 beta,
+										 int depth)
+	{
+		Position& pos = *_position;
 
+		for (size_t i = 0; i < sort.size(); ++i)
+		{
+			const int32 move = sort.next();
+
+			++_node_count;
+			pos.make_move  (move);
+
+			const int16 score =
+				-search(depth+1, -beta, -alpha);
+
+			pos.unmake_move(move);
+
+			if (beta <= score)
+				return beta;
+
+			if ( score > alpha )
+				alpha = score;
+		}
+
+		return alpha;
+	}
+*/
 	inline int16 Search::search_moves(SelectionSort& sort,
 									  int16& alpha, int16 beta,
 									  int depth)
@@ -248,7 +377,7 @@ namespace Chess
 										  extract_to(move));
 					pos.unmake_move(move);
 
-					if ( score < 0 )
+					if ( score > 0 )
 						continue;
 				}
 
