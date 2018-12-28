@@ -11,8 +11,14 @@
 
 namespace Chess
 {
+	/**
+	 * Alpha-beta negamax search algorithm
+	 */
 	class Search final
 	{
+
+		using compare_fn_t =
+			std::function<int(int32,int32)>;
 
 	public:
 
@@ -60,24 +66,23 @@ namespace Chess
 
 		int16 run(int timeout, int depth, int32 best);
 
+		void save_pv(int depth, int move);
+
 		int16 search(int depth, int16 alpha, int16 beta);
 /*
-		int16 search_captures(SelectionSort2& sort,
+		int16 search_captures(SelectionSort2<compare_fn_t>& sort,
 							  int16& alpha, int16 beta,
 							  int depth);
 */
 		int16 search_moves(SelectionSort& sort,
 						   int16& alpha, int16 beta,
-						   int depth);
+						   int depth, int& best);
 
 		int16 search_moves(int32* moves, size_t n_moves,
 						   int16& alpha, int16 beta,
-						   int depth);
+						   int depth, int& best);
 
 	private:
-
-		using compare_fn_t =
-			std::function<int(int32,int32)>;
 
 		bool _is_init;
 
@@ -88,8 +93,34 @@ namespace Chess
 		Handle< Position >
 			_position;
 
+		BUFFER(int, _pv, max_ply, max_ply);
+
 		int64 _qnode_count;
 	};
+
+	/**
+	 * Back up the principal variation from the given depth
+	 *
+	 * @param [in] depth The starting depth
+	 * @param [in] move  The move to save at depth \a depth
+	 */
+	inline void Search::save_pv(int depth, int move)
+	{
+		if (depth < max_ply)
+		{
+			_pv[depth][depth] = move;
+
+			// Null move signals the end of a variation:
+			if (move == 0)
+				return;
+		}
+
+		for (register int i= depth+1; i < max_ply; i++)
+		{
+			if ((_pv[depth][i] = _pv[depth+1][i]) == 0)
+				break;
+		}
+	}
 
 	inline int16 Search::search(int depth, int16 alpha, int16 beta)
 	{
@@ -103,6 +134,9 @@ namespace Chess
 		if (_iteration_depth <= depth && !in_check)
 			return quiesce(depth, alpha, beta);
 
+		const int16 init_alpha = alpha;
+		int best_move = 0;
+
 		BUFFER(int32, moves, max_moves);
 		size_t n_moves;
 
@@ -113,6 +147,11 @@ namespace Chess
 
 			if (n_moves == 0)
 			{
+				/*
+				 * Mark the end of this variation:
+				 */
+				save_pv(depth, 0);
+
 				/*
 			 	 * Add a small penalty to the mate score to encourage
 			 	 * mates closer to the root:
@@ -127,10 +166,14 @@ namespace Chess
 			SelectionSort sort(moves, n_moves);
 
 			const int16 score =
-				search_moves( sort, alpha, beta, depth );
+				search_moves( sort, alpha, beta, depth, best_move );
 
 			if ( beta <= score )
 				return beta;
+
+			if (alpha > init_alpha)
+				save_pv(depth, best_move);
+
 			return alpha;
 		}
 		else
@@ -167,7 +210,10 @@ namespace Chess
 				return beta;
 
 			if ( score > alpha )
+			{
+				best_move = next_move;
 				alpha = score;
+			}
 		}
 
 		/*
@@ -180,10 +226,13 @@ namespace Chess
 			pos, quiet_moves);
 
 		if (n_moves == 0 && n_quiet == 0)
+		{
+			save_pv(depth, 0);
 			return 0; // draw
+		}
 
 		const int16 score = search_moves(
-			quiet_moves, n_quiet, alpha, beta, depth );
+			quiet_moves, n_quiet, alpha, beta, depth, best_move );
 
 		if ( beta <= score )
 			return beta;
@@ -208,16 +257,21 @@ namespace Chess
 					return beta;
 
 				if ( score > alpha )
+				{
+					best_move = next_move;
 					alpha = score;
+				}
 
 			} while (sort.next(
 				next_move));
 		}
 
+		if (alpha > init_alpha)
+			save_pv(depth, best_move);
 		return alpha;
 	}
 /*
-	inline int16 Search::search_captures(CaptureSort& sort,
+	inline int16 Search::search_captures(SelectionSort2<compare_fn_t>& sort,
 										 int16& alpha, int16 beta,
 										 int depth)
 	{
@@ -225,7 +279,7 @@ namespace Chess
 
 		for (size_t i = 0; i < sort.size(); ++i)
 		{
-			const int32 move = sort.next();
+			int32 move; sort.next(move);
 
 			++_node_count;
 			pos.make_move  (move);
@@ -247,7 +301,7 @@ namespace Chess
 */
 	inline int16 Search::search_moves(SelectionSort& sort,
 									  int16& alpha, int16 beta,
-									  int depth)
+									  int depth, int& best)
 	{
 		Position& pos = *_position;
 
@@ -267,7 +321,10 @@ namespace Chess
 				return beta;
 
 			if ( score > alpha )
+			{
 				alpha = score;
+				best = move;
+			}
 		}
 
 		return alpha;
@@ -275,7 +332,7 @@ namespace Chess
 
 	inline int16 Search::search_moves(int32* moves, size_t n_moves,
 									  int16& alpha, int16 beta,
-									  int depth)
+									  int depth, int& best)
 	{
 		Position& pos = *_position;
 
@@ -295,7 +352,10 @@ namespace Chess
 				return beta;
 
 			if ( score > alpha )
+			{
 				alpha = score;
+				best = move;
+			}
 		}
 
 		return alpha;
@@ -320,6 +380,11 @@ namespace Chess
 
 			if (n_moves == 0)
 			{
+				/*
+				 * Mark the end of this variation:
+				 */
+				save_pv(depth, 0);
+
 				/*
 			 	 * Add a small penalty to the mate score to encourage
 			 	 * mates closer to the root:
@@ -352,10 +417,13 @@ namespace Chess
 		 */
 		if (n_moves == 0 || max_ply <= depth)
 		{
+			save_pv(depth, 0);
 			return score;
 		}
 
 		SelectionSort sort(moves, n_moves);
+
+		int best_move = 0;
 
 		for (size_t i = 0; i < n_moves; ++i)
 		{
@@ -407,8 +475,13 @@ namespace Chess
 			if (score >= beta) return beta;
 
 			if ( score > alpha )
+			{
+				best_move = move;
 				alpha = score;
+			}
 		}
+
+		save_pv(depth, best_move);
 
 		return alpha;
 	}
