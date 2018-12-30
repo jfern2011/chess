@@ -4,17 +4,25 @@
 
 namespace Chess
 {
-	Search::Search()
-		: _is_init(false),
-		  _iteration_depth(0),
-		  _node_count(0),
-		  _position(),
-		  _qnode_count(0)
+	Search::Search() : _is_init(false), _position()
 	{
+		_set_defaults();
 	}
 
 	Search::~Search()
 	{
+	}
+
+	std::string Search::get_pv() const
+	{
+		std::string out("pv ---> ");
+
+		for (size_t i = 0; _pv[0][i] && i < max_ply; i++)
+		{
+			out += format_san(_pv[0][i], "") + " ";
+		}
+
+		return out;
 	}
 
 	bool Search::init(Handle<Position> pos)
@@ -22,8 +30,10 @@ namespace Chess
 		if (!pos) return false;
 
 		_position = pos;
-		_is_init = true;
 
+		_set_defaults();
+
+		_is_init = true;
 		return true;
 	}
 
@@ -34,6 +44,18 @@ namespace Chess
 			return std::numeric_limits<int16>::max();
 		}
 
-		return 0;
+		_set_defaults(); _is_init = false;
+
+		return search( depth, -king_value, king_value );
+	}
+
+	void Search::_set_defaults()
+	{
+		_iteration_depth = 3;
+		_node_count      = 0;
+		_qnode_count     = 0;
+
+		for (size_t i = 0; i < max_ply; i++)
+			_pv[0][i] = 0;
 	}
 }

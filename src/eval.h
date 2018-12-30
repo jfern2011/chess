@@ -18,8 +18,8 @@ namespace Chess
 
 	inline int evaluate(const Position& pos)
 	{
-		return pos.get_material(pos.get_turn())
-				- pos.get_material(flip(pos.get_turn()));
+		return pos.get_material(player_t::white)
+				- pos.get_material( player_t::black );
 	}
 }
 

@@ -9,5 +9,6 @@ cc_library(
 	],
 	visibility = [
 		"//perft:__pkg__",
+		"//bench:__pkg__",
 	],
 )

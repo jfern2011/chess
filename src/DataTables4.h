@@ -355,6 +355,9 @@ namespace Chess
 		 */
 		BUFFER(uint64, set_mask, 64);
 
+		/** +1 for white, -1 for black */
+		BUFFER(int, sign, 2);
+
 		/**
 		 * All squares "south" of a particular square, from white's
 		 * perspective

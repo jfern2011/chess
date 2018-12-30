@@ -60,6 +60,8 @@ namespace Chess
 			return score;
 		}
 
+		std::string get_pv() const;
+
 		bool init(Handle<Position> pos);
 
 		int16 quiesce(int depth, int16 alpha, int16 beta);
@@ -83,6 +85,8 @@ namespace Chess
 						   int depth, int& best);
 
 	private:
+
+		void _set_defaults();
 
 		bool _is_init;
 
@@ -396,7 +400,8 @@ namespace Chess
 		/*
 		 * Get an initial score for this position:
 		 */
-		const int16 score = evaluate(pos);
+		const int16 score =
+			tables.sign[pos.get_turn()] * evaluate(pos);
 
 		/*
 		 * Check if we can fail-high; not sure if this is correct for

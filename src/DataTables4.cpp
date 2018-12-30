@@ -825,6 +825,7 @@ namespace Chess
 	 * \ref castle_OOO_path
 	 * \ref king_home
 	 * \ref _3rd_rank
+	 * \ref sign
 	 */
 	void DataTables::_init_misc_masks()
 	{
@@ -1047,6 +1048,13 @@ namespace Chess
 			square_t::E1;
 		king_home[player_t::black] =
 			square_t::E8;
+
+		/*
+		 * Used by quiesce() to return a score relative
+		 * to the side being evaluated
+		 */
+		sign[player_t::white] =  1;
+		sign[player_t::black] = -1;
 	}
 
 	/**
