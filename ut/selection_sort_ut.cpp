@@ -1,11 +1,16 @@
+#include <functional>
+
 #include "gtest/gtest.h"
-#include "src/selection_sort.h"
-#include "src/chess4.h"
+#include "src/SelectionSort.h"
 
 using namespace Chess;
 
 namespace
 {
+	auto cmp_fun = []( int32 mv1, int32 mv2 ) {
+		return score(mv1) - score(mv2);
+	};
+
 	TEST(selection_sort, one_item)
 	{
 		int32 move = pack_move(piece_t::rook,
@@ -14,11 +19,21 @@ namespace
 							   piece_t::empty,
 							   square_t::F8);
 
-		SelectionSort sort(&move, 1);
+		SelectionSort sort;
 
-		EXPECT_EQ(sort.next(), move);
-		EXPECT_EQ(sort.next(), move);
-		EXPECT_EQ(sort.next(), move);
+		sort.init(&move,1);
+
+		int32 next;
+		EXPECT_TRUE (sort.next(next, cmp_fun));
+		EXPECT_EQ(next, move);
+
+		next = 0;
+		EXPECT_FALSE(sort.next(next, cmp_fun));
+		EXPECT_EQ(next, 0);
+
+		next = 0;
+		EXPECT_FALSE(sort.next(next, cmp_fun));
+		EXPECT_EQ(next, 0);
 	}
 
 	TEST(selection_sort, two_items)
@@ -41,11 +56,21 @@ namespace
 			int32 move0 = moves[0];
 			int32 move1 = moves[1];
 
-			SelectionSort sort(moves, 2);
+			SelectionSort sort;
 
-			EXPECT_EQ(sort.next(), move0);
-			EXPECT_EQ(sort.next(), move1);
-			EXPECT_EQ(sort.next(), move1);
+			sort.init(moves,2);
+
+			int32 next;
+			EXPECT_TRUE (sort.next(next, cmp_fun));
+			EXPECT_EQ(next, move0);
+
+			next = 0;
+			EXPECT_TRUE (sort.next(next, cmp_fun));
+			EXPECT_EQ(next, move1);
+
+			next = 0;
+			EXPECT_FALSE(sort.next(next, cmp_fun));
+			EXPECT_EQ(next, 0);
 		}
 
 		{
@@ -64,11 +89,21 @@ namespace
 			int32 move0 = moves[0];
 			int32 move1 = moves[1];
 
-			SelectionSort sort(moves, 2);
+			SelectionSort sort;
 
-			EXPECT_EQ(sort.next(), move1);
-			EXPECT_EQ(sort.next(), move0);
-			EXPECT_EQ(sort.next(), move0);
+			sort.init(moves,2);
+
+			int32 next;
+			EXPECT_TRUE (sort.next(next, cmp_fun));
+			EXPECT_EQ(next, move1);
+
+			next = 0;
+			EXPECT_TRUE (sort.next(next, cmp_fun));
+			EXPECT_EQ(next, move0);
+
+			next = 0;
+			EXPECT_FALSE(sort.next(next, cmp_fun));
+			EXPECT_EQ(next, 0);
 		}
 	}
 
@@ -148,19 +183,48 @@ namespace
 			int32 move8 = moves[8];
 			int32 move9 = moves[9];
 
-			SelectionSort sort(moves, 10);
+			SelectionSort sort;
+			sort.init( moves, 10 );
 
-			EXPECT_EQ(sort.next(), move9);
-			EXPECT_EQ(sort.next(), move8);
-			EXPECT_EQ(sort.next(), move7);
-			EXPECT_EQ(sort.next(), move6);
-			EXPECT_EQ(sort.next(), move5);
-			EXPECT_EQ(sort.next(), move4);
-			EXPECT_EQ(sort.next(), move3);
-			EXPECT_EQ(sort.next(), move2);
-			EXPECT_EQ(sort.next(), move1);
-			EXPECT_EQ(sort.next(), move0);
-			EXPECT_EQ(sort.next(), move0);
+			int32 next;
+			EXPECT_TRUE (sort.next(next, cmp_fun));
+			EXPECT_EQ(next, move9);
+
+			next = 0;
+			EXPECT_TRUE (sort.next(next, cmp_fun));
+			EXPECT_EQ(next, move8);
+
+			next = 0;
+			EXPECT_TRUE (sort.next(next, cmp_fun));
+			EXPECT_EQ(next, move7);
+
+			next = 0;
+			EXPECT_TRUE (sort.next(next, cmp_fun));
+			EXPECT_EQ(next, move6);
+
+			next = 0;
+			EXPECT_TRUE (sort.next(next, cmp_fun));
+			EXPECT_EQ(next, move5);
+
+			next = 0;
+			EXPECT_TRUE (sort.next(next, cmp_fun));
+			EXPECT_EQ(next, move4);
+
+			next = 0;
+			EXPECT_TRUE (sort.next(next, cmp_fun));
+			EXPECT_EQ(next, move3);
+
+			next = 0;
+			EXPECT_TRUE (sort.next(next, cmp_fun));
+			EXPECT_EQ(next, move2);
+
+			next = 0;
+			EXPECT_TRUE (sort.next(next, cmp_fun));
+			EXPECT_EQ(next, move1);
+
+			next = 0;
+			EXPECT_TRUE (sort.next(next, cmp_fun));
+			EXPECT_EQ(next, move0);
 		}
 	}
 }
