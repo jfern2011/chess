@@ -5,7 +5,7 @@ using namespace Chess;
 
 namespace
 {
-	TEST(search, phase)
+	TEST(SearchPhase, phase)
 	{
 		Handle<std::ostream>
 			stream(new std::ostream(std::cout.rdbuf()));
@@ -383,5 +383,45 @@ namespace
 			 * we're in check
 			 */
 		}
+	}
+
+	TEST(SearchPhase, score)
+	{
+		Handle<std::ostream>
+			stream(new std::ostream(std::cout.rdbuf()));
+
+		Position position(stream, "4n1n1/5P2/8/8/2k4N/8/6r1/3K4 w - - 0 1");
+
+		int32 move = pack_move(piece_t::rook,
+							   square_t::H4,
+							   piece_t::knight,
+							   piece_t::empty,
+							   square_t::G2);
+
+		EXPECT_EQ(175, SearchPhase::score(position, move));
+
+		move = pack_move(piece_t::knight,
+						 square_t::F7,
+						 piece_t::pawn,
+						 piece_t::queen,
+						 square_t::E8);
+
+		EXPECT_EQ(1200, SearchPhase::score(position, move));
+
+		move = pack_move(piece_t::empty,
+						 square_t::F7,
+						 piece_t::pawn,
+						 piece_t::queen,
+						 square_t::F8);
+
+		EXPECT_EQ(875, SearchPhase::score(position, move));
+
+		move = pack_move(piece_t::knight,
+						 square_t::F7,
+						 piece_t::pawn,
+						 piece_t::queen,
+						 square_t::G8);
+
+		EXPECT_EQ(225, SearchPhase::score(position, move));
 	}
 }

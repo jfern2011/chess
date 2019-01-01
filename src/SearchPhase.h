@@ -153,6 +153,9 @@ namespace Chess
 	/**
 	 * Initialize the winning captures phase
 	 *
+	 * @note This should be done prior to initializing for losing
+	 *       captures, since here we generate all captures
+	 *
 	 * @param [in] _pos The current position
 	 */
 	template <>
@@ -233,8 +236,8 @@ namespace Chess
 	/**
 	 * Get the next non-capture
 	 *
-	 * @param[out] move The next non-capture, If no captures are
-	 *                   left, this is unmodified
+	 * @param [out] move The next non-capture. If none are left,
+	 *                   this is unmodified
 	 *
 	 * @return True if \a move is valid, or false if the list of
 	 *         non-captures is exhausted
@@ -248,7 +251,7 @@ namespace Chess
 	/**
 	 * Get the next losing capture
 	 *
-	 * @param[out] move The next capture, If none are left, this
+	 * @param[out] move The next capture. If none are left, this
 	 *                  is unmodified
 	 *
 	 * @return True if \a move is valid, or false if the list of
