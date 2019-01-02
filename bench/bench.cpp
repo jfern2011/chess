@@ -18,8 +18,12 @@ int main(int argc, char** argv)
 
 	const Chess::int16 score = search.run(0, 0, 0);
 
-	std::printf("score = %d, %s\n",
-		score, search.get_pv().c_str());
+	Chess::MoveList pv = search.get_pv();
+	std::string pv_s("pv ---> ");
+	for (int i = 0; i < pv.size; i++)
+		pv_s += Chess::format_san(pv.moves[i], "") + " ";
+
+	std::printf("score = %d, %s\n", score, pv_s.c_str());
 	std::fflush(stdout);
 
 	return EXIT_SUCCESS;

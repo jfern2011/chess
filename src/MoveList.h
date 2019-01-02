@@ -19,7 +19,7 @@ namespace Chess
 		int index;
 
 		/**  The list of moves */
-		int32* moves;
+		const int32* moves;
 
 		/**
 		 *  Total number of moves in the list
@@ -42,7 +42,7 @@ namespace Chess
 		 * @param[in] _moves The list of moves
 		 * @param[in] _size  Number of moves in the list
 		 */
-		void init(int32* _moves, int _size)
+		void init(const int32* _moves, int _size)
 		{
 			moves = _moves; size = _size; index = -1;
 		}
