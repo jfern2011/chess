@@ -142,7 +142,7 @@ namespace Chess
 	 *
 	 * @param [in] _pos The current position
 	 */
-	template <>
+	template <> inline
 	void SearchPhase::init<phase_t::check_evasions>(Position& _pos)
 	{
 		pos = &_pos;
@@ -158,7 +158,7 @@ namespace Chess
 	 *
 	 * @param [in] _pos The current position
 	 */
-	template <>
+	template <> inline
 	void SearchPhase::init<phase_t::winning_captures>(Position& _pos)
 	{
 		pos = &_pos;
@@ -172,7 +172,7 @@ namespace Chess
 	 *
 	 * @param [in] _pos The current position
 	 */
-	template <>
+	template <> inline
 	void SearchPhase::init<phase_t::non_captures>(Position& _pos)
 	{
 		pos = &_pos;
@@ -185,7 +185,7 @@ namespace Chess
 	 *
 	 * @param [in] _pos The current position
 	 */
-	template <>
+	template <> inline
 	void SearchPhase::init<phase_t::losing_captures>(Position& _pos)
 	{
 		if (capture_index < 0) capture_index = 0;
@@ -203,7 +203,7 @@ namespace Chess
 	 * @return True if \a move is valid, or false if the list of
 	 *         evasions is exhausted
 	 */
-	template <>
+	template <> inline
 	bool SearchPhase::next_move<phase_t::check_evasions>(int32& move)
 	{
 		return evasions.next(move, [](int32 mv1, int32 mv2) {
@@ -220,7 +220,7 @@ namespace Chess
 	 * @return True if \a move is valid, or false if the list of
 	 *         winning captures is exhausted
 	 */
-	template <>
+	template <> inline
 	bool SearchPhase::next_move<phase_t::winning_captures>(int32& move)
 	{
 		const bool valid = winning_captures.next(move,
@@ -242,7 +242,7 @@ namespace Chess
 	 * @return True if \a move is valid, or false if the list of
 	 *         non-captures is exhausted
 	 */
-	template <>
+	template <> inline
 	bool SearchPhase::next_move<phase_t::non_captures>(int32& move)
 	{
 		return non_captures.next(move);
@@ -257,7 +257,7 @@ namespace Chess
 	 * @return True if \a move is valid, or false if the list of
 	 *         losing captures is exhausted
 	 */
-	template <>
+	template <> inline
 	bool SearchPhase::next_move<phase_t::losing_captures>(int32& move)
 	{
 		return losing_captures.next(move,

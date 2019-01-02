@@ -6,8 +6,7 @@
 #include "eval.h"
 #include "MoveGen4.h"
 #include "see.h"
-#include "selection_sort.h"
-#include "selection_sort2.h"
+#include "SearchPhase.h"
 
 namespace Chess
 {
@@ -17,48 +16,11 @@ namespace Chess
 	class Search final
 	{
 
-		using compare_fn_t =
-			std::function<int(int32,int32)>;
-
 	public:
 
 		Search();
 
 		~Search();
-
-		/**
-		 * Score a move. This is done as follows:
-		 *
-		 * 1. The score is preliminarily computed as the difference
-		 *    in value between the captured and moved pieces
-		 * 2. If the move is a promotion, see if we can advance the
-		 *    pawn safely. If so, add a bonus equal to the value
-		 *    of the piece promoted to
-		 *
-		 * @param[in] pos  A Position, used to see() captures
-		 * @param[in] move The move to score
-		 *
-		 * @return The score
-		 */
-		static int score(Position& pos, int32 move)
-		{
-			auto& tables = DataTables::get();
-			int score = tables.exchange[extract_captured(move)][
-				extract_moved(move)];
-
-			const piece_t promote = extract_promote(move);
-			if (promote != piece_t::empty)
-			{
-				pos.make_move  (move);
-
-				if (see(pos, pos.get_turn(), extract_to(move)) <= 0)
-					score += tables.piece_value[promote];
-
-				pos.unmake_move(move);
-			}
-
-			return score;
-		}
 
 		std::string get_pv() const;
 
@@ -71,16 +33,9 @@ namespace Chess
 		void save_pv(int depth, int move);
 
 		int16 search(int depth, int16 alpha, int16 beta);
-/*
-		int16 search_captures(SelectionSort2<compare_fn_t>& sort,
-							  int16& alpha, int16 beta,
-							  int depth);
-*/
-		int16 search_moves(SelectionSort& sort,
-						   int16& alpha, int16 beta,
-						   int depth, int& best);
 
-		int16 search_moves(int32* moves, size_t n_moves,
+		template <phase_t P>
+		int16 search_moves(SearchPhase& phase,
 						   int16& alpha, int16 beta,
 						   int depth, int& best);
 
@@ -141,15 +96,13 @@ namespace Chess
 		const int16 init_alpha = alpha;
 		int best_move = 0;
 
-		BUFFER(int32, moves, max_moves);
-		size_t n_moves;
+		SearchPhase phase;
 
 		if (in_check)
 		{
-			n_moves = MoveGen::generate_check_evasions(
-				pos, moves);
+			phase.init<phase_t::check_evasions>(pos);
 
-			if (n_moves == 0)
+			if (phase.evasions.size == 0)
 			{
 				/*
 				 * Mark the end of this variation:
@@ -163,14 +116,9 @@ namespace Chess
 				return depth - king_value;
 			}
 
-			/*
-			 * Search all check evasions in MVV-LVA order
-			 */
-
-			SelectionSort sort(moves, n_moves);
-
-			const int16 score =
-				search_moves( sort, alpha, beta, depth, best_move );
+			const int16 score = 
+				search_moves<phase_t::check_evasions>(phase, alpha,
+					beta, depth, best_move);
 
 			if ( beta <= score )
 				return beta;
@@ -180,182 +128,71 @@ namespace Chess
 
 			return alpha;
 		}
-		else
-		{
-			n_moves = MoveGen::generate_captures(
-				pos, moves);
-		}
-
-		SelectionSort2<compare_fn_t>
-			sort(moves, n_moves, [&pos](int32 mv1, int32 mv2) {
-				return score(pos,mv1) - score(pos,mv2);
-		});
 
 		/*
 		 * 1. Search winning captures
 		 */
-		int32 next_move = 0;
 
-		while (sort.next(next_move))
-		{
-			/*
-			 * Exit after we hit the first losing capture
-			 */
-			if (score(pos, next_move) < 0)
-				break;
+		phase.init<phase_t::winning_captures>(pos);
 
-			++_node_count;
-			pos.make_move  (next_move);
-			const int16 score =
-				-search(depth + 1, -beta, -alpha);
-			pos.unmake_move(next_move);
-
-			if (beta <= score)
-				return beta;
-
-			if ( score > alpha )
-			{
-				best_move = next_move;
-				alpha = score;
-			}
-		}
-
-		/*
-		 * 2. Search non-captures
-		 */
-
-		BUFFER(int32, quiet_moves, max_moves);
-
-		size_t n_quiet = MoveGen::generate_noncaptures(
-			pos, quiet_moves);
-
-		if (n_moves == 0 && n_quiet == 0)
-		{
-			save_pv(depth, 0);
-			return 0; // draw
-		}
-
-		const int16 score = search_moves(
-			quiet_moves, n_quiet, alpha, beta, depth, best_move );
+		int16 score = search_moves< phase_t::winning_captures >(
+			phase, alpha, beta, depth, best_move);
 
 		if ( beta <= score )
 			return beta;
 
 		/*
-		 * 3. Search losing (remaining) captures
+		 * 2. Search non-captures
 		 */
 
-		if (next_move && !sort.empty())
-		{
-			do
-			{
-				++_node_count;
-				pos.make_move  (next_move);
+		phase.init<phase_t::non_captures>(pos);
 
-				int16 score =
-					-search(depth + 1, -beta, -alpha);
+		score = search_moves< phase_t::non_captures >(
+			phase, alpha, beta, depth, best_move);
 
-				pos.unmake_move(next_move);
+		if ( beta <= score )
+			return beta;
 
-				if ( beta <= score )
-					return beta;
+		/*
+		 * 3. Search losing captures
+		 */
 
-				if ( score > alpha )
-				{
-					best_move = next_move;
-					alpha = score;
-				}
+		phase.init<phase_t::losing_captures>(pos);
 
-			} while (sort.next(
-				next_move));
-		}
+		score = search_moves< phase_t::losing_captures >(
+			phase, alpha, beta, depth, best_move);
+
+		if ( beta <= score )
+			return beta;
 
 		if (alpha > init_alpha)
 			save_pv(depth, best_move);
-		return alpha;
-	}
-/*
-	inline int16 Search::search_captures(SelectionSort2<compare_fn_t>& sort,
-										 int16& alpha, int16 beta,
-										 int depth)
-	{
-		Position& pos = *_position;
-
-		for (size_t i = 0; i < sort.size(); ++i)
-		{
-			int32 move; sort.next(move);
-
-			++_node_count;
-			pos.make_move  (move);
-
-			const int16 score =
-				-search(depth+1, -beta, -alpha);
-
-			pos.unmake_move(move);
-
-			if (beta <= score)
-				return beta;
-
-			if ( score > alpha )
-				alpha = score;
-		}
-
-		return alpha;
-	}
-*/
-	inline int16 Search::search_moves(SelectionSort& sort,
-									  int16& alpha, int16 beta,
-									  int depth, int& best)
-	{
-		Position& pos = *_position;
-
-		for (size_t i = 0; i < sort.size(); ++i)
-		{
-			const int32 move = sort.next();
-
-			++_node_count;
-			pos.make_move  (move);
-
-			const int16 score =
-				-search(depth+1, -beta, -alpha);
-
-			pos.unmake_move(move);
-
-			if (beta <= score)
-				return beta;
-
-			if ( score > alpha )
-			{
-				alpha = score;
-				best = move;
-			}
-		}
 
 		return alpha;
 	}
 
-	inline int16 Search::search_moves(int32* moves, size_t n_moves,
-									  int16& alpha, int16 beta,
-									  int depth, int& best)
+
+	template <phase_t P>
+	int16 Search::search_moves(SearchPhase& phase,
+							   int16& alpha, int16 beta,
+							   int depth, int& best)
 	{
-		Position& pos = *_position;
-
-		for (size_t i = 0; i < n_moves; ++i)
+		int32 move;
+		while (phase.next_move<P>(move))
 		{
-			const int32 move = moves[ i ];
-
 			++_node_count;
-			pos.make_move  (move);
+
+			_position->make_move (move);
 
 			const int16 score =
-				-search(depth+1, -beta, -alpha);
+				-search( depth + 1, -beta, -alpha );
 
-			pos.unmake_move(move);
+			_position->unmake_move(move);
 
 			if (beta <= score)
 				return beta;
 
-			if ( score > alpha )
+			if (score > alpha)
 			{
 				alpha = score;
 				best = move;
@@ -426,14 +263,16 @@ namespace Chess
 			return score;
 		}
 
-		SelectionSort sort(moves, n_moves);
+		SelectionSort sort;
+			sort.init(moves, n_moves);
 
 		int best_move = 0;
+		int32 move;
 
-		for (size_t i = 0; i < n_moves; ++i)
+		while (sort.next(move, [](int32 mv1, int32 mv2) {
+				return Chess::score( mv1 ) - Chess::score( mv2 );
+			}))
 		{
-			const int32 move = sort.next();
-
 			if (!in_check)
 			{
 				/*
