@@ -2,6 +2,7 @@
 
 #include "gtest/gtest.h"
 #include "src/SelectionSort.h"
+#include "src/chess_util4.h"
 
 using namespace Chess;
 
