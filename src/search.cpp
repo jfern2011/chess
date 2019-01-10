@@ -215,7 +215,9 @@ namespace Chess
 
 		_set_defaults(); _is_init = false;
 
-		return search( depth, -king_value, king_value );
+		lines.resize(20); // Number of lines to save
+
+		return search_root();
 	}
 
 	/**
@@ -351,6 +353,70 @@ namespace Chess
 	}
 
 	/**
+	 * Similar to \ref search(), but for the root node only
+	 *
+	 * @return The search score (relative to us)
+	 */
+	int16 Search::search_root()
+	{
+		Position& pos = *_position;
+
+		const bool in_check =
+			pos.in_check(pos.get_turn());
+
+		BUFFER(int32, moves, max_moves );
+		size_t n_moves;
+
+		if (in_check)
+		{
+			n_moves = MoveGen::generate_check_evasions(
+				pos, moves);
+
+			if (n_moves == 0)
+			{
+				save_pv(0, 0); return -king_value;
+			}
+		}
+		else
+		{
+			n_moves = MoveGen::generate_captures(
+				pos, moves);
+
+			n_moves += MoveGen::generate_noncaptures(
+				pos, &moves[n_moves]);
+		}
+
+		if (n_moves == 0) return 0;
+
+		auto best = std::make_pair<int32,int16>(
+						0, king_value+1);
+
+		for (size_t i = 0; i < n_moves; i++)
+		{
+			const int32 move = moves[i];
+
+			pos.make_move( move );
+
+			const int16 score = search(1, -king_value,
+				king_value);
+
+			pos.unmake_move(move);
+
+			save_pv(0, move);
+
+			if (score < best.second)
+			{
+				best.first = move; best.second
+					= score;
+			}
+
+			lines.insert(get_pv(), -score);
+		}
+
+		return -best.second;
+	}
+
+	/**
 	 * Set default search values. Used during initialization
 	 * and construction
 	 */
@@ -361,5 +427,7 @@ namespace Chess
 
 		for (size_t i= 0; i < max_ply; i++)
 			_pv[0][i] = 0;
+
+		lines.clear();
 	}
 }

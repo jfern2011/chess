@@ -5,6 +5,7 @@
 #include "MoveGen4.h"
 #include "see.h"
 #include "SearchPhase.h"
+#include "Variation.h"
 
 namespace Chess
 {
@@ -32,10 +33,14 @@ namespace Chess
 
 		int16 search(int depth, int16 alpha, int16 beta );
 
+		int16 search_root();
+
 		template <phase_t P>
 		int16 search_moves(SearchPhase& phase,
 						   int16& alpha, int16 beta,
 						   int depth, int& best);
+
+		Variation lines;
 
 	private:
 
