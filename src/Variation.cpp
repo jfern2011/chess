@@ -8,7 +8,7 @@ namespace Chess
 	 * Constructor
 	 */
 	Variation::Variation()
-		: _in_use(0), _lines()
+		: _capacity(0), _lines()
 	{
 	}
 
@@ -17,6 +17,14 @@ namespace Chess
 	 */
 	Variation::~Variation()
 	{
+	}
+
+	/**
+	 * Clear all saved variations
+	 */
+	void Variation::clear()
+	{
+		_lines.clear();
 	}
 
 	/**
@@ -31,13 +39,30 @@ namespace Chess
 	const std::vector<int32>& Variation::operator[](
 		size_t index) const
 	{
+		int16 dummy; return get(index, dummy);
+	}
+
+	/**
+	 * Get the line at the specified index. The best line is at
+	 * index 0, the 2nd best is at index 1, and so on
+	 *
+	 * @param[in]  index The index of the line to retrieve
+	 * @param[out] score The corresponding score
+	 *
+	 * @return  The line. The behavior is undefined if \a index
+	 *          is out of bounds
+	 */
+	const std::vector<int32>& Variation::get(
+		size_t index, int16& score) const
+	{
 		auto iter = _lines.begin();
 
-		AbortIf(index >= _in_use, iter->line);
+		AbortIf(index >= _lines.size(), iter->line);
 
 		std::advance(iter, index);
 
-		return iter->line;
+		score = iter->score;
+			return iter->line;
 	}
 
 	/**
@@ -51,7 +76,7 @@ namespace Chess
 	 */
 	bool Variation::insert(const MoveList& line, int16 score)
 	{
-		const bool space_left = _in_use < _lines.size();
+		const bool space_left = _lines.size() < _capacity;
 
 		bool inserted = false;
 		for (auto iter  =  _lines.begin(), end = _lines.end();
@@ -80,7 +105,6 @@ namespace Chess
 		{
 			_lines.push_back(std::move(ListScore(
 				line, score)));
-			_in_use++;
 
 			return true;
 		}
@@ -93,8 +117,6 @@ namespace Chess
 		 */
 		if (!space_left)
 			_lines.pop_back();
-		else
-			_in_use++;
 
 		return true;
 	}
@@ -107,9 +129,10 @@ namespace Chess
 	 */
 	void Variation::resize(size_t size)
 	{
-		if (size < _in_use) _in_use = size;
+		_capacity = size;
 
-		_lines.resize(size);
+		if ( _capacity < _lines.size() )
+			_lines.resize(_capacity);
 	}
 
 	/**
@@ -119,6 +142,6 @@ namespace Chess
 	 */
 	size_t Variation::size() const
 	{
-		return _in_use;
+		return _lines.size();
 	}
 }

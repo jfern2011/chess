@@ -24,6 +24,11 @@ namespace Chess
 
 		const std::vector<int32>& operator[](size_t index) const;
 
+		const std::vector<int32>&
+			get(size_t index, int16& score) const;
+
+		void clear();
+
 		bool insert(const MoveList& line, int16 score);
 
 		void resize(size_t size);
@@ -77,9 +82,9 @@ namespace Chess
 		};
 
 		/**
-		 * Number of slots currently in use
+		 * The max number of lines allowed
 		 */
-		size_t _in_use;
+		size_t _capacity;
 
 		/**
 		 * The set of lines saved
