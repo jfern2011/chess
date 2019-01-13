@@ -7,7 +7,8 @@ namespace Chess
 	/**
 	 * Constructor
 	 */
-	Search::Search() : _is_init(false), _position()
+	Search::Search()
+		: _is_init(false), _multipv(false), _position()
 	{
 		_set_defaults();
 	}
@@ -17,6 +18,18 @@ namespace Chess
 	 */
 	Search::~Search()
 	{
+	}
+
+	/**
+	 * Enable/disable multi-PV mode. Expect inferior
+	 * performance with multi-PV enabled, since it forces
+	 * the engine to evaluate suboptimal lines of play
+	 *
+	 * @param[in] value Enable flag
+	 */
+	void Search::enable_multipv(bool value)
+	{
+		_multipv = value;
 	}
 
 	/**
@@ -215,8 +228,16 @@ namespace Chess
 
 		_set_defaults(); _is_init = false;
 
-		lines.resize(20); // Number of lines to save
+		lines.resize(_multipv ? 10 : 1); // Number of lines
 
+		if ( !_multipv )
+		{
+			const int16 score =
+				search( 0, -king_value, king_value );
+			lines.insert(get_pv(), score);
+		}
+
+		// Multi-PV mode enabled
 		return search_root();
 	}
 

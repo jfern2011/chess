@@ -16,6 +16,8 @@ int main(int argc, char** argv)
 	Chess::Search search;
 	AbortIfNot(search.init(pos), EXIT_FAILURE);
 
+	search.enable_multipv(true);
+
 	search.run(0, 0, 0);
 
 	for (size_t i = 0; i < search.lines.size(); i++)
@@ -23,11 +25,10 @@ int main(int argc, char** argv)
 		Chess::int16 score;
 		auto pv = search.lines.get(i, score);
 
-		std::string pv_s("pv ---> ");
-		for (size_t i = 0; i < pv.size(); i++)
-			pv_s += Chess::format_san(pv[i], "") + " ";
+		Chess::Position temp(*pos);
+		std::string pv_s = Chess::Variation::format(pv, temp);
 
-		std::printf("score = %d, %s\n", score, pv_s.c_str());
+		std::printf("score = %5d, %s\n", score, pv_s.c_str());
 		std::fflush(stdout);
 	}
 

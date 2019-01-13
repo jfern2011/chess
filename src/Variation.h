@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "MoveList.h"
+#include "Position4.h"
 
 namespace Chess
 {
@@ -34,6 +35,10 @@ namespace Chess
 		void resize(size_t size);
 
 		size_t size() const;
+
+		static std::string format(
+			const std::vector<int32>& line, Position& pos,
+				size_t moveNum = 1);
 
 	private:
 

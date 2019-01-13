@@ -21,6 +21,8 @@ namespace Chess
 
 		~Search();
 
+		void enable_multipv(bool value);
+
 		MoveList get_pv() const;
 
 		bool init(Handle<Position> pos);
@@ -55,6 +57,11 @@ namespace Chess
 		 * Iterative deepening iteration depth
 		 */
 		int _iteration_depth;
+
+		/**
+		 * Multi-PV mode enabled flag
+		 */
+		bool _multipv;
 
 		/**
 		 * The number of nodes visited, including
