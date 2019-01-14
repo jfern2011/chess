@@ -233,12 +233,13 @@ namespace Chess
 
 		auto& channel = *_channel;
 
+		int16 score = -king_value;
+
 		while (_iteration_depth <= depth)
 		{
 			if ( !_multipv )
 			{
-				const int16 score =
-					search( 0, -king_value, king_value );
+				score = search( 0, -king_value, king_value );
 				lines.insert(get_pv(), score);
 
 				{
@@ -256,13 +257,17 @@ namespace Chess
 						<< std::string("\n");
 				}
 			}
+			else
+			{
+				// Multi-PV mode enabled
+				score = search_root();
+			}
 
 			_iteration_depth++;
 			lines.clear();
 		}
 
-		// Multi-PV mode enabled
-		return search_root();
+		return score;
 	}
 
 	/**
