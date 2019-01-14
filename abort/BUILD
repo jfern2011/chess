@@ -3,5 +3,7 @@ cc_library(
 	hdrs = ["abort.h"],
 	visibility = [
 		"//CommandLine:__pkg__",
+		"//src:__pkg__",
+		"//io_tools:__pkg__",
 	],
 )

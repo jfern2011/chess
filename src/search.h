@@ -3,6 +3,7 @@
 
 #include "eval.h"
 #include "MoveGen4.h"
+#include "OutputChannel.h"
 #include "see.h"
 #include "SearchPhase.h"
 #include "Variation.h"
@@ -17,7 +18,7 @@ namespace Chess
 
 	public:
 
-		Search();
+		Search(Handle<OutputChannel> channel);
 
 		~Search();
 
@@ -47,6 +48,11 @@ namespace Chess
 	private:
 
 		void _set_defaults();
+
+		/**
+		 *  Channel through which to send outputs
+		 */
+		Handle<OutputChannel> _channel;
 
 		/**
 		 * Indicates if the search is initialized

@@ -4,6 +4,8 @@ cc_library(
 	hdrs = glob(["**/*.h"]),
 	#copts = ["-O4"], #32 or 64-bit?
 	deps = [
+		"//abort:abort",
+		"//io_tools:Fd",
 		"//types:types",
 		"//util:util",
 	],

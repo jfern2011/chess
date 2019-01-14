@@ -7,8 +7,9 @@ namespace Chess
 	/**
 	 * Constructor
 	 */
-	Search::Search()
-		: _is_init(false), _multipv(false), _position()
+	Search::Search(Handle<OutputChannel> channel)
+		: _channel(channel), _is_init(false), _multipv(false),
+		  _position()
 	{
 		_set_defaults();
 	}
@@ -230,11 +231,34 @@ namespace Chess
 
 		lines.resize(_multipv ? 10 : 1); // Number of lines
 
-		if ( !_multipv )
+		auto& channel = *_channel;
+
+		while (_iteration_depth <= depth)
 		{
-			const int16 score =
-				search( 0, -king_value, king_value );
-			lines.insert(get_pv(), score);
+			if ( !_multipv )
+			{
+				const int16 score =
+					search( 0, -king_value, king_value );
+				lines.insert(get_pv(), score);
+
+				{
+					Position temp(*_position);
+					const int moveN =
+						_position->get_fullmove_number();
+
+					std::string score_s;
+					AbortIfNot(Util::to_string(score, score_s)
+						, false);
+
+					channel << score_s + " --> "
+						<< Variation::format(
+							lines[0], temp, moveN )
+						<< std::string("\n");
+				}
+			}
+
+			_iteration_depth++;
+			lines.clear();
 		}
 
 		// Multi-PV mode enabled
