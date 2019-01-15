@@ -381,6 +381,7 @@ namespace Chess
 		if (phase.winning_captures.size == 0 &&
 			phase.non_captures.size == 0)
 		{
+			save_pv(depth, 0); // end of line
 			return 0;
 		}
 
