@@ -23,7 +23,7 @@ int main(int argc, char** argv)
 
 	search.enable_multipv(false);
 
-	search.run(0, 7, 0);
+	search.run(5000, 9, 0);
 
 	/*
 	for (size_t i = 0; i < search.lines.size(); i++)

@@ -1,5 +1,6 @@
 #include <limits>
 
+#include "clock.h"
 #include "search.h"
 
 namespace Chess
@@ -9,7 +10,7 @@ namespace Chess
 	 */
 	Search::Search(Handle<OutputChannel> channel)
 		: _channel(channel), _is_init(false), _multipv(false),
-		  _position()
+		  _position(), _start_time(0), _stop_time(0)
 	{
 		_set_defaults();
 	}
@@ -235,11 +236,18 @@ namespace Chess
 
 		int16 score = -king_value;
 
+		_start_time = Clock::get_monotonic_time();
+		_stop_time  =
+			_start_time + ((int64)timeout) * 1000000;
+
 		while (_iteration_depth <= depth)
 		{
 			if ( !_multipv )
 			{
 				score = search( 0, -king_value, king_value );
+
+				if (_abort_search) break;
+
 				lines.insert(get_pv(), score);
 
 				{
@@ -306,7 +314,22 @@ namespace Chess
 	{
 		Position& pos = *_position;
 
-		const bool in_check = pos.in_check(pos.get_turn());
+		if (_next_abort_check <= _node_count)
+		{
+			if (_stop_time <= Clock::get_monotonic_time())
+			{
+				_abort_search = true;
+				return beta;
+			}
+
+			// Check for timeouts once per second
+
+			const int64 nps = _node_count / _start_time;
+			_next_abort_check = _node_count + nps;
+		}
+
+		const bool in_check =
+			pos.in_check( pos.get_turn() );
 
 		/*
 		 * Don't quiece() if we're in check:
@@ -475,6 +498,9 @@ namespace Chess
 	{
 		_iteration_depth = 3;
 			_node_count = _qnode_count = 0;
+
+		_next_abort_check = 100000;
+		_abort_search = false;
 
 		for (size_t i= 0; i < max_ply; i++)
 			_pv[0][i] = 0;

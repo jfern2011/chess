@@ -50,6 +50,11 @@ namespace Chess
 		void _set_defaults();
 
 		/**
+		 * If true, then abort the currently active search
+		 */
+		bool _abort_search;
+
+		/**
 		 *  Channel through which to send outputs
 		 */
 		Handle<OutputChannel> _channel;
@@ -68,6 +73,12 @@ namespace Chess
 		 * Multi-PV mode enabled flag
 		 */
 		bool _multipv;
+
+		/**
+		 * The next time to check for a search
+		 * abort, in number of nodes
+		 */
+		int64 _next_abort_check;
 
 		/**
 		 * The number of nodes visited, including
@@ -89,6 +100,16 @@ namespace Chess
 		 * Number of quiescent nodes visited
 		 */
 		int64 _qnode_count;
+
+		/**
+		 * The time to search started
+		 */
+		int64 _start_time;
+
+		/**
+		 * The time to stop searching
+		 */
+		int64 _stop_time;
 	};
 
 	/**
