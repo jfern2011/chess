@@ -124,6 +124,8 @@ namespace Chess
 
 		int get_fullmove_number()     const;
 
+		const HashInput& get_hash_inputs() const;
+
 		uint64 get_hash_key(int  ply) const;
 
 		uint64 get_hash_key()         const;
@@ -2057,8 +2059,6 @@ namespace Chess
 							castle_Q_index];
 					}
 				}
-
-				break;
 
 			default:
 

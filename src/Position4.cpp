@@ -475,6 +475,16 @@ namespace Chess
 	}
 
 	/**
+	 * Get the 64-bit integers used to hash a position
+	 *
+	 * @return The hash inputs
+	 */
+	auto Position::get_hash_inputs() const -> const HashInput& 
+	{
+		return _hash_input;
+	}
+
+	/**
 	 * Display the current position
 	 */
 	void Position::print() const

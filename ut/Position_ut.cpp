@@ -15,6 +15,686 @@ using namespace Chess;
 
 namespace
 {
+	TEST(Position, hashCastleWhite)
+	{
+		Handle<std::ostream>
+			stream(new std::ostream(std::cout.rdbuf()));
+
+		Position position(stream,
+			"r3k2r/ppp2ppp/2nqbn2/2bpp3/2BPP3/2NQBN2/PPP2PPP/R3K2R w KQkq - 0 1");
+
+		const auto& inputs = position.get_hash_inputs();
+		int64 key = position.get_hash_key();
+
+		{
+			/*
+			 * White king castles short
+			 */
+
+			int32 move = pack_move(piece_t::empty, // captured
+								   square_t::E1,   // from
+								   piece_t::king,  // moved
+								   piece_t::empty, // promote
+								   square_t::G1);  // to
+
+			position.make_move(move);
+
+			int64 new_key = key ^ inputs.castle_rights[player_t::white][castle_K_index]
+			                    ^ inputs.castle_rights[player_t::white][castle_Q_index]
+			                    ^ inputs.piece[player_t::white][piece_t::king][square_t::E1]
+			                    ^ inputs.piece[player_t::white][piece_t::king][square_t::G1]
+			                    ^ inputs.piece[player_t::white][piece_t::rook][square_t::H1]
+			                    ^ inputs.piece[player_t::white][piece_t::rook][square_t::F1]
+			                    ^ inputs.to_move;
+
+			EXPECT_EQ(position.get_hash_key(), new_key);
+
+			position.unmake_move(move);
+
+			EXPECT_EQ(position.get_hash_key(), key);
+		}
+
+		{
+			/*
+			 * White king castles long
+			 */
+
+			int32 move = pack_move(piece_t::empty, // captured
+								   square_t::E1,   // from
+								   piece_t::king,  // moved
+								   piece_t::empty, // promote
+								   square_t::C1);  // to
+
+			position.make_move(move);
+
+			int64 new_key = key ^ inputs.castle_rights[player_t::white][castle_K_index]
+			                    ^ inputs.castle_rights[player_t::white][castle_Q_index]
+			                    ^ inputs.piece[player_t::white][piece_t::king][square_t::E1]
+			                    ^ inputs.piece[player_t::white][piece_t::king][square_t::C1]
+			                    ^ inputs.piece[player_t::white][piece_t::rook][square_t::A1]
+			                    ^ inputs.piece[player_t::white][piece_t::rook][square_t::D1]
+			                    ^ inputs.to_move;
+
+			EXPECT_EQ(position.get_hash_key(), new_key);
+
+			position.unmake_move(move);
+
+			EXPECT_EQ(position.get_hash_key(), key);
+		}
+
+		{
+			/*
+			 * White king advances
+			 */
+
+			int32 move = pack_move(piece_t::empty, // captured
+								   square_t::E1,   // from
+								   piece_t::king,  // moved
+								   piece_t::empty, // promote
+								   square_t::E2);  // to
+
+			position.make_move(move);
+
+			int64 new_key = key ^ inputs.castle_rights[player_t::white][castle_K_index]
+			                    ^ inputs.castle_rights[player_t::white][castle_Q_index]
+			                    ^ inputs.piece[player_t::white][piece_t::king][square_t::E1]
+			                    ^ inputs.piece[player_t::white][piece_t::king][square_t::E2]
+			                    ^ inputs.to_move;
+
+			EXPECT_EQ(position.get_hash_key(), new_key);
+
+			position.unmake_move(move);
+
+			EXPECT_EQ(position.get_hash_key(), key);
+		}
+
+		{
+			/*
+			 * White's H-rook moves
+			 */
+
+			int32 move = pack_move(piece_t::empty, // captured
+								   square_t::H1,   // from
+								   piece_t::rook,  // moved
+								   piece_t::empty, // promote
+								   square_t::G1);  // to
+
+			position.make_move(move);
+
+			int64 new_key = key ^ inputs.castle_rights[player_t::white][castle_K_index]
+			                    ^ inputs.piece[player_t::white][piece_t::rook][square_t::H1]
+			                    ^ inputs.piece[player_t::white][piece_t::rook][square_t::G1]
+			                    ^ inputs.to_move;
+
+			EXPECT_EQ(position.get_hash_key(), new_key);
+
+			position.unmake_move(move);
+
+			EXPECT_EQ(position.get_hash_key(), key);
+		}
+
+		{
+			/*
+			 * White's A-rook moves
+			 */
+
+			int32 move = pack_move(piece_t::empty, // captured
+								   square_t::A1,   // from
+								   piece_t::rook,  // moved
+								   piece_t::empty, // promote
+								   square_t::B1);  // to
+
+			position.make_move(move);
+
+			int64 new_key = key ^ inputs.castle_rights[player_t::white][castle_Q_index]
+			                    ^ inputs.piece[player_t::white][piece_t::rook][square_t::A1]
+			                    ^ inputs.piece[player_t::white][piece_t::rook][square_t::B1]
+			                    ^ inputs.to_move;
+
+			EXPECT_EQ(position.get_hash_key(), new_key);
+
+			position.unmake_move(move);
+
+			EXPECT_EQ(position.get_hash_key(), key);
+		}
+
+		{
+			/*
+			 * White captures Black's A-rook
+			 */
+
+			ASSERT_TRUE(position.reset(
+				"r3k2r/ppp2ppp/1Nnqbn2/2bpp3/2BPP3/2NQBN2/PPP2PPP/R3K2R w KQkq - 0 1"));
+
+			key = position.get_hash_key();
+
+			int32 move = pack_move(piece_t::rook,   // captured
+								   square_t::B6,    // from
+								   piece_t::knight, // moved
+								   piece_t::empty,  // promote
+								   square_t::A8);   // to
+
+			position.make_move(move);
+
+			int64 new_key = key ^ inputs.castle_rights[player_t::black][castle_Q_index]
+			                    ^ inputs.piece[player_t::black][piece_t::rook][square_t::A8]
+			                    ^ inputs.piece[player_t::white][piece_t::knight][square_t::B6]
+			                    ^ inputs.piece[player_t::white][piece_t::knight][square_t::A8]
+			                    ^ inputs.to_move;
+
+			EXPECT_EQ(position.get_hash_key(), new_key);
+
+			position.unmake_move(move);
+
+			EXPECT_EQ(position.get_hash_key(), key);
+		}
+
+		{
+			/*
+			 * White captures Black's H-rook
+			 */
+
+			ASSERT_TRUE(position.reset(
+				"r3k2r/ppp2ppp/2nqbnN1/2bpp3/2BPP3/2NQBN2/PPP2PPP/R3K2R w KQkq - 0 1"));
+
+			key = position.get_hash_key();
+
+			int32 move = pack_move(piece_t::rook,   // captured
+								   square_t::G6,    // from
+								   piece_t::knight, // moved
+								   piece_t::empty,  // promote
+								   square_t::H8);   // to
+
+			position.make_move(move);
+
+			int64 new_key = key ^ inputs.castle_rights[player_t::black][castle_K_index]
+			                    ^ inputs.piece[player_t::black][piece_t::rook][square_t::H8]
+			                    ^ inputs.piece[player_t::white][piece_t::knight][square_t::G6]
+			                    ^ inputs.piece[player_t::white][piece_t::knight][square_t::H8]
+			                    ^ inputs.to_move;
+
+			EXPECT_EQ(position.get_hash_key(), new_key);
+
+			position.unmake_move(move);
+
+			EXPECT_EQ(position.get_hash_key(), key);
+		}
+	}
+
+	TEST(Position, hashCastleBlack)
+	{
+		Handle<std::ostream>
+			stream(new std::ostream(std::cout.rdbuf()));
+
+		Position position(stream,
+			"r3k2r/ppp2ppp/2nqbn2/2bpp3/2BPP3/2NQBN2/PPP2PPP/R3K2R b KQkq - 0 1");
+
+		const auto& inputs = position.get_hash_inputs();
+		int64 key = position.get_hash_key();
+
+		{
+			/*
+			 * Black king castles short
+			 */
+
+			int32 move = pack_move(piece_t::empty, // captured
+								   square_t::E8,   // from
+								   piece_t::king,  // moved
+								   piece_t::empty, // promote
+								   square_t::G8);  // to
+
+			position.make_move(move);
+
+			int64 new_key = key ^ inputs.castle_rights[player_t::black][castle_K_index]
+			                    ^ inputs.castle_rights[player_t::black][castle_Q_index]
+			                    ^ inputs.piece[player_t::black][piece_t::king][square_t::E8]
+			                    ^ inputs.piece[player_t::black][piece_t::king][square_t::G8]
+			                    ^ inputs.piece[player_t::black][piece_t::rook][square_t::H8]
+			                    ^ inputs.piece[player_t::black][piece_t::rook][square_t::F8]
+			                    ^ inputs.to_move;
+
+			EXPECT_EQ(position.get_hash_key(), new_key);
+
+			position.unmake_move(move);
+
+			EXPECT_EQ(position.get_hash_key(), key);
+		}
+
+		{
+			/*
+			 * Black king castles long
+			 */
+
+			int32 move = pack_move(piece_t::empty, // captured
+								   square_t::E8,   // from
+								   piece_t::king,  // moved
+								   piece_t::empty, // promote
+								   square_t::C8);  // to
+
+			position.make_move(move);
+
+			int64 new_key = key ^ inputs.castle_rights[player_t::black][castle_K_index]
+			                    ^ inputs.castle_rights[player_t::black][castle_Q_index]
+			                    ^ inputs.piece[player_t::black][piece_t::king][square_t::E8]
+			                    ^ inputs.piece[player_t::black][piece_t::king][square_t::C8]
+			                    ^ inputs.piece[player_t::black][piece_t::rook][square_t::A8]
+			                    ^ inputs.piece[player_t::black][piece_t::rook][square_t::D8]
+			                    ^ inputs.to_move;
+
+			EXPECT_EQ(position.get_hash_key(), new_key);
+
+			position.unmake_move(move);
+
+			EXPECT_EQ(position.get_hash_key(), key);
+		}
+
+		{
+			/*
+			 * Black king advances
+			 */
+
+			int32 move = pack_move(piece_t::empty, // captured
+								   square_t::E8,   // from
+								   piece_t::king,  // moved
+								   piece_t::empty, // promote
+								   square_t::E7);  // to
+
+			position.make_move(move);
+
+			int64 new_key = key ^ inputs.castle_rights[player_t::black][castle_K_index]
+			                    ^ inputs.castle_rights[player_t::black][castle_Q_index]
+			                    ^ inputs.piece[player_t::black][piece_t::king][square_t::E8]
+			                    ^ inputs.piece[player_t::black][piece_t::king][square_t::E7]
+			                    ^ inputs.to_move;
+
+			EXPECT_EQ(position.get_hash_key(), new_key);
+
+			position.unmake_move(move);
+
+			EXPECT_EQ(position.get_hash_key(), key);
+		}
+
+		{
+			/*
+			 * Black's H-rook moves
+			 */
+
+			int32 move = pack_move(piece_t::empty, // captured
+								   square_t::H8,   // from
+								   piece_t::rook,  // moved
+								   piece_t::empty, // promote
+								   square_t::G8);  // to
+
+			position.make_move(move);
+
+			int64 new_key = key ^ inputs.castle_rights[player_t::black][castle_K_index]
+			                    ^ inputs.piece[player_t::black][piece_t::rook][square_t::H8]
+			                    ^ inputs.piece[player_t::black][piece_t::rook][square_t::G8]
+			                    ^ inputs.to_move;
+
+			EXPECT_EQ(position.get_hash_key(), new_key);
+
+			position.unmake_move(move);
+
+			EXPECT_EQ(position.get_hash_key(), key);
+		}
+
+		{
+			/*
+			 * Black's A-rook moves
+			 */
+
+			int32 move = pack_move(piece_t::empty, // captured
+								   square_t::A8,   // from
+								   piece_t::rook,  // moved
+								   piece_t::empty, // promote
+								   square_t::B8);  // to
+
+			position.make_move(move);
+
+			int64 new_key = key ^ inputs.castle_rights[player_t::black][castle_Q_index]
+			                    ^ inputs.piece[player_t::black][piece_t::rook][square_t::A8]
+			                    ^ inputs.piece[player_t::black][piece_t::rook][square_t::B8]
+			                    ^ inputs.to_move;
+
+			EXPECT_EQ(position.get_hash_key(), new_key);
+
+			position.unmake_move(move);
+
+			EXPECT_EQ(position.get_hash_key(), key);
+		}
+
+		{
+			/*
+			 * Black captures White's A-rook
+			 */
+
+			ASSERT_TRUE(position.reset(
+				"r3k2r/ppp2ppp/2nqbn2/2bpp3/2BPP3/1nNQBN2/PPP2PPP/R3K2R b KQkq - 0 1"));
+
+			key = position.get_hash_key();
+
+			int32 move = pack_move(piece_t::rook,   // captured
+								   square_t::B3,    // from
+								   piece_t::knight, // moved
+								   piece_t::empty,  // promote
+								   square_t::A1);   // to
+
+			position.make_move(move);
+
+			int64 new_key = key ^ inputs.castle_rights[player_t::white][castle_Q_index]
+			                    ^ inputs.piece[player_t::white][piece_t::rook][square_t::A1]
+			                    ^ inputs.piece[player_t::black][piece_t::knight][square_t::B3]
+			                    ^ inputs.piece[player_t::black][piece_t::knight][square_t::A1]
+			                    ^ inputs.to_move;
+
+			EXPECT_EQ(position.get_hash_key(), new_key);
+
+			position.unmake_move(move);
+
+			EXPECT_EQ(position.get_hash_key(), key);
+		}
+
+		{
+			/*
+			 * Black captures White's H-rook
+			 */
+
+			ASSERT_TRUE(position.reset(
+				"r3k2r/ppp2ppp/2nqbn2/2bpp3/2BPP3/2NQBNn1/PPP2PPP/R3K2R b KQkq - 0 1"));
+
+			key = position.get_hash_key();
+
+			int32 move = pack_move(piece_t::rook,   // captured
+								   square_t::G3,    // from
+								   piece_t::knight, // moved
+								   piece_t::empty,  // promote
+								   square_t::H1);   // to
+
+			position.make_move(move);
+
+			int64 new_key = key ^ inputs.castle_rights[player_t::white][castle_K_index]
+			                    ^ inputs.piece[player_t::white][piece_t::rook][square_t::H1]
+			                    ^ inputs.piece[player_t::black][piece_t::knight][square_t::G3]
+			                    ^ inputs.piece[player_t::black][piece_t::knight][square_t::H1]
+			                    ^ inputs.to_move;
+
+			EXPECT_EQ(position.get_hash_key(), new_key);
+
+			position.unmake_move(move);
+
+			EXPECT_EQ(position.get_hash_key(), key);
+		}
+	}
+
+	TEST(Position, hashEnPassant)
+	{
+		Handle<std::ostream>
+			stream(new std::ostream(std::cout.rdbuf()));
+
+		{
+			Position position(stream, "4k3/pppppppp/8/8/8/8/PPPPPPPP/4K3 w - - 0 1");
+
+			const auto& inputs = position.get_hash_inputs();
+			int64 key = position.get_hash_key();
+
+			for (int sq = square_t::A2; sq > square_t::A1; sq--)
+			{
+				const square_t from = static_cast<square_t>(sq);
+				const square_t to   = static_cast<square_t>(sq+16);
+
+				int32 move = pack_move(piece_t::empty, // captured
+									   from,           // from
+									   piece_t::pawn,  // moved
+									   piece_t::empty, // promote
+									   to);            // to
+
+				position.make_move(move);
+
+				int64 new_key = key ^ inputs.piece[player_t::white][piece_t::pawn][from]
+			                    	^ inputs.piece[player_t::white][piece_t::pawn][to]
+			                    	^ inputs.en_passant[get_file(from)]
+			                    	^ inputs.to_move;
+
+				EXPECT_EQ(position.get_hash_key(), new_key);
+
+				position.unmake_move(move);
+
+				EXPECT_EQ(position.get_hash_key(), key);
+			}
+		}
+
+		{
+			/*
+			 * White captures en passant
+			 */
+
+			Position position(stream, "4k3/ppp1pppp/8/3pP3/8/8/PPPP1PPP/4K3 w - d6 0 1");
+
+			const auto& inputs = position.get_hash_inputs();
+			int64 key = position.get_hash_key();
+
+			const square_t from = square_t::E5;
+			const square_t to   = square_t::D6;
+			
+
+			int32 move = pack_move(piece_t::pawn,  // captured
+								   from,           // from
+								   piece_t::pawn,  // moved
+								   piece_t::empty, // promote
+								   to);            // to
+
+			position.make_move(move);
+
+			int64 new_key = key ^ inputs.piece[player_t::white][piece_t::pawn][from]
+		                    	^ inputs.piece[player_t::white][piece_t::pawn][to]
+		                    	^ inputs.piece[player_t::black][piece_t::pawn][square_t::D5]
+		                    	^ inputs.en_passant[get_file(square_t::D6)]
+		                    	^ inputs.to_move;
+
+			EXPECT_EQ(position.get_hash_key(), new_key);
+
+			position.unmake_move(move);
+
+			EXPECT_EQ(position.get_hash_key(), key);
+		}
+
+		{
+			/*
+			 * Black captures en passant
+			 */
+
+			Position position(stream, "4k3/pppp1ppp/8/8/3Pp3/8/PPP2PPP/4K3 b - d3 0 1");
+
+			const auto& inputs = position.get_hash_inputs();
+			int64 key = position.get_hash_key();
+
+			const square_t from = square_t::E4;
+			const square_t to   = square_t::D3;
+			
+
+			int32 move = pack_move(piece_t::pawn,  // captured
+								   from,           // from
+								   piece_t::pawn,  // moved
+								   piece_t::empty, // promote
+								   to);            // to
+
+			position.make_move(move);
+
+			int64 new_key = key ^ inputs.piece[player_t::black][piece_t::pawn][from]
+		                    	^ inputs.piece[player_t::black][piece_t::pawn][to]
+		                    	^ inputs.piece[player_t::white][piece_t::pawn][square_t::D4]
+		                    	^ inputs.en_passant[get_file(square_t::D3)]
+		                    	^ inputs.to_move;
+
+			EXPECT_EQ(position.get_hash_key(), new_key);
+
+			position.unmake_move(move);
+
+			EXPECT_EQ(position.get_hash_key(), key);
+		}
+	}
+
+	TEST(Position, hashPromotion)
+	{
+		Handle<std::ostream>
+			stream(new std::ostream(std::cout.rdbuf()));
+
+		{
+			/*
+			 * White promotes
+			 */
+
+			Position position(stream, "8/3P4/1K6/8/2k5/8/8/8 w - - 0 1");
+
+			const auto& inputs = position.get_hash_inputs();
+			int64 key = position.get_hash_key();
+
+			for (auto piece : {piece_t::rook,
+				               piece_t::knight,
+				               piece_t::bishop,
+				               piece_t::queen})
+			{
+				const square_t from = square_t::D7;
+				const square_t to   = square_t::D8;
+
+				int32 move = pack_move(piece_t::empty, // captured
+									   from,           // from
+									   piece_t::pawn,  // moved
+									   piece,          // promote
+									   to);            // to
+
+				position.make_move(move);
+
+				int64 new_key = key ^ inputs.piece[player_t::white][piece_t::pawn][from]
+			                    	^ inputs.piece[player_t::white][piece][to]
+			                    	^ inputs.to_move;
+
+				EXPECT_EQ(position.get_hash_key(), new_key);
+
+				position.unmake_move(move);
+
+				EXPECT_EQ(position.get_hash_key(), key);
+			}
+		}
+
+		{
+			/*
+			 * White captures and promotes
+			 */
+
+			Position position(stream, "4n3/3P4/1K6/8/2k5/8/8/8 w - - 0 1");
+
+			const auto& inputs = position.get_hash_inputs();
+			int64 key = position.get_hash_key();
+
+			for (auto piece : {piece_t::rook,
+				               piece_t::knight,
+				               piece_t::bishop,
+				               piece_t::queen})
+			{
+				const square_t from = square_t::D7;
+				const square_t to   = square_t::E8;
+
+				int32 move = pack_move(piece_t::knight, // captured
+									   from,            // from
+									   piece_t::pawn,   // moved
+									   piece,           // promote
+									   to);             // to
+
+				position.make_move(move);
+
+				int64 new_key = key ^ inputs.piece[player_t::white][piece_t::pawn][from]
+			                    	^ inputs.piece[player_t::white][piece][to]
+			                    	^ inputs.piece[player_t::black][piece_t::knight][to]
+			                    	^ inputs.to_move;
+
+				EXPECT_EQ(position.get_hash_key(), new_key);
+
+				position.unmake_move(move);
+
+				EXPECT_EQ(position.get_hash_key(), key);
+			}
+		}
+
+		{
+			/*
+			 * Black promotes
+			 */
+
+			Position position(stream, "8/8/1K6/8/2k5/8/3p4/4N3 b - - 0 1");
+
+			const auto& inputs = position.get_hash_inputs();
+			int64 key = position.get_hash_key();
+
+			for (auto piece : {piece_t::rook,
+				               piece_t::knight,
+				               piece_t::bishop,
+				               piece_t::queen})
+			{
+				const square_t from = square_t::D2;
+				const square_t to   = square_t::D1;
+
+				int32 move = pack_move(piece_t::empty, // captured
+									   from,           // from
+									   piece_t::pawn,  // moved
+									   piece,          // promote
+									   to);            // to
+
+				position.make_move(move);
+
+				int64 new_key = key ^ inputs.piece[player_t::black][piece_t::pawn][from]
+			                    	^ inputs.piece[player_t::black][piece][to]
+			                    	^ inputs.to_move;
+
+				EXPECT_EQ(position.get_hash_key(), new_key);
+
+				position.unmake_move(move);
+
+				EXPECT_EQ(position.get_hash_key(), key);
+			}
+		}
+
+		{
+			/*
+			 * Black captures and promotes
+			 */
+
+			Position position(stream, "8/8/1K6/8/2k5/8/3p4/4N3 b - - 0 1");
+
+			const auto& inputs = position.get_hash_inputs();
+			int64 key = position.get_hash_key();
+
+			for (auto piece : {piece_t::rook,
+				               piece_t::knight,
+				               piece_t::bishop,
+				               piece_t::queen})
+			{
+				const square_t from = square_t::D2;
+				const square_t to   = square_t::E1;
+
+				int32 move = pack_move(piece_t::knight, // captured
+									   from,            // from
+									   piece_t::pawn,   // moved
+									   piece,           // promote
+									   to);             // to
+
+				position.make_move(move);
+
+				int64 new_key = key ^ inputs.piece[player_t::black][piece_t::pawn][from]
+			                    	^ inputs.piece[player_t::black][piece][to]
+			                    	^ inputs.piece[player_t::white][piece_t::knight][to]
+			                    	^ inputs.to_move;
+
+				EXPECT_EQ(position.get_hash_key(), new_key);
+
+				position.unmake_move(move);
+
+				EXPECT_EQ(position.get_hash_key(), key);
+			}
+		}
+	}
+
 	TEST(Position, make_unmake_pawn)
 	{
 		Handle<std::ostream>
