@@ -1,6 +1,7 @@
 #ifndef __SEARCH_H__
 #define __SEARCH_H__
 
+#include "HashTable.h"
 #include "eval.h"
 #include "MoveGen4.h"
 #include "OutputChannel.h"
@@ -28,13 +29,16 @@ namespace Chess
 
 		bool init(Handle<Position> pos);
 
-		int16 quiesce(int depth, int16 alpha, int16 beta);
+		HashEntry& load(const Position& pos, int draft, int alpha,
+						int beta, bool check, bool& avoid);
+
+		int16 quiesce(int depth, int16 alpha, int16 beta );
 
 		int16 run(int timeout, int depth, int32 best);
 
 		void save_pv(int depth, int move);
 
-		int16 search(int depth, int16 alpha, int16 beta );
+		int16 search( int depth, int16 alpha, int16 beta );
 
 		int16 search_root();
 
@@ -43,7 +47,14 @@ namespace Chess
 						   int16& alpha, int16 beta,
 						   int depth, int& best);
 
+		bool store(const HashEntry& entry);
+
+		bool store(uint64 key, uint8 draft, int16 score,
+				   int32 move, int type);
+
 		Variation lines;
+
+		HashTable<4> hash_table;
 
 	private:
 
@@ -141,7 +152,10 @@ namespace Chess
 			_position->unmake_move(move);
 
 			if (beta <= score)
+			{
+				best = move;
 				return beta;
+			}
 
 			if (score > alpha)
 			{

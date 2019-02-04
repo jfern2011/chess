@@ -28,8 +28,7 @@ public:
 		std::int64_t sec = ts.tv_sec;
 		std::int64_t ns = ts.tv_nsec;
 
-		return
-			sec * nano_per_sec + ns;
+		return (sec * nano_per_sec + ns);
 	}
 
 private:

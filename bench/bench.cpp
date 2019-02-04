@@ -23,7 +23,21 @@ int main(int argc, char** argv)
 
 	search.enable_multipv(false);
 
-	search.run(5000, 9, 0);
+	const size_t numel = 8388608;
+	AbortIfNot(search.hash_table.resize(numel), false);
+
+	std::cout << "Hash table = ";
+	const size_t table_size = search.hash_table.size() * sizeof(Chess::HashBucket<4>);
+	if (table_size > 1e6)
+		std::cout << int(table_size / 1e6) << " MB" << std::endl;
+	else if (table_size > 1e3)
+		std::cout << int(table_size / 1e3) << " KB" << std::endl;
+	else
+		std::cout << table_size << " bytes" << std::endl;
+	std::cout << std::endl;
+
+	search.hash_table.clear();
+	search.run(60000, 9, 0);
 
 	/*
 	for (size_t i = 0; i < search.lines.size(); i++)

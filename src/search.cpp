@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <cstring>
 #include <limits>
 
 #include "clock.h"
@@ -71,6 +73,106 @@ namespace Chess
 
 		_is_init = true;
 		return true;
+	}
+
+	/**
+	 * Load an entry from the hash table
+	 *
+	 * @note That this entry should be replaced is indicated by
+	 *       HashEntry::type() == EMPTY
+	 *
+	 * @param[in]  pos    The position, for verifying the returned
+	 *                    entry is indeed usable
+	 * @param[in]  draft  The number of plies before reaching the
+	 *                    search horizon
+	 * @param[in]  alpha  The current lower bound
+	 * @param[in]  beta   The current upper bound
+	 * @param[in]  check  True if we're currently in check
+	 * @param[out] avoid  Flag to indicate that the returned entry
+	 *                    should NOT be used
+	 *
+	 * @return The hash entry
+	 */
+	HashEntry& Search::load(const Position& pos, int draft,
+		int alpha, int beta, bool check, bool& avoid)
+	{
+		const uint64 key = pos.get_hash_key();
+		auto& bucket = hash_table[key];
+
+		avoid = false;
+
+		/*
+		 * Age all entries except for the specified one
+		 */
+		auto age_except = [&bucket](size_t ind) {
+			for (size_t i = 0; i < bucket.size; i++)
+			{
+				if (i != ind) bucket.entries[i].ripen();
+			}
+		};
+
+		auto& oldest = bucket.entries[0];
+
+		for ( size_t i = 0; i < bucket.size; i++ )
+		{
+			auto& entry = bucket.entries[i];
+
+			if (entry.key == key && entry.draft >= draft)
+			{
+				switch (entry.type())
+				{
+				case FAIL_HI:
+					if (entry.score >= beta )
+					{
+						age_except(i); return entry;
+					}
+					break;
+				case FAIL_LO:
+					if (entry.score <= alpha)
+					{
+						age_except(i); return entry;
+					}
+					break;
+				case EXACT:
+					/*
+					 * We got an exact hit; validate the stored
+					 * move is playable
+					 */
+					if (entry.score >= alpha && entry.score <= beta
+						&& MoveGen::validate_move(
+							pos, entry.move(), check))
+					{
+						age_except( i );
+						return entry;
+					}
+				}
+			}
+
+			/*
+			 * Keep track of the most elderly entry
+			 */
+			if (entry.ripen() > oldest.age)
+				oldest = entry;
+		}
+
+		/*
+		 * If the oldest entry is at the age limit, or
+		 * we'll reach greater depth, replace it
+		 */
+
+		if (oldest.age == HashEntry::age_limit ||
+			oldest.draft < draft)
+		{
+			oldest.set_type(EMPTY);
+			return oldest;
+		}
+
+		/*
+		 * Otherwise, keep this entry
+		 */
+		avoid = true;
+
+		return oldest;
 	}
 
 	/**
@@ -275,6 +377,12 @@ namespace Chess
 			lines.clear();
 		}
 
+		channel << std::string("nodes = ")
+				<< _node_count
+				<< std::string(", quiesce = ")
+				<< _qnode_count
+				<< std::string("\n");
+
 		return score;
 	}
 
@@ -332,6 +440,28 @@ namespace Chess
 			pos.in_check( pos.get_turn() );
 
 		/*
+		 * First, check if we've hashed this position
+		 */
+
+		const auto draft =
+			std::max(_iteration_depth - depth, 0);
+
+		bool avoid;
+		auto& entry = load(pos, draft, alpha, beta,
+			in_check, avoid);
+
+		if (!avoid)
+		{
+			// Thanks, hash table!
+
+			if (entry.type() == EXACT)
+				save_pv(depth, entry.move());
+
+			if (entry.type() != EMPTY)
+				return entry.score;
+		}
+
+		/*
 		 * Don't quiece() if we're in check:
 		 */
 		if (_iteration_depth <= depth && !in_check)
@@ -365,10 +495,34 @@ namespace Chess
 					beta, depth, best_move);
 
 			if ( beta <= score )
+			{
+				store(pos.get_hash_key(),
+					  draft,
+					  score,
+					  best_move,
+					  FAIL_HI);
+
 				return beta;
+			}
 
 			if (alpha > init_alpha)
-				save_pv(depth, best_move);
+			{
+				store(pos.get_hash_key(),
+					  draft,
+					  alpha,
+					  best_move,
+					  EXACT);
+
+				save_pv(depth,best_move);
+			}
+			else
+			{
+				store(pos.get_hash_key(),
+					  draft,
+					  alpha,
+					  0, /* move */
+					  FAIL_LO);
+			}
 
 			return alpha;
 		}
@@ -383,7 +537,15 @@ namespace Chess
 			phase, alpha, beta, depth, best_move);
 
 		if ( beta <= score )
+		{
+			store(pos.get_hash_key(),
+				  draft,
+				  score,
+				  best_move,
+				  FAIL_HI);
+
 			return beta;
+		}
 
 		/*
 		 * 2. Search non-captures
@@ -395,7 +557,15 @@ namespace Chess
 			phase, alpha, beta, depth, best_move);
 
 		if ( beta <= score )
+		{
+			store(pos.get_hash_key(),
+				  draft,
+				  score,
+				  best_move,
+				  FAIL_HI);
+
 			return beta;
+		}
 
 		/*
 		 * 3. If no captures/non-captures are available,
@@ -418,10 +588,34 @@ namespace Chess
 			phase, alpha, beta, depth, best_move);
 
 		if ( beta <= score )
+		{
+			store(pos.get_hash_key(),
+				  draft,
+				  score,
+				  best_move,
+				  FAIL_HI);
+
 			return beta;
+		}
 
 		if (alpha > init_alpha)
-			save_pv(depth, best_move);
+		{
+			store(pos.get_hash_key(),
+				  draft,
+				  alpha,
+				  best_move,
+				  EXACT);
+
+			save_pv(depth,best_move);
+		}
+		else
+		{
+			store(pos.get_hash_key(),
+				  draft,
+				  alpha,
+				  best_move,
+				  FAIL_LO);
+		}
 
 		return alpha;
 	}
@@ -488,6 +682,97 @@ namespace Chess
 		}
 
 		return -best.second;
+	}
+
+	/**
+	 * Store a new entry into the hash table
+	 *
+	 * @param[in] entry The entry to store
+	 *
+	 * @return True if \a entry was stored, or false if
+	 *         we rejected it
+	 */
+	bool Search::store(const HashEntry& entry)
+	{
+		auto& bucket = hash_table[ entry.key ];
+
+		/*
+		 * 1. If there's an entry with the same hash
+		 *    signature, overwrite it. This is done in the
+		 *    spirit of Crafty's HashStorePV() logic
+		 */
+
+		for ( size_t i = 0; i < bucket.size; i++ )
+		{
+			auto& temp = bucket.entries[i];
+			if (temp.key == entry.key)
+			{
+				std::memcpy(&temp, &entry, sizeof(entry));
+				return true;
+			}
+		}
+
+		/* 2. If there's an empty slot available, then use
+		 *    that one
+		 */
+
+		auto& oldest = bucket.entries[0];
+		for (size_t i = 0; i < bucket.size; i++)
+		{
+			auto& temp = bucket.entries[i];
+
+			if (temp.type() == EMPTY
+				|| temp.age == HashEntry::age_limit)
+			{
+				std::memcpy(
+				   &temp, &entry, sizeof(HashEntry));
+				return true;
+			}
+
+			if (oldest.age < temp.age)
+				oldest = temp;
+		}
+
+		/*
+		 * 3. If the oldest entry has a lower draft,
+		 *    then replace it
+		 */
+
+		if (oldest.draft < entry.draft)
+		{
+			std::memcpy(&oldest, &entry,
+				sizeof(HashEntry));
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Create and store a new hash table entry
+	 *
+	 * @param[in] key   The position key
+	 * @param[in] draft Depth to which this position was
+	 *                  searched
+	 * @param[in] score The computed score 
+	 * @param[in] move  The move that produced the score
+	 * @param[in] type  The node type
+
+	 * @return True on success
+	 */
+	bool Search::store(uint64 key, uint8 draft, int16 score,
+					   int32 move, int type)
+	{
+		HashEntry entry = { 0, /* entry age */
+							draft,
+							score,
+							0, /* type_move */
+							key };
+
+		entry.set_move( move );
+		entry.set_type( type );
+
+		return store(entry);
 	}
 
 	/**
