@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <ctime>
 #include <iostream>
 #include <unistd.h>
 
@@ -37,7 +38,15 @@ int main(int argc, char** argv)
 	std::cout << std::endl;
 
 	search.hash_table.clear();
-	search.run(60000, 9, 0);
+
+	std::clock_t begin = clock();
+	search.run(90000, 10, 0);
+	std::clock_t end = clock();
+
+	double elapsed = double(end - begin) / CLOCKS_PER_SEC;
+
+	std::cout << "Finished in " << elapsed << " seconds."
+		<< std::endl;
 
 	/*
 	for (size_t i = 0; i < search.lines.size(); i++)

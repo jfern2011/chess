@@ -475,6 +475,28 @@ namespace Chess
 	}
 
 	/**
+	 * Get the half-move clock at the specified ply
+	 *
+	 * @param[in] ply Get the half-move clock at this ply
+	 *
+	 * @return The half-move clock
+	 */
+	int Position::halfmove_clock(int ply) const
+	{
+		return _half_move[ply];
+	}
+
+	/**
+	 * Return the half-move clock at the current ply
+	 *
+	 * @return The half-move clock
+	 */
+	int Position::halfmove_clock() const
+	{
+		return _half_move[_ply];
+	}
+
+	/**
 	 * Get the 64-bit integers used to hash a position
 	 *
 	 * @return The hash inputs
@@ -482,6 +504,20 @@ namespace Chess
 	auto Position::get_hash_inputs() const -> const HashInput& 
 	{
 		return _hash_input;
+	}
+
+	/**
+	 * Get the ply at which the halfmove was last reset
+	 * that is not later than the specified ply
+	 *
+	 * @param [in] ply  Get the last reset that occured
+	 *                  before this ply was reached
+	 *
+	 * @return The last halfmove reset
+	 */
+	int Position::last_halfmove_reset(int ply) const
+	{
+		return _last_halfmove_reset[ply];
 	}
 
 	/**
@@ -904,6 +940,8 @@ namespace Chess
 
 		for (int i = 0; i < max_ply; i++)
 		{
+			_last_halfmove_reset[i] = 0;
+
 			_ep_info[i].clear();
 
 			_castle_rights[i][player_t::black] = 0;

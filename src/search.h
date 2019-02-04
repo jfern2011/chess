@@ -29,6 +29,8 @@ namespace Chess
 
 		bool init(Handle<Position> pos);
 
+		bool is_repeated(int depth) const;
+
 		HashEntry& load(const Position& pos, int draft, int alpha,
 						int beta, bool check, bool& avoid);
 
@@ -111,6 +113,11 @@ namespace Chess
 		 * Number of quiescent nodes visited
 		 */
 		int64 _qnode_count;
+
+		/**
+		 * Number of repetitions encountered
+		 */
+		int _reps;
 
 		/**
 		 * The time to search started

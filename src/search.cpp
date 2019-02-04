@@ -76,6 +76,42 @@ namespace Chess
 	}
 
 	/**
+	 * Check for repetitions. This is done by comparing Zobrist keys,
+	 * with the first comparison being done with the position 4
+	 * plies back, since this is the minimum required plies for a
+	 * repetition to occur. From there we proceed by decrementing by
+	 * two plies at a time until we hit the root (i.e. 2 unmakes)
+	 * in order to catch longer repeat sequences
+	 *
+	 * @param[in] depth The current search depth, in plies
+	 *
+	 * @return True if detected
+	 */
+	bool Search::is_repeated(int depth) const
+	{
+		if (depth <= 3) return false;
+
+		const auto& pos = *_position;
+
+		/*
+		 * Get the ply of the last halfmove clock reset, since
+		 * we need not search prior to this:
+		 */
+
+		const int limit = pos.last_halfmove_reset(depth);
+
+		const uint64 key = pos.get_hash_key();
+
+		for ( int ply = depth-4; ply >= limit; ply -= 2 )
+		{
+			if ( key == pos.get_hash_key(ply) )
+				return true;
+		}
+
+		return false;
+	}
+
+	/**
 	 * Load an entry from the hash table
 	 *
 	 * @note That this entry should be replaced is indicated by
@@ -381,6 +417,8 @@ namespace Chess
 				<< _node_count
 				<< std::string(", quiesce = ")
 				<< _qnode_count
+				<< std::string(", reps = ")
+				<< _reps
 				<< std::string("\n");
 
 		return score;
@@ -440,7 +478,18 @@ namespace Chess
 			pos.in_check( pos.get_turn() );
 
 		/*
-		 * First, check if we've hashed this position
+		 * First, check for draw by repetition
+		 */
+
+		if (is_repeated(depth))
+		{
+			_reps++;
+			if (0 < beta) save_pv( depth, 0 );
+			return 0;
+		}
+
+		/*
+		 * Check if we've hashed this position
 		 */
 
 		const auto draft =
@@ -782,7 +831,8 @@ namespace Chess
 	void Search::_set_defaults()
 	{
 		_iteration_depth = 3;
-			_node_count = _qnode_count = 0;
+		_node_count = _qnode_count = 0;
+		_reps = 0;
 
 		_next_abort_check = 100000;
 		_abort_search = false;

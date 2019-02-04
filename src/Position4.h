@@ -143,10 +143,16 @@ namespace Chess
 
 		player_t get_turn() const;
 
-		bool in_check(player_t to_move) const;
+		int halfmove_clock(int ply) const;
+
+		int halfmove_clock()        const;
+
+		bool in_check( player_t to_move ) const;
 
 		direction_t is_pinned(
 			square_t square, player_t to_move ) const;
+
+		int last_halfmove_reset(int ply ) const;
 
 		bool make_move(int32 move);
 
@@ -245,6 +251,11 @@ namespace Chess
 		 * position
 		 */
 		BUFFER(uint64, _knights, 2);
+
+		/**
+		 * The ply at which we last reset the halfmove clock
+		 */
+		BUFFER(int, _last_halfmove_reset, max_ply);
 
 		/**
 		 * The material balance, per side
@@ -1379,9 +1390,17 @@ namespace Chess
 		 *     clock. Otherwise, reset it to zero
 		 */
 		if (moved == piece_t::pawn || captured != piece_t::empty)
+		{
 			_half_move[_ply] = 0;
+			_last_halfmove_reset[_ply] = _ply;
+		}
 		else
+		{
 			_half_move[_ply] = _half_move[_ply-1] + 1;
+
+			_last_halfmove_reset[_ply]
+				= _last_halfmove_reset[_ply-1];
+		}
 
 		/*
 		 * 13. Increment the full-move number if black played
