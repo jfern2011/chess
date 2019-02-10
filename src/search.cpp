@@ -419,7 +419,7 @@ namespace Chess
 		{
 			if ( !_multipv )
 			{
-				score = search( 0, -king_value, king_value );
+				score = search( 0, -king_value, king_value, true );
 
 				if (_abort_search) break;
 
@@ -472,6 +472,8 @@ namespace Chess
 				<< _qnode_count
 				<< std::string(", reps = ")
 				<< _reps
+				<< std::string(", NMR = ")
+				<< _nmr
 				<< std::string(", exact = ")
 				<< _exact
 				<< std::string(" (") << pct_ex_s << std::string("%)")
@@ -512,13 +514,15 @@ namespace Chess
 	/**
 	 * Implements the recursive negamax search algorithm
 	 *
-	 * @param[in] depth The current depth
-	 * @param[in] alpha The search window lower bound
-	 * @param[in] beta  The search window upper bound
+	 * @param[in] depth   The current depth
+	 * @param[in] alpha   The search window lower bound
+	 * @param[in] beta    The search window upper bound
+	 * @param[in] do_null True to try a null move
 	 *
 	 * @return The search score (relative to us)
 	 */
-	int16 Search::search(int depth, int16 alpha, int16 beta)
+	int16 Search::search(int depth, int16 alpha, int16 beta,
+		                 bool do_null)
 	{
 		Position& pos = *_position;
 
@@ -536,8 +540,9 @@ namespace Chess
 			_next_abort_check = _node_count + nps;
 		}
 
-		const bool in_check =
-			pos.in_check( pos.get_turn() );
+		const player_t side = pos.get_turn();
+
+		const bool in_check = pos.in_check( side );
 
 		/*
 		 * First, check for draw by repetition
@@ -566,7 +571,7 @@ namespace Chess
 			// Thanks, hash table!
 
 			if (entry.type() == EXACT)
-				save_pv(depth, entry.move());
+				save_pv(depth, 0);//entry.move());
 
 			if (entry.type() != EMPTY)
 			{
@@ -619,7 +624,7 @@ namespace Chess
 
 			const int16 score = 
 				search_moves<phase_t::check_evasions>(phase, alpha,
-					beta, depth, best_move);
+					beta, depth, false, best_move);
 
 			if ( beta <= score )
 			{
@@ -664,13 +669,66 @@ namespace Chess
 		}
 
 		/*
+		 * 0. Try a null move, searching with reduced depth
+		 */
+
+		if (do_null)
+		{
+			const int R = 2 + depth/3;
+
+			/*
+			 * Assume (conservatively) we're in zugzwang if we only
+			 * have pawns left:
+			 */
+			bool zugzwang =
+				(pos.get_bitboard <piece_t::pawn>(side) |
+				 pos.get_bitboard <piece_t::king>(side))
+				== pos.get_occupied(side);
+
+			/*
+			 * Null move heuristic. Since we're not in check (and
+			 * not in zugzwang), try passing this turn (e.g. the
+			 * opponent gets two turns in a row). If we can still
+			 * raise alpha enough to get a cutoff, then chances
+			 * are we'll definitely get a cutoff by searching in
+			 * the usual way. Note that we initially reduce by two
+			 * plies, and further reduce for every increase in
+			 * depth by three plies:
+			 */
+			if (do_null && !zugzwang
+				&& depth+R < _iteration_depth)
+			{
+				pos.make_move(0);
+				_node_count++;
+
+				const int score =
+					-search(depth+R, -beta, -beta+1, false);
+
+				pos.unmake_move(0);
+
+				if (beta <= score)
+				{
+					const int _draft = std::max(
+						_iteration_depth - (depth+R-1) , 0);
+
+					store(pos.get_hash_key(),
+						  _draft, beta, 0, FAIL_HI);
+
+					_fail_hi++; _nmr++;
+
+					return beta;
+				}
+			}
+		}
+
+		/*
 		 * 1. Search winning captures
 		 */
 
 		phase.init<phase_t::winning_captures>(pos);
 
 		int16 score = search_moves< phase_t::winning_captures >(
-			phase, alpha, beta, depth, best_move);
+			phase, alpha, beta, depth, !do_null, best_move);
 
 		if ( beta <= score )
 		{
@@ -693,7 +751,7 @@ namespace Chess
 		phase.init<phase_t::non_captures>(pos);
 
 		score = search_moves< phase_t::non_captures >(
-			phase, alpha, beta, depth, best_move);
+			phase, alpha, beta, depth, !do_null, best_move);
 
 		if ( beta <= score )
 		{
@@ -729,7 +787,7 @@ namespace Chess
 		phase.init<phase_t::losing_captures>(pos);
 
 		score = search_moves< phase_t::losing_captures >(
-			phase, alpha, beta, depth, best_move);
+			phase, alpha, beta, depth, !do_null, best_move);
 
 		if ( beta <= score )
 		{
@@ -819,7 +877,7 @@ namespace Chess
 			pos.make_move( move );
 
 			const int16 score = search(1, -king_value,
-				king_value);
+				king_value, !in_check);
 
 			pos.unmake_move(move);
 
@@ -940,6 +998,7 @@ namespace Chess
 		_hash_hits = _hash_misses  = 0;
 
 		_exact = _fail_hi = _fail_lo = 0;
+		_nmr = 0;
 
 		_next_abort_check = 100000;
 		_abort_search = false;

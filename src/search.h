@@ -44,14 +44,16 @@ namespace Chess
 
 		void save_pv(int depth, int move);
 
-		int16 search( int depth, int16 alpha, int16 beta );
+		int16 search( int depth, int16 alpha, int16 beta,
+		              bool do_null );
 
 		int16 search_root();
 
 		template <phase_t P>
 		int16 search_moves(SearchPhase& phase,
 						   int16& alpha, int16 beta,
-						   int depth, int& best);
+						   int depth, bool do_null,
+						   int& best);
 
 		bool store(const HashEntry& entry);
 
@@ -123,6 +125,11 @@ namespace Chess
 		int64 _next_abort_check;
 
 		/**
+		 * Number of null move reductions
+		 */
+		uint64 _nmr;
+
+		/**
 		 * The number of nodes visited, including
 		 * quiescent nodes
 		 */
@@ -162,18 +169,20 @@ namespace Chess
 	/**
 	 * Utility function for searching a list of moves
 	 *
-	 * @param[in]     phase The current search phase
-	 * @param[in,out] alpha The search window lower bound
-	 * @param[in]     beta  The search window upper bound
-	 * @param[in]     depth The current depth
-	 * @param[in]     The best move, if alpha was raised
+	 * @param[in]     phase    The current search phase
+	 * @param[in,out] alpha    The search window lower bound
+	 * @param[in]     beta     The search window upper bound
+	 * @param[in]     depth    The current depth
+	 * @param[in]     do_null  Null move enable
+	 * @param[in]     best     Best move, if alpha was raised
 	 *
 	 * @return The search score (relative to us)
 	 */
 	template <phase_t P>
 	int16 Search::search_moves(SearchPhase& phase,
 							   int16& alpha, int16 beta,
-							   int depth, int& best)
+							   int depth, bool do_null,
+							   int& best)
 	{
 		int32 move;
 		while (phase.next_move<P>(move))
@@ -183,7 +192,7 @@ namespace Chess
 			_position->make_move (move);
 
 			const int16 score =
-				-search( depth + 1, -beta, -alpha );
+				-search(depth + 1, -beta, -alpha, do_null);
 
 			_position->unmake_move(move);
 
