@@ -167,6 +167,7 @@ namespace Chess
 		 */
 		auto pad = [](const std::string& mv)
 		{
+			if (mv.size() < 3) return mv + std::string(3, ' ');
 			if (mv.size() < 4) return mv + std::string(2, ' ');
 			if (mv.size() < 5) return mv + std::string(1, ' ');
 			else return mv;

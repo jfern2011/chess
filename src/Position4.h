@@ -113,7 +113,8 @@ namespace Chess
 
 		bool equals(const Position& p, int ply) const;
 
-		void generate_hash();
+		void generate_hash(uint64 max =
+			std::numeric_limits<uint64>::max());
 
 		template <piece_t type>
 		uint64 get_bitboard( player_t to_move ) const;
@@ -135,7 +136,7 @@ namespace Chess
 		int get_material(player_t to_move)          const;
 
 		template <piece_t type>
-		int get_mobility(square_t square);
+		int get_mobility(square_t square) const;
 
 		uint64 get_occupied( player_t to_move ) const;
 
@@ -807,7 +808,7 @@ namespace Chess
 	 *         pieces only, this may be positive
 	 */
 	template <piece_t type>
-	inline int Position::get_mobility(square_t square)
+	inline int Position::get_mobility(square_t square) const
 	{
 		return 0;
 	}
@@ -815,6 +816,7 @@ namespace Chess
 #ifndef DOXYGEN_SKIP
 	template <>
 	inline int Position::get_mobility< piece_t::rook >(square_t square)
+		const
 	{
 		return _get_rook_mobility(square,
 								  _occupied[player_t::white] |
@@ -823,6 +825,7 @@ namespace Chess
 
 	template <>
 	inline int Position::get_mobility<piece_t::bishop>(square_t square)
+		const
 	{
 		return _get_diag_mobility(square,
 								  _occupied[player_t::white] |
@@ -831,6 +834,7 @@ namespace Chess
 
 	template <>
 	inline int Position::get_mobility<piece_t::queen >(square_t square)
+		const
 	{
 		const uint64 occupied =   _occupied[player_t::white] |
 								  _occupied[player_t::black];

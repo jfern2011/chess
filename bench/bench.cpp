@@ -24,11 +24,11 @@ int main(int argc, char** argv)
 
 	search.enable_multipv(false);
 
-	const size_t numel = 8388608;
+	const size_t numel = 8388608 / 4;
 	AbortIfNot(search.hash_table.resize(numel), false);
 
 	std::cout << "Hash table = ";
-	const size_t table_size = search.hash_table.size() * sizeof(Chess::HashBucket<4>);
+	const size_t table_size = search.hash_table.size() * sizeof(Chess::HashBucket<1>);
 	if (table_size > 1e6)
 		std::cout << int(table_size / 1e6) << " MB" << std::endl;
 	else if (table_size > 1e3)
@@ -40,12 +40,23 @@ int main(int argc, char** argv)
 	search.hash_table.clear();
 
 	std::clock_t begin = clock();
-	search.run(90000, 10, 0);
+	search.run(90000, 8, 0);
 	std::clock_t end = clock();
 
 	double elapsed = double(end - begin) / CLOCKS_PER_SEC;
 
 	std::cout << "Finished in " << elapsed << " seconds."
+		<< std::endl;
+
+	const size_t total_size =
+		search.hash_table.size() * search.hash_table.bucket_size;
+	const double usage      =
+		100.0 * search.hash_table.usage() / total_size;
+
+	std::cout << "HT usage  = " << usage << "%" << std::endl;
+	std::cout << "HT hits   = " << search.hash_hits()
+		<< std::endl;
+	std::cout << "HT misses = " << search.hash_misses()
 		<< std::endl;
 
 	/*

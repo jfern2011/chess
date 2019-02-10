@@ -283,8 +283,10 @@ namespace Chess
 	/**
 	 * Generates a new hash signature for this position. This should
 	 * be called for every reset()
+	 *
+	 * @param[in] max Upper bound on each random number
 	 */
-	void Position::generate_hash()
+	void Position::generate_hash(uint64 max)
 	{
 		/*
 		 * Generate pseudo-random numbers used for updating the hash
@@ -293,23 +295,23 @@ namespace Chess
 
 		for (int i = 0; i < 2; i++)
 		{
-			_hash_input.castle_rights[player_t::black][i] = rand64();
-			_hash_input.castle_rights[player_t::white][i] = rand64();
+			_hash_input.castle_rights[player_t::black][i] = rand64(max);
+			_hash_input.castle_rights[player_t::white][i] = rand64(max);
 		}
 
 		for (int i = 0; i < 8; i++)
-			_hash_input.en_passant[i] = rand64();
+			_hash_input.en_passant[i] = rand64(max);
 
 		for (int i = 0; i < 6; i++)
 		{
 			for (int j = 0; j < 64; j++)
 			{
-				_hash_input.piece[player_t::black][i][j]  = rand64();
-				_hash_input.piece[player_t::white][i][j]  = rand64();
+				_hash_input.piece[player_t::black][i][j]  = rand64(max);
+				_hash_input.piece[player_t::white][i][j]  = rand64(max);
 			}
 		}
 
-		_hash_input.to_move = rand64();
+		_hash_input.to_move = rand64(max);
 
 		/*
 		 * Compute the hash signature for this position

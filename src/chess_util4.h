@@ -454,19 +454,22 @@ namespace Chess
 	}
 
 	/**
-	 * Placeholder for generating random 64-bit integers used for
-	 * hashing a position
+	 * Placeholder for generating random 64-bit integers used
+	 * for hashing a position
 	 *
 	 * @todo Experiment with other RNGs
 	 *
+	 * @param [in] max Generate a random number in [ 0, max ]
+	 *
 	 * @return A random 64-bit number
 	 */
-	inline uint64 rand64()
+	inline uint64 rand64(uint64 max =
+		std::numeric_limits<uint64>::max())
 	{
 		static std::default_random_engine generator;
 
 		static std::uniform_int_distribution<uint64>
-			dist(0,std::numeric_limits<uint64>::max());
+			dist(0,max);
 
 		return dist(generator);
 	}

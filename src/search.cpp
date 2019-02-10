@@ -56,6 +56,28 @@ namespace Chess
 	}
 
 	/**
+	 * Get the number of hash table hits during the last
+	 * search
+	 *
+	 * @return The number of hits
+	 */
+	size_t Search::hash_hits() const
+	{
+		return _hash_hits;
+	}
+
+	/**
+	 * Get the number of hash table misses during the
+	 * last search
+	 *
+	 * @return The number of misses
+	 */
+	size_t Search::hash_misses() const
+	{
+		return _hash_misses;
+	}
+
+	/**
 	 *  Initialize for a new search. This must be called
 	 *  prior to every \ref run()
 	 *
@@ -196,7 +218,7 @@ namespace Chess
 		 * we'll reach greater depth, replace it
 		 */
 
-		if (oldest.age == HashEntry::age_limit ||
+		if (oldest.age >= HashEntry::age_limit ||
 			oldest.draft < draft)
 		{
 			oldest.set_type(EMPTY);
@@ -264,7 +286,11 @@ namespace Chess
 		 * zugzwang positions...
 		 */
 		if (score >= beta)
+		{
+			_fail_hi++;
+
 			return beta;
+		}
 
 		if (alpha < score) alpha = score;
 
@@ -278,6 +304,8 @@ namespace Chess
 		 */
 		if (n_moves == 0 || max_ply <= depth)
 		{
+			_exact++;
+
 			save_pv(depth, 0);
 			return score;
 		}
@@ -335,7 +363,12 @@ namespace Chess
 
 			pos.unmake_move(move);
 
-			if (score >= beta) return beta;
+			if (score >= beta)
+			{
+				_fail_hi++;
+
+				return beta;
+			}
 
 			if ( score > alpha )
 			{
@@ -343,6 +376,8 @@ namespace Chess
 				alpha = score;
 			}
 		}
+
+		_exact++;
 
 		save_pv(depth, best_move);
 
@@ -373,6 +408,8 @@ namespace Chess
 		auto& channel = *_channel;
 
 		int16 score = -king_value;
+
+		_position->generate_hash(hash_table.size());
 
 		_start_time = Clock::get_monotonic_time();
 		_stop_time  =
@@ -413,12 +450,37 @@ namespace Chess
 			lines.clear();
 		}
 
+		double pct_fh = _fail_hi * 100.0 / _node_count;
+		double pct_fl = _fail_lo * 100.0 / _node_count;
+		double pct_ex = _exact   * 100.0 / _node_count;
+
+		char pct_fh_c[64];
+		char pct_fl_c[64];
+		char pct_ex_c[64];
+
+		std::snprintf(pct_fh_c, 64, "%0.2f", pct_fh);
+		std::snprintf(pct_fl_c, 64, "%0.2f", pct_fl);
+		std::snprintf(pct_ex_c, 64, "%0.2f", pct_ex);
+
+		std::string pct_fh_s(pct_fh_c);
+		std::string pct_fl_s(pct_fl_c);
+		std::string pct_ex_s(pct_ex_c);
+
 		channel << std::string("nodes = ")
 				<< _node_count
 				<< std::string(", quiesce = ")
 				<< _qnode_count
 				<< std::string(", reps = ")
 				<< _reps
+				<< std::string(", exact = ")
+				<< _exact
+				<< std::string(" (") << pct_ex_s << std::string("%)")
+				<< std::string(", fh = ")
+				<< _fail_hi
+				<< std::string(" (") << pct_fh_s << std::string("%)")
+				<< std::string(", fl = ")
+				<< _fail_lo
+				<< std::string(" (") << pct_fl_s << std::string("%)")
 				<< std::string("\n");
 
 		return score;
@@ -507,7 +569,23 @@ namespace Chess
 				save_pv(depth, entry.move());
 
 			if (entry.type() != EMPTY)
+			{
+				_hash_hits++;
 				return entry.score;
+			}
+		}
+
+		_hash_misses++;
+
+		/*
+		 * Initialize this position for storage into the
+		 * hash table:
+		 */
+		if (!avoid)
+		{
+			entry.age   = 0;
+			entry.draft = draft;
+			entry.key   = pos.get_hash_key();
 		}
 
 		/*
@@ -545,32 +623,41 @@ namespace Chess
 
 			if ( beta <= score )
 			{
-				store(pos.get_hash_key(),
-					  draft,
-					  score,
-					  best_move,
-					  FAIL_HI);
+				if (!avoid)
+				{
+					entry.score = beta;
+					entry.set_move(best_move);
+					entry.set_type(FAIL_HI);
+				}
+
+				_fail_hi++;
 
 				return beta;
 			}
 
 			if (alpha > init_alpha)
 			{
-				store(pos.get_hash_key(),
-					  draft,
-					  alpha,
-					  best_move,
-					  EXACT);
+				if (!avoid)
+				{
+					entry.score = alpha;
+					entry.set_move(best_move);
+					entry.set_type(EXACT);
+				}
+
+				_exact++;
 
 				save_pv(depth,best_move);
 			}
 			else
 			{
-				store(pos.get_hash_key(),
-					  draft,
-					  alpha,
-					  0, /* move */
-					  FAIL_LO);
+				if (!avoid)
+				{
+					entry.score = alpha;
+					entry.set_move(0); /* move */
+					entry.set_type(FAIL_LO);
+				}
+
+				_fail_lo++;
 			}
 
 			return alpha;
@@ -587,11 +674,14 @@ namespace Chess
 
 		if ( beta <= score )
 		{
-			store(pos.get_hash_key(),
-				  draft,
-				  score,
-				  best_move,
-				  FAIL_HI);
+			if (!avoid)
+			{
+				entry.score = beta;
+				entry.set_move(best_move);
+				entry.set_type(FAIL_HI);
+			}
+
+			_fail_hi++;
 
 			return beta;
 		}
@@ -607,11 +697,14 @@ namespace Chess
 
 		if ( beta <= score )
 		{
-			store(pos.get_hash_key(),
-				  draft,
-				  score,
-				  best_move,
-				  FAIL_HI);
+			if (!avoid)
+			{
+				entry.score = beta;
+				entry.set_move(best_move);
+				entry.set_type(FAIL_HI);
+			}
+
+			_fail_hi++;
 
 			return beta;
 		}
@@ -623,6 +716,8 @@ namespace Chess
 		if (phase.winning_captures.size == 0 &&
 			phase.non_captures.size == 0)
 		{
+			_exact++;
+
 			save_pv(depth, 0); // end of line
 			return 0;
 		}
@@ -638,32 +733,41 @@ namespace Chess
 
 		if ( beta <= score )
 		{
-			store(pos.get_hash_key(),
-				  draft,
-				  score,
-				  best_move,
-				  FAIL_HI);
+			if (!avoid)
+			{
+				entry.score = beta;
+				entry.set_move(best_move);
+				entry.set_type(FAIL_HI);
+			}
+
+			_fail_hi++;
 
 			return beta;
 		}
 
 		if (alpha > init_alpha)
 		{
-			store(pos.get_hash_key(),
-				  draft,
-				  alpha,
-				  best_move,
-				  EXACT);
+			if (!avoid)
+			{
+				entry.score = alpha;
+				entry.set_move(best_move);
+				entry.set_type(EXACT);
+			}
+
+			_exact++;
 
 			save_pv(depth,best_move);
 		}
 		else
 		{
-			store(pos.get_hash_key(),
-				  draft,
-				  alpha,
-				  best_move,
-				  FAIL_LO);
+			if (!avoid)
+			{
+				entry.score = alpha;
+				entry.set_move(0); /* move */
+				entry.set_type(FAIL_LO);
+			}
+
+			_fail_lo++;
 		}
 
 		return alpha;
@@ -833,6 +937,9 @@ namespace Chess
 		_iteration_depth = 3;
 		_node_count = _qnode_count = 0;
 		_reps = 0;
+		_hash_hits = _hash_misses  = 0;
+
+		_exact = _fail_hi = _fail_lo = 0;
 
 		_next_abort_check = 100000;
 		_abort_search = false;

@@ -27,6 +27,10 @@ namespace Chess
 
 		MoveList get_pv() const;
 
+		size_t hash_hits() const;
+
+		size_t hash_misses() const;
+
 		bool init(Handle<Position> pos);
 
 		bool is_repeated(int depth) const;
@@ -56,7 +60,7 @@ namespace Chess
 
 		Variation lines;
 
-		HashTable<4> hash_table;
+		HashTable<1> hash_table;
 
 	private:
 
@@ -71,6 +75,31 @@ namespace Chess
 		 *  Channel through which to send outputs
 		 */
 		Handle<OutputChannel> _channel;
+
+		/**
+		 *  The number of PV nodes
+		 */
+		uint64 _exact;
+
+		/**
+		 * The number of fail-high nodes
+		 */
+		uint64 _fail_hi;
+
+		/**
+		 *  The number of fail-low nodes
+		 */
+		uint64 _fail_lo;
+
+		/**
+		 * The number of hash table hits
+		 */
+		size_t _hash_hits;
+
+		/**
+		 * The number of hash table misses
+		 */
+		size_t _hash_misses;
 
 		/**
 		 * Indicates if the search is initialized
