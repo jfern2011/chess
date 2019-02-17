@@ -1644,6 +1644,8 @@ namespace Chess
 		inline bool validate_move(const Position& pos, int32 move,
 			bool check)
 		{
+			if (move == 0) return false;
+
 			const player_t to_move = pos.get_turn();
 			const player_t opponent = flip(to_move);
 
@@ -1699,6 +1701,27 @@ namespace Chess
 						return false;
 					}
 				}
+				
+				if (moved == piece_t::king)
+				{
+					// Regardless of whether in check or double
+					// check, make sure the king doesn't move along
+					// a direction in which it is being attacked:
+
+					uint64 attackers = attacks_king;
+
+					while (attackers)
+					{
+						const square_t attacker =
+							static_cast<square_t>(msb64(attackers));
+
+						clear_bit64(attacker, attackers);
+
+						if (tables.directions[attacker][to] ==
+							tables.directions[from][to])
+							return false;
+					}
+				}
 			}
 
 			/*
@@ -1722,7 +1745,7 @@ namespace Chess
 			switch (moved)
 			{
 			case piece_t::pawn:
-				if (captured && pos.piece_on(to) == piece_t::empty)
+				if (pos.ep_data().target == to)
 				{
 					en_passant = true;
 					/*

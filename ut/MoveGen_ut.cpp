@@ -1574,5 +1574,51 @@ namespace
 					pos, move, false));
 			}
 		}
+
+		{
+			ASSERT_TRUE(pos.reset(
+					"8/8/4K3/8/8/1b6/4r3/5k2 w - - 0 1"));
+
+			std::vector<int32> moves;
+
+			moves.push_back(pack_move(piece_t::empty,
+									  square_t::E6,
+									  piece_t::king,
+									  piece_t::empty,
+									  square_t::F7));
+
+			moves.push_back(pack_move(piece_t::empty,
+									  square_t::E6,
+									  piece_t::king,
+									  piece_t::empty,
+									  square_t::E7));
+
+			for (auto& move : moves)
+			{
+				EXPECT_FALSE(MoveGen::validate_move(
+					pos, move, true));
+			}
+		}
+
+		{
+			// A bug was found in this position
+			
+			ASSERT_TRUE(pos.reset(
+					"rnbqkbnr/1pp1pppp/8/p2p4/8/2N2N2/PPPPPPPP/R1BQKBR1 b Qkq - 1 1"));
+
+			std::vector<int32> moves;
+
+			moves.push_back(pack_move(piece_t::knight,
+									  square_t::C7,
+									  piece_t::pawn,
+									  piece_t::empty,
+									  square_t::B6));
+
+			for (auto& move : moves)
+			{
+				EXPECT_FALSE(MoveGen::validate_move(
+					pos, move, false));
+			}
+		}
 	}
 }
