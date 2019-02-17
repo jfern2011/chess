@@ -40,7 +40,7 @@ int main(int argc, char** argv)
 	search.hash_table.clear();
 
 	std::clock_t begin = clock();
-	search.run(90000, 8, 0);
+	search.run(90000, 9, 0);
 	std::clock_t end = clock();
 
 	double elapsed = double(end - begin) / CLOCKS_PER_SEC;

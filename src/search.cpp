@@ -506,24 +506,24 @@ namespace Chess
 		std::string pct_fl_s(pct_fl_c);
 		std::string pct_ex_s(pct_ex_c);
 
-		channel << std::string("nodes = ")
+		channel << "nodes = "
 				<< _node_count
-				<< std::string(", quiesce = ")
+				<< ", quiesce = "
 				<< _qnode_count
-				<< std::string(", reps = ")
+				<< ", reps = "
 				<< _reps
-				<< std::string(", NMR = ")
+				<< ", NMR = "
 				<< _nmr
-				<< std::string(", exact = ")
+				<< ", exact = "
 				<< _exact
-				<< std::string(" (") << pct_ex_s << std::string("%)")
-				<< std::string(", fh = ")
+				<< " (" << pct_ex_s << "%)"
+				<< ", fh = "
 				<< _fail_hi
-				<< std::string(" (") << pct_fh_s << std::string("%)")
-				<< std::string(", fl = ")
+				<< " (" << pct_fh_s << "%)"
+				<< ", fl = "
 				<< _fail_lo
-				<< std::string(" (") << pct_fl_s << std::string("%)")
-				<< std::string("\n");
+				<< " (" << pct_fl_s << "%)"
+				<< "\n";
 
 		return score;
 	}
@@ -656,10 +656,51 @@ namespace Chess
 
 		SearchPhase phase;
 
-		// Initialize the list of searched moves
+		/*
+		 * Initialize the list of searched moves
+		 */
 
-		phase.init<phase_t::hash_move>(pos);
+		phase.init<phase_t::pv_move>(pos);
 
+		/*
+		 * Try a PV move from the previous search
+		 * iteration
+		 */
+		const int32 pv_move = _pv[0][depth];
+
+		if ((depth < _iteration_depth-1) &&
+			MoveGen::validate_move(pos, pv_move, in_check))
+		{
+			phase.searched_moves.push_back(pv_move);
+
+			int16 score = search_moves< phase_t::pv_move >(
+				phase, alpha, beta, depth, !do_null,
+				false, best_move);
+
+			if ( beta <= score )
+			{
+				store(pos.get_hash_key(), _iteration_depth -
+					depth, beta, pv_move, FAIL_HI);
+
+				_fail_hi++; return beta;
+			}
+		}
+
+		bool do_zws = alpha > init_alpha;
+#if 0
+		else if (!hint)
+		{
+			/*
+			 * Internal iterative deepening. For example,
+			 * this might be done on the left-most branch 1
+			 * ply deeper than the last iteration depth,
+			 * since there's no PV move at that depth yet
+			 * (and no hint from the hash table)
+			 */
+			const int score =
+				search(depth+2, alpha, beta, do_null);
+		}
+#endif
 		/*
 		 * If probing the hash table returned a move to
 		 * try, search that one first
@@ -708,7 +749,9 @@ namespace Chess
 
 			int16 score = search_moves< phase_t::hash_move >(
 				phase, alpha, beta, depth, !do_null,
-				best_move);
+				do_zws, best_move);
+
+			do_zws = alpha > init_alpha;
 
 			if ( beta <= score )
 			{
@@ -745,7 +788,7 @@ namespace Chess
 
 			const int16 score = 
 				search_moves<phase_t::check_evasions>(phase, alpha,
-					beta, depth, false, best_move);
+					beta, depth, false, do_zws, best_move);
 
 			if ( beta <= score )
 			{
@@ -833,8 +876,11 @@ namespace Chess
 					const int _draft = std::max(
 						_iteration_depth - (depth+R-1) , 0);
 #endif
+					const int _draft = std::max(
+						_iteration_depth -depth, 0);
+
 					store(pos.get_hash_key(),
-						  depth, beta, 0, FAIL_HI);
+						  _draft, beta, 0, FAIL_HI);
 
 					_fail_hi++; _nmr++;
 
@@ -850,7 +896,9 @@ namespace Chess
 		phase.init<phase_t::winning_captures>(pos);
 
 		int16 score = search_moves< phase_t::winning_captures >(
-			phase, alpha, beta, depth, !do_null, best_move);
+			phase, alpha, beta, depth, !do_null, do_zws, best_move);
+
+		do_zws = alpha > init_alpha;
 
 		if ( beta <= score )
 		{
@@ -873,7 +921,9 @@ namespace Chess
 		phase.init<phase_t::non_captures>(pos);
 
 		score = search_moves< phase_t::non_captures >(
-			phase, alpha, beta, depth, !do_null, best_move);
+			phase, alpha, beta, depth, !do_null, do_zws, best_move);
+
+		do_zws = alpha > init_alpha;
 
 		if ( beta <= score )
 		{
@@ -909,7 +959,9 @@ namespace Chess
 		phase.init<phase_t::losing_captures>(pos);
 
 		score = search_moves< phase_t::losing_captures >(
-			phase, alpha, beta, depth, !do_null, best_move);
+			phase, alpha, beta, depth, !do_null, do_zws, best_move);
+
+		do_zws = alpha > init_alpha;
 
 		if ( beta <= score )
 		{

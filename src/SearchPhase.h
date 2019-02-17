@@ -36,7 +36,13 @@ namespace Chess
 		/**
 		 * Searching a move in the hash table
 		 */
-		hash_move
+		hash_move,
+
+		/**
+		 * Searching a PV move from the previous
+		 * depth iteration
+		 */
+		pv_move
 	};
 
 	/**
@@ -231,15 +237,26 @@ namespace Chess
 	}
 
 	/**
-	 * Initialize the hash phase
+	 * Initialize the PV phase
 	 *
 	 * @param [in] _pos The current position
 	 */
 	template <> inline
-	void SearchPhase::init<phase_t::hash_move>(Position& _pos)
+	void SearchPhase::init< phase_t::pv_move >(Position& _pos)
 	{
 		searched_moves.init(exclude_list, 0);
 	}
+
+	/**
+	 * Initialize the hash phase
+	 *
+	 * @param [in] _pos The current position
+	 *
+	template <> inline
+	void SearchPhase::init<phase_t::hash_move>(Position& _pos)
+	{
+		searched_moves.init(exclude_list, 0);
+	}*/
 
 	/**
 	 * Get the next check evasion
@@ -358,6 +375,20 @@ namespace Chess
 	 */
 	template <> inline
 	bool SearchPhase::next_move<phase_t::hash_move>(int32& move)
+	{
+		return searched_moves.next(move);
+	}
+
+	/**
+	 * Get the next PV move (note there's only 1)
+	 *
+	 * @param [out] move The PV move to try
+	 *
+	 * @return True if \a move is valid, or false if the list of
+	 *         moves is exhausted
+	 */
+	template <> inline
+	bool SearchPhase::next_move< phase_t::pv_move >(int32& move)
 	{
 		return searched_moves.next(move);
 	}

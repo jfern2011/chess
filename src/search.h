@@ -54,7 +54,7 @@ namespace Chess
 		int16 search_moves(SearchPhase& phase,
 						   int16& alpha, int16 beta,
 						   int depth, bool do_null,
-						   int& best);
+						   bool do_zws, int& best);
 
 		bool store(const HashEntry& entry);
 
@@ -183,7 +183,7 @@ namespace Chess
 	int16 Search::search_moves(SearchPhase& phase,
 							   int16& alpha, int16 beta,
 							   int depth, bool do_null,
-							   int& best)
+							   bool do_zws, int& best)
 	{
 		int32 move;
 		while (phase.next_move<P>(move))
@@ -192,8 +192,19 @@ namespace Chess
 
 			_position->make_move (move);
 
-			const int16 score =
-				-search(depth + 1, -beta, -alpha, do_null);
+			int16 score;
+			if (do_zws)
+			{
+				score = -search(depth + 1, -alpha-1, -alpha, do_null);
+
+				if (score > alpha)
+					score = -search(depth +1, -beta, -alpha, do_null);
+			}
+			else
+			{
+				score = -search(
+					depth + 1, -beta, -alpha, do_null);
+			}
 
 			_position->unmake_move(move);
 
