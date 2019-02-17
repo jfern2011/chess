@@ -25,7 +25,7 @@ namespace Chess
 
 		void enable_multipv(bool value);
 
-		MoveList get_pv() const;
+		MoveList get_pv();
 
 		size_t hash_hits() const;
 
@@ -36,7 +36,8 @@ namespace Chess
 		bool is_repeated(int depth) const;
 
 		HashEntry& load(const Position& pos, int draft, int alpha,
-						int beta, bool check, bool& avoid);
+						int beta, bool check, int32& hint,
+						bool& avoid);
 
 		int16 quiesce(int depth, int16 alpha, int16 beta );
 

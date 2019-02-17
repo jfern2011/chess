@@ -16,7 +16,7 @@
 
 namespace Util
 {
-	/**
+    /**
      ******************************************************************
      *
      * Get the size of a regular file. See stat(2) man page for details
@@ -28,16 +28,16 @@ namespace Util
      *
      ******************************************************************
      */
-	inline long long file_size(const std::string& file)
-	{
-		struct stat st;
-		if (stat(file.c_str(), &st) == -1 || S_ISDIR(st.st_mode))
-			return -1;
-		else
-			return st.st_size;
-	}
+    inline long long file_size(const std::string& file)
+    {
+        struct stat st;
+        if (stat(file.c_str(), &st) == -1 || S_ISDIR(st.st_mode))
+            return -1;
+        else
+            return st.st_size;
+    }
 
-	/**
+    /**
      ******************************************************************
      *
      * Determine if the given name is a directory
@@ -48,16 +48,16 @@ namespace Util
      *
      ******************************************************************
      */
-	inline bool is_dir(const std::string& name)
-	{
-		struct stat st;
-		if (stat(name.c_str(), &st) < 0)
-			return false;
-		else
-			return S_ISDIR( st.st_mode );
-	}
+    inline bool is_dir(const std::string& name)
+    {
+        struct stat st;
+        if (stat(name.c_str(), &st) < 0)
+            return false;
+        else
+            return S_ISDIR( st.st_mode );
+    }
 
-	/**
+    /**
      ******************************************************************
      *
      * Determine if the given name is a regular file
@@ -68,45 +68,45 @@ namespace Util
      *
      ******************************************************************
      */
-	inline bool is_file(const std::string& name)
-	{
-		struct stat st;
-		if (stat(name.c_str(), &st) < 0)
-			return false;
-		else
-			return S_ISREG( st.st_mode );
-	}
+    inline bool is_file(const std::string& name)
+    {
+        struct stat st;
+        if (stat(name.c_str(), &st) < 0)
+            return false;
+        else
+            return S_ISREG( st.st_mode );
+    }
 
-	/**
-	 ******************************************************************
-	 *
-	 * Read all lines in a file, storing them in a vector of strings.
-	 * Blank (whitespace only) lines are discarded
-	 *
-	 * @param[in]  filename The file to read
-	 * @param[out] lines    All (non-blank) lines within \a filename
-	 *
-	 * @return True on success
-	 *
-	 ******************************************************************
-	 */
-	inline bool readlines(const std::string& filename,
-						  std::vector<std::string>& lines)
-	{
-		lines.clear();
+    /**
+     ******************************************************************
+     *
+     * Read all lines in a file, storing them in a vector of strings.
+     * Blank (whitespace only) lines are discarded
+     *
+     * @param[in]  filename The file to read
+     * @param[out] lines    All (non-blank) lines within \a filename
+     *
+     * @return True on success
+     *
+     ******************************************************************
+     */
+    inline bool readlines(const std::string& filename,
+                          std::vector<std::string>& lines)
+    {
+        lines.clear();
 
-		std::ifstream infile(filename);
-		if (!infile.is_open()) return false;
+        std::ifstream infile(filename);
+        if (!infile.is_open()) return false;
 
-		std::string line;
-		while (std::getline(infile, line))
-		{
-			if (trim(line).size() > 0)
-					lines.push_back( line );
-		}
+        std::string line;
+        while (std::getline(infile, line))
+        {
+            if (trim(line).size() > 0)
+                    lines.push_back( line );
+        }
 
-		return true;
-	}
+        return true;
+    }
 }
 
 #endif

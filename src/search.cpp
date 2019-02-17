@@ -44,7 +44,7 @@ namespace Chess
 	 *
 	 * @return The principal variation
 	 */
-	MoveList Search::get_pv() const
+	MoveList Search::get_pv()
 	{
 		MoveList list; list.init(_pv[0], 0);
 
@@ -146,18 +146,21 @@ namespace Chess
 	 * @param[in]  alpha  The current lower bound
 	 * @param[in]  beta   The current upper bound
 	 * @param[in]  check  True if we're currently in check
+	 * @param[in]  hint   Suggested move to search first
 	 * @param[out] avoid  Flag to indicate that the returned entry
 	 *                    should NOT be used
 	 *
 	 * @return The hash entry
 	 */
 	HashEntry& Search::load(const Position& pos, int draft,
-		int alpha, int beta, bool check, bool& avoid)
+		int alpha, int beta, bool check, int32& hint, bool& avoid)
 	{
 		const uint64 key = pos.get_hash_key();
 		auto& bucket = hash_table[key];
 
 		avoid = false;
+		hint  = 0;
+		int16 hint_score = -king_value;
 
 		/*
 		 * Age all entries except for the specified one
@@ -203,6 +206,23 @@ namespace Chess
 						age_except( i );
 						return entry;
 					}
+				}
+			}
+
+			/*
+			 * If the move is playable, and its score
+			 * increases alpha, we might want to try it
+			 * before searching all remaining moves:
+			 */
+			if (entry.key == key)
+			{
+				if (entry.score > hint_score &&
+					entry.score > alpha      &&
+					MoveGen::validate_move(
+							pos, entry.move(), check))
+				{
+					hint_score = entry.score;
+					hint = entry.move();
 				}
 			}
 
@@ -415,11 +435,29 @@ namespace Chess
 		_stop_time  =
 			_start_time + ((int64)timeout) * 1000000;
 
+		int16 prev_score = -king_value-1;
+
 		while (_iteration_depth <= depth)
 		{
 			if ( !_multipv )
 			{
-				score = search( 0, -king_value, king_value, true );
+				if (false)//prev_score >= -king_value) // aspiration search
+				{
+					int16 alpha = prev_score - 10;
+					int16 beta  = prev_score + 10;
+					while (true)
+					{
+						score = search( 0, alpha, beta, true );
+						if (score >= beta)
+							beta  += (score - beta ) + 10;
+						else if (score <= alpha)
+							alpha -= (alpha - score) + 10;
+						else
+							break;
+					}
+				}
+				else
+					score = search( 0, -king_value, king_value, true );
 
 				if (_abort_search) break;
 
@@ -439,6 +477,8 @@ namespace Chess
 							lines[0], temp, moveN )
 						<< std::string("\n");
 				}
+
+				prev_score = score;
 			}
 			else
 			{
@@ -560,16 +600,20 @@ namespace Chess
 		 */
 
 		const auto draft =
-			std::max(_iteration_depth - depth, 0);
+			std::max( _iteration_depth - depth, 0);
 
-		bool avoid;
+		bool avoid; int32 hint;
 		auto& entry = load(pos, draft, alpha, beta,
-			in_check, avoid);
+			in_check, hint, avoid);
 
 		if (!avoid)
 		{
 			// Thanks, hash table!
 
+			/**
+			 * @todo PV gets cut off due to hits
+			 */
+#if 0
 			if (entry.type() == EXACT)
 				save_pv(depth, 0);//entry.move());
 
@@ -578,6 +622,14 @@ namespace Chess
 				_hash_hits++;
 				return entry.score;
 			}
+#else
+			if (entry.type() != EMPTY &&
+				entry.type() != EXACT)
+			{
+				_hash_hits++;
+				return entry.score;
+			}
+#endif
 		}
 
 		_hash_misses++;
@@ -603,6 +655,75 @@ namespace Chess
 		int best_move = 0;
 
 		SearchPhase phase;
+
+		// Initialize the list of searched moves
+
+		phase.init<phase_t::hash_move>(pos);
+
+		/*
+		 * If probing the hash table returned a move to
+		 * try, search that one first
+		 */
+		if (hint)
+		{
+#ifdef DEBUG_HASH
+			{
+				int32 moves[max_moves];
+				size_t n_moves = 0;
+
+				if (in_check)
+				{
+					n_moves = MoveGen::generate_check_evasions(
+						pos, moves);
+					if (n_moves == 0)
+					{
+						Abort(0, "ERROR ERROR ERROR");
+					}
+				}
+				else
+				{
+					n_moves = MoveGen::generate_captures(
+						pos, moves);
+					n_moves += MoveGen::generate_noncaptures(
+						pos, &moves[n_moves]);
+				}
+
+				bool is_valid = false;
+				for (size_t i = 0; i < n_moves; i++)
+				{
+					if (moves[i] == hint)
+					{
+						is_valid = true; break;
+					}
+				}
+
+				if (!is_valid)
+				{
+					Abort(0, "Bad hint! -> %s", (pos.get_fen() +
+						":\n" + print_move(hint)).c_str());
+				}
+			}
+#endif
+			phase.searched_moves.push_back(hint);
+
+			int16 score = search_moves< phase_t::hash_move >(
+				phase, alpha, beta, depth, !do_null,
+				best_move);
+
+			if ( beta <= score )
+			{
+				if (!avoid)
+				{
+					entry.score = beta;
+					entry.set_move(best_move);
+					entry.set_type(FAIL_HI);
+				}
+
+				_fail_hi++;
+
+				return beta;
+			}
+		}
 
 		if (in_check)
 		{
@@ -708,11 +829,12 @@ namespace Chess
 
 				if (beta <= score)
 				{
+#if 0
 					const int _draft = std::max(
 						_iteration_depth - (depth+R-1) , 0);
-
+#endif
 					store(pos.get_hash_key(),
-						  _draft, beta, 0, FAIL_HI);
+						  depth, beta, 0, FAIL_HI);
 
 					_fail_hi++; _nmr++;
 

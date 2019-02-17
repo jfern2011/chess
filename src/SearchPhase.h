@@ -31,7 +31,12 @@ namespace Chess
 		/**
 		 *  Searching losing captures/promotions
 		 */
-		losing_captures
+		losing_captures,
+
+		/**
+		 * Searching a move in the hash table
+		 */
+		hash_move
 	};
 
 	/**
@@ -53,6 +58,12 @@ namespace Chess
 		 * The list of non-captures
 		 */
 		BUFFER(int32, noncapture_list, max_moves);
+
+		/**
+		 * Any moves already searched; avoids
+		 * duplicated search effort
+		 */
+		BUFFER(int32, exclude_list, max_moves);
 
 		/**
 		 * Index of the last capture returned
@@ -78,6 +89,11 @@ namespace Chess
 		 * The sorted list of losing captures
 		 */
 		SelectionSort losing_captures;
+
+		/**
+		 * The list of moves already searched
+		 */
+		MoveList searched_moves;
 
 		/**
 		 * Current position (for move scoring)
@@ -133,6 +149,26 @@ namespace Chess
 		 */
 		template <phase_t phase>
 			bool next_move(int32& move);
+
+	private:
+
+		/**
+		 * Check if the given move should be skipped
+		 * because it was already searched
+		 *
+		 * @param[in] move The move to check
+		 *
+		 * @return True to skip
+		 */
+		bool skip(int32 move)
+		{
+			for (int i = 0; i < searched_moves.size; i++)
+			{
+				if (move == exclude_list[i])
+					return true;
+			}
+			return false;
+		}
 	};
 
 	/**
@@ -195,6 +231,17 @@ namespace Chess
 	}
 
 	/**
+	 * Initialize the hash phase
+	 *
+	 * @param [in] _pos The current position
+	 */
+	template <> inline
+	void SearchPhase::init<phase_t::hash_move>(Position& _pos)
+	{
+		searched_moves.init(exclude_list, 0);
+	}
+
+	/**
 	 * Get the next check evasion
 	 *
 	 * @param[out] move The next evasion. If none are left, this
@@ -206,9 +253,18 @@ namespace Chess
 	template <> inline
 	bool SearchPhase::next_move<phase_t::check_evasions>(int32& move)
 	{
-		return evasions.next(move, [](int32 mv1, int32 mv2) {
-			return Chess::score(mv1) - Chess::score(mv2);
-		});
+		while (true)
+		{
+			bool valid = evasions.next(move, [](int32 mv1, int32 mv2) {
+				return Chess::score(mv1) - Chess::score(mv2);
+			});
+
+			if (!valid) return false;
+
+			if (skip(move)) continue;
+
+			return true;
+		}
 	}
 
 	/**
@@ -223,14 +279,22 @@ namespace Chess
 	template <> inline
 	bool SearchPhase::next_move<phase_t::winning_captures>(int32& move)
 	{
-		const bool valid = winning_captures.next(move,
-			[this](int32 mv1, int32 mv2) {
-				return score(*this->pos, mv1) - score(*this->pos, mv2 );
-		});
+		while (true)
+		{
+			const bool valid = winning_captures.next(move,
+				[this](int32 mv1, int32 mv2) {
+					return score(*this->pos, mv1) - score(*this->pos, mv2 );
+			});
 
-		capture_index++;
+			capture_index++;
 
-		return valid && score(*pos, move) > 0;
+			if (!valid) return false;
+
+			if ( skip(move) ) continue;
+
+			return (score(*pos, move)
+				> 0);
+		}
 	}
 
 	/**
@@ -245,7 +309,16 @@ namespace Chess
 	template <> inline
 	bool SearchPhase::next_move<phase_t::non_captures>(int32& move)
 	{
-		return non_captures.next(move);
+		while (true)
+		{
+			bool valid = non_captures.next(move);
+
+			if (!valid) return false;
+
+			if (skip(move)) continue;
+
+			return true;
+		}
 	}
 
 	/**
@@ -260,10 +333,33 @@ namespace Chess
 	template <> inline
 	bool SearchPhase::next_move<phase_t::losing_captures>(int32& move)
 	{
-		return losing_captures.next(move,
-			[this]( int32 mv1, int32 mv2 ) {
-				return score(*this->pos, mv1) - score(*this->pos, mv2);
-		});
+		while (true)
+		{
+			bool valid = losing_captures.next(move,
+				[this]( int32 mv1, int32 mv2 ) {
+					return score(*this->pos, mv1) - score(*this->pos, mv2);
+			});
+
+			if (!valid) return false;
+
+			if (skip(move)) continue;
+
+			return true;
+		}
+	}
+
+	/**
+	 * Get the next hash move (note there's only 1)
+	 *
+	 * @param [out] move The hash move to try
+	 *
+	 * @return True if \a move is valid, or false if the list of
+	 *         moves is exhausted
+	 */
+	template <> inline
+	bool SearchPhase::next_move<phase_t::hash_move>(int32& move)
+	{
+		return searched_moves.next(move);
 	}
 }
 

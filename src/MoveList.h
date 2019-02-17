@@ -10,6 +10,9 @@ namespace Chess
 	/**
 	 * A convenience class which steps through an unsorted
 	 * move list
+	 *
+	 * @todo Consider implementing as a linked list, to allow
+	 *       popping searched moves in constant time
 	 */
 	struct MoveList
 	{
@@ -19,7 +22,7 @@ namespace Chess
 		int index;
 
 		/**  The list of moves */
-		const int32* moves;
+		int32* moves;
 
 		/**
 		 *  Total number of moves in the list
@@ -37,12 +40,26 @@ namespace Chess
 		}
 
 		/**
+		 * Search for a particular move in the list
+		 *
+		 * @param[in] move Search for this move
+		 *
+		 * @return The index if found, -1 otherwise
+		 */
+		int find(int32 move)
+		{
+			for (int i = 0; i < size; i++)
+				if (moves[i] == move) return i;
+			return -1;
+		}
+
+		/**
 		 * Initialize
 		 *
 		 * @param[in] _moves The list of moves
 		 * @param[in] _size  Number of moves in the list
 		 */
-		void init(const int32* _moves, int _size)
+		void init(int32* _moves, int _size)
 		{
 			moves = _moves; size = _size; index = -1;
 		}
@@ -63,6 +80,14 @@ namespace Chess
 
 			move = moves[index];
 			return true;
+		}
+
+		/**
+		 * Add a move to the end of the list
+		 */
+		void push_back(int32 move)
+		{
+			moves[size++] = move;
 		}
 	};
 }
