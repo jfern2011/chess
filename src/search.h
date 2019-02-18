@@ -54,7 +54,8 @@ namespace Chess
 		int16 search_moves(SearchPhase& phase,
 						   int16& alpha, int16 beta,
 						   int depth, bool do_null,
-						   bool do_zws, int& best);
+						   bool do_zws, bool do_lmr,
+						   int& best);
 
 		bool store(const HashEntry& entry);
 
@@ -160,6 +161,18 @@ namespace Chess
 		size_t _killer_hits;
 
 		/**
+		 * Amount by which to scale the search depth
+		 * for late moves
+		 */
+		int _lmr_factor;
+
+		/**
+		 * Threshold after which to start reducing
+		 * late moves
+		 */
+		int _lmr_thresh;
+
+		/**
 		 * Multi-PV mode enabled flag
 		 */
 		bool _multipv;
@@ -234,9 +247,11 @@ namespace Chess
 	int16 Search::search_moves(SearchPhase& phase,
 							   int16& alpha, int16 beta,
 							   int depth, bool do_null,
-							   bool do_zws, int& best)
+							   bool do_zws, bool do_lmr,
+							   int& best)
 	{
 		int32 move;
+		int n_searched = 0;
 		while (phase.next_move<P>(move))
 		{
 			++_node_count;
@@ -246,20 +261,53 @@ namespace Chess
 			_current_move[depth] = move;
 
 			int16 score;
-			if (do_zws)
-			{
-				score = -search(depth + 1, -alpha-1, -alpha, do_null);
 
-				if (score > alpha)
-					score = -search(depth +1, -beta, -alpha, do_null);
+			if (do_lmr && n_searched >= _lmr_thresh)
+			{
+				const int R = depth / _lmr_factor;
+
+				const int r_depth =
+					std::min(1 + depth + R, _iteration_depth);
+
+				if (do_zws)
+				{
+					score = -search(r_depth, -alpha-1, -alpha, do_null);
+
+					if (score > alpha)
+					{
+						score = -search(r_depth, -beta, -alpha, do_null);
+
+						if (score > alpha)
+							score = -search(depth +1, -beta, -alpha, do_null);
+					}
+				}
+				else
+				{
+					score = -search(r_depth, -beta, -alpha, do_null);
+
+					if (score > alpha)
+						score = -search(depth +1, -beta, -alpha, do_null);
+				}
 			}
 			else
 			{
-				score = -search(
-					depth + 1, -beta, -alpha, do_null);
+				if (do_zws)
+				{
+					score = -search(depth + 1, -alpha-1, -alpha, do_null);
+
+					if (score > alpha)
+						score = -search(depth +1, -beta, -alpha, do_null);
+				}
+				else
+				{
+					score = -search(
+						depth + 1, -beta, -alpha, do_null);
+				}
 			}
 
 			_position->unmake_move(move);
+
+			n_searched++;
 
 			if (beta <= score)
 			{

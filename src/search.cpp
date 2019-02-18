@@ -688,7 +688,7 @@ namespace Chess
 
 			int16 score = search_moves< phase_t::pv_move >(
 				phase, alpha, beta, depth, !do_null,
-				false, best_move);
+				false, false, best_move);
 
 			if ( beta <= score )
 			{
@@ -762,7 +762,7 @@ namespace Chess
 
 			int16 score = search_moves< phase_t::hash_move >(
 				phase, alpha, beta, depth, !do_null,
-				do_zws, best_move);
+				do_zws, false, best_move);
 
 			do_zws = alpha > init_alpha;
 
@@ -801,7 +801,7 @@ namespace Chess
 
 			const int16 score = 
 				search_moves<phase_t::check_evasions>(phase, alpha,
-					beta, depth, false, do_zws, best_move);
+					beta, depth, false, do_zws, false, best_move);
 
 			if ( beta <= score )
 			{
@@ -909,7 +909,7 @@ namespace Chess
 		phase.init<phase_t::winning_captures>(pos);
 
 		int16 score = search_moves< phase_t::winning_captures >(
-			phase, alpha, beta, depth, !do_null, do_zws, best_move);
+			phase, alpha, beta, depth, !do_null, do_zws, false, best_move);
 
 		do_zws = alpha > init_alpha;
 
@@ -934,7 +934,7 @@ namespace Chess
 		phase.init<phase_t::winning_captures2>(pos);
 
 		score = search_moves< phase_t::winning_captures2 >(
-			phase, alpha, beta, depth, !do_null, do_zws, best_move);
+			phase, alpha, beta, depth, !do_null, do_zws, false, best_move);
 
 		do_zws = alpha > init_alpha;
 
@@ -970,7 +970,7 @@ namespace Chess
 				phase.killer_moves.push_back(killer);
 				score = search_moves< phase_t::killer_moves >(
 					phase, alpha, beta, depth, !do_null, do_zws,
-					best_move);
+					false, best_move);
 
 				do_zws = alpha > init_alpha;
 
@@ -1000,7 +1000,7 @@ namespace Chess
 					phase.killer_moves.push_back(killer);
 					score = search_moves< phase_t::killer_moves >(
 						phase, alpha, beta, depth, !do_null, do_zws,
-						best_move);
+						false, best_move);
 
 					do_zws = alpha > init_alpha;
 
@@ -1043,7 +1043,7 @@ namespace Chess
 
 					score = search_moves< phase_t::counter_moves >(
 						phase, alpha, beta, depth, !do_null, do_zws,
-						best_move);
+						false, best_move);
 
 					do_zws = alpha > init_alpha;
 
@@ -1076,7 +1076,7 @@ namespace Chess
 		phase.history = &_history;
 
 		score = search_moves< phase_t::history_moves >(
-			phase, alpha, beta, depth, !do_null, do_zws, best_move);
+			phase, alpha, beta, depth, !do_null, do_zws, true, best_move);
 
 		do_zws = alpha > init_alpha;
 
@@ -1162,7 +1162,7 @@ namespace Chess
 		phase.init<phase_t::losing_captures>(pos);
 
 		score = search_moves< phase_t::losing_captures >(
-			phase, alpha, beta, depth, !do_null, do_zws, best_move);
+			phase, alpha, beta, depth, !do_null, do_zws, false, best_move);
 
 		do_zws = alpha > init_alpha;
 
@@ -1429,6 +1429,9 @@ namespace Chess
 					= {};
 			}
 		}
+
+		_lmr_factor = 1;
+		_lmr_thresh = 2;
 
 		lines.clear();
 	}
