@@ -82,6 +82,14 @@ namespace Chess
 
 			return true;
 		}
+
+		/**
+		 * Add a move to the end of the list
+		 */
+		void push_back(int32 move)
+		{
+			moves[size++] = move;
+		}
 	};
 }
 

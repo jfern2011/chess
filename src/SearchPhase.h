@@ -57,7 +57,20 @@ namespace Chess
 		/**
 		 * Searching counter-moves
 		 */
-		counter_moves
+		counter_moves,
+
+		/**
+		 * Searching history moves
+		 */
+		history_moves
+	};
+
+	/**
+	 * A table storing history score for each side
+	 */
+	struct HistoryTable
+	{
+		int16 scores[2][64][64];
 	};
 
 	/**
@@ -102,9 +115,19 @@ namespace Chess
 		BUFFER(int32, counter_list, 2);
 
 		/**
+		 * The list of history moves to try
+		 */
+		BUFFER(int32, history_list, max_moves);
+
+		/**
 		 * Index of the last capture returned
 		 */
 		int capture_index;
+
+		/**
+		 * The table of history scores
+		 */
+		HistoryTable* history;
 
 		/**
 		 * The sorted list of winning captures
@@ -119,7 +142,7 @@ namespace Chess
 		/**
 		 * The list of non-captures
 		 */
-		MoveList non_captures;
+		SelectionSort non_captures;
 
 		/**
 		 * The sorted list of losing captures
@@ -140,6 +163,11 @@ namespace Chess
 		 * The list of counter-moves
 		 */
 		MoveList counter_moves;
+
+		/**
+		 * The list of history moves
+		 */
+		SelectionSort history_moves;
 
 		/**
 		 * Current position (for move scoring)
@@ -274,9 +302,11 @@ namespace Chess
 	template <> inline
 	void SearchPhase::init<phase_t::non_captures>(Position& _pos)
 	{
+#if 0
 		pos = &_pos;
 		non_captures.init(noncapture_list,
 			MoveGen::generate_noncaptures(_pos, noncapture_list) );
+#endif
 	}
 
 	/**
@@ -324,6 +354,38 @@ namespace Chess
 	void SearchPhase::init<phase_t::counter_moves>(Position& _pos)
 	{
 		counter_moves.init(counter_list, 0);
+	}
+
+	/**
+	 * Initialize the history phase
+	 *
+	 * @note The history table must also be initialized,
+	 *       but outside of here!
+	 *
+	 * @param [in] _pos The current position
+	 */
+	template <> inline
+	void SearchPhase::init<phase_t::history_moves>(Position& _pos)
+	{
+		non_captures.init(noncapture_list,
+			MoveGen::generate_noncaptures(_pos, noncapture_list) );
+
+		// Make a full pass through the list, purging moves
+		// already tried
+
+		history_moves.init(history_list, 0);
+
+		for (size_t i = 0; i < non_captures.size; i++)
+		{
+			const int32 move = noncapture_list[i];
+
+			if (searched_moves.find(move) == -1 &&
+				killer_moves.find(move)   == -1 &&
+				counter_moves.find(move)  == -1)
+			{
+				history_moves.push_back(move);
+			}
+		}
 	}
 
 	/**
@@ -439,6 +501,7 @@ namespace Chess
 	template <> inline
 	bool SearchPhase::next_move<phase_t::non_captures>(int32& move)
 	{
+#if 0
 		while (true)
 		{
 			bool valid = non_captures.next(move);
@@ -472,6 +535,9 @@ namespace Chess
 
 			return true;
 		}
+#else
+		return false;
+#endif
 	}
 
 	/**
@@ -558,7 +624,39 @@ namespace Chess
 	template <> inline
 	bool SearchPhase::next_move<phase_t::counter_moves>(int32& move)
 	{
-		return counter_moves.next(move);
+		while (true)
+		{
+			bool valid = counter_moves.next(move);
+			if (!valid) return false;
+
+			if (skip(move)) continue;
+
+			return true;
+		}
+	}
+
+	/**
+	 * Get the next history move
+	 *
+	 * @param [out] move The history move to try
+	 *
+	 * @return True if \a move is valid, or false if the list of
+	 *         moves is exhausted
+	 */
+	template <> inline
+	bool SearchPhase::next_move<phase_t::history_moves>(int32& move)
+	{
+		return history_moves.next(move,
+			[this](int32 mv1, int32 mv2) {
+				const square_t from1 = extract_from(mv1);
+				const square_t to1   = extract_to(mv1);
+
+				const square_t from2 = extract_from(mv2);
+				const square_t to2   = extract_to(mv2);
+
+				return history->scores[pos->get_turn()][from1][to1] -
+					   history->scores[pos->get_turn()][from2][to2];
+			});
 	}
 }
 

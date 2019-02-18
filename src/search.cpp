@@ -532,6 +532,10 @@ namespace Chess
 				<< " (" << pct_fl_s << "%)"
 				<< "\nkhits = "
 				<< _killer_hits
+				<< ", cmhits = "
+				<< _counter_move_hits
+				<< ", hhits = "
+				<< _history_hits
 				<< "\n";
 
 		return score;
@@ -958,6 +962,9 @@ namespace Chess
 		{
 			const int32 killer = _killers[depth][i].move;
 
+			if (killer == hint || killer == pv_move)
+				continue;
+
 			if (MoveGen::validate_move(pos, killer, in_check))
 			{
 				phase.killer_moves.push_back(killer);
@@ -969,13 +976,6 @@ namespace Chess
 
 				if ( beta <= score )
 				{
-					if (!avoid)
-					{
-						entry.score = beta;
-						entry.set_move(best_move);
-						entry.set_type(FAIL_HI);
-					}
-
 					_killers[depth][i].hits++;
 					_killer_hits++;
 					_fail_hi++;
@@ -1006,13 +1006,6 @@ namespace Chess
 
 					if ( beta <= score )
 					{
-						if (!avoid)
-						{
-							entry.score = beta;
-							entry.set_move(best_move);
-							entry.set_type(FAIL_HI);
-						}
-
 						_killers[depth-2][i].hits++;
 						_killer_hits++;
 						_fail_hi++;
@@ -1029,13 +1022,60 @@ namespace Chess
 
 		phase.init<phase_t::counter_moves>(pos);
 
+		if (depth > 0)
+		{
+			const piece_t moved =
+				extract_moved(_current_move[depth-1]);
+			const square_t to   = 
+				extract_to   (_current_move[depth-1]);
+
+			for (int i = 0; i < 2; i++)
+			{
+				const int32 counterMove =
+					_counter_moves[pos.get_turn()][moved][to][i].move;
+
+				if (phase.killer_moves.find(counterMove) != -1)
+					continue;
+
+				if (MoveGen::validate_move(pos, counterMove, in_check))
+				{
+					phase.counter_moves.push_back(counterMove);
+
+					score = search_moves< phase_t::counter_moves >(
+						phase, alpha, beta, depth, !do_null, do_zws,
+						best_move);
+
+					do_zws = alpha > init_alpha;
+
+					if ( beta <= score )
+					{
+						if (!avoid)
+						{
+							entry.score = beta;
+							entry.set_move(best_move);
+							entry.set_type(FAIL_HI);
+						}
+
+						_counter_moves[pos.get_turn()][
+							moved][to][i].hits++;
+
+						_counter_move_hits++;
+						_fail_hi++;
+
+						return beta;
+					}
+				}
+			}
+		}
+
 		/*
 		 * 2. Search remaining non-captures
 		 */
 
-		phase.init<phase_t::non_captures>(pos);
+		phase.init<phase_t::history_moves>(pos);
+		phase.history = &_history;
 
-		score = search_moves< phase_t::non_captures >(
+		score = search_moves< phase_t::history_moves >(
 			phase, alpha, beta, depth, !do_null, do_zws, best_move);
 
 		do_zws = alpha > init_alpha;
@@ -1051,7 +1091,7 @@ namespace Chess
 
 			// Save this killer move
 
-			if (_killers[depth][0].hits > 
+			if (_killers[depth][0].hits >
 				_killers[depth][1].hits)
 			{
 				_killers[depth][1].move = best_move;
@@ -1060,6 +1100,42 @@ namespace Chess
 			{
 				_killers[depth][0].move = best_move;
 			}
+
+			// Update the counter-move table
+
+			if (depth > 0)
+			{
+				const piece_t moved =
+					extract_moved(_current_move[depth-1]);
+				const square_t to   = 
+					extract_to   (_current_move[depth-1]);
+
+				if (_counter_moves[pos.get_turn()][moved][to][0].hits > 
+					_counter_moves[pos.get_turn()][moved][to][1].hits)
+				{
+					_counter_moves[pos.get_turn()][moved][to][1].move
+						= best_move;
+				}
+				else
+				{
+					_counter_moves[pos.get_turn()][moved][to][0].move
+						= best_move;
+				}
+			}
+
+			// Update the history table
+
+			const square_t from =
+				extract_from(_current_move[depth]);
+			const square_t to   =
+				extract_to  (_current_move[depth]);
+
+			const int draft = _iteration_depth - depth;
+
+			_history.scores[pos.get_turn()][from][to]
+				+= draft * draft;
+
+			_history_hits++;
 
 			_fail_hi++;
 
@@ -1300,7 +1376,8 @@ namespace Chess
 
 		_exact = _fail_hi = _fail_lo = 0;
 		_nmr = 0;
-		_killer_hits = 0;
+		_killer_hits = _counter_move_hits = 0;
+		_history_hits = 0;
 
 		_next_abort_check = 100000;
 		_abort_search = false;
@@ -1309,17 +1386,48 @@ namespace Chess
 		{
 			_saved_pv[i] = 0;
 
+			_current_move[i] = 0;
+
 			/**
 			 * @todo We can re-use killers and counter-moves
 			 *       in between searches
 			 */
-			_counter_moves[i][0] = {};
-			_counter_moves[i][1] = {};
-
 			_killers[i][0] = {};
 			_killers[i][1] = {};
 
 			_pv[0][i] = 0;
+		}
+
+		for (int i = 0; i < 64; i++)
+		{
+			for (auto piece : { piece_t::pawn,
+								piece_t::knight,
+								piece_t::bishop,
+								piece_t::rook,
+								piece_t::queen,
+								piece_t::king })
+			{
+				_counter_moves[player_t::white][piece][i][0]
+					= {};
+				_counter_moves[player_t::white][piece][i][1]
+					= {};
+				_counter_moves[player_t::black][piece][i][0]
+					= {};
+				_counter_moves[player_t::black][piece][i][1]
+					= {};
+			}
+
+			for (int j = 0; j < 64; j++)
+			{
+				_history.scores[player_t::white][i][j]
+					= {};
+				_history.scores[player_t::white][i][j]
+					= {};
+				_history.scores[player_t::black][i][j]
+					= {};
+				_history.scores[player_t::black][i][j]
+					= {};
+			}
 		}
 
 		lines.clear();

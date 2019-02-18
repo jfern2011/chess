@@ -86,9 +86,33 @@ namespace Chess
 		Handle<OutputChannel> _channel;
 
 		/**
-		 * The list of counter moves
+		 * The number of counter-moves which failed high
 		 */
-		BUFFER( NonCapture, _counter_moves, max_ply, 2 );
+		size_t _counter_move_hits;
+
+		/**
+		 * The list of counter moves, indexed by side on
+		 * move, piece and "to" square. Note we save two
+		 * counter-moves at a time
+		 */
+		NonCapture _counter_moves[2][6][64][2];
+
+		/**
+		 * The list of history moves, indexed by side
+		 * on move, "from" square, and "to" square
+		 */
+		HistoryTable _history;
+
+		/**
+		 * The number of beta cut-offs due to the history
+		 * heuristic
+		 */
+		size_t _history_hits;
+
+		/**
+		 * The current move being searched
+		 */
+		int32 _current_move[max_ply];
 
 		/**
 		 *  The number of PV nodes
@@ -218,6 +242,8 @@ namespace Chess
 			++_node_count;
 
 			_position->make_move (move);
+
+			_current_move[depth] = move;
 
 			int16 score;
 			if (do_zws)
