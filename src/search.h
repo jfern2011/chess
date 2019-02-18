@@ -69,6 +69,12 @@ namespace Chess
 
 		void _set_defaults();
 
+		struct NonCapture
+		{
+			int32 move;
+			int32 hits;
+		};
+
 		/**
 		 * If true, then abort the currently active search
 		 */
@@ -78,6 +84,11 @@ namespace Chess
 		 *  Channel through which to send outputs
 		 */
 		Handle<OutputChannel> _channel;
+
+		/**
+		 * The list of counter moves
+		 */
+		BUFFER( NonCapture, _counter_moves, max_ply, 2 );
 
 		/**
 		 *  The number of PV nodes
@@ -113,6 +124,16 @@ namespace Chess
 		 * Iterative deepening iteration depth
 		 */
 		int _iteration_depth;
+
+		/**
+		 * The list of killer moves
+		 */
+		BUFFER( NonCapture, _killers, max_ply, 2 );
+
+		/**
+		 * The number of killer move fail-highs
+		 */
+		size_t _killer_hits;
 
 		/**
 		 * Multi-PV mode enabled flag
@@ -155,6 +176,12 @@ namespace Chess
 		 * Number of repetitions encountered
 		 */
 		int _reps;
+
+		/**
+		 * The backed up principal variation
+		 * from the previous iteration
+		 */
+		BUFFER( int32, _saved_pv, max_ply );
 
 		/**
 		 * The time to search started

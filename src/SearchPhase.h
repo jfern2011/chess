@@ -24,6 +24,11 @@ namespace Chess
 		winning_captures,
 
 		/**
+		 * Searching winning captures using SEE
+		 */
+		winning_captures2,
+
+		/**
 		 * Searching non-captures
 		 */
 		non_captures,
@@ -42,7 +47,17 @@ namespace Chess
 		 * Searching a PV move from the previous
 		 * depth iteration
 		 */
-		pv_move
+		pv_move,
+
+		/**
+		 * Searching killer moves
+		 */
+		killer_moves,
+
+		/**
+		 * Searching counter-moves
+		 */
+		counter_moves
 	};
 
 	/**
@@ -54,6 +69,11 @@ namespace Chess
 		 * The list of moves that are captures
 		 */
 		BUFFER(int32, capture_list, max_moves);
+
+		/**
+		 * Total number of captures generated
+		 */
+		size_t n_captures;
 
 		/**
 		 * The list of check evasions
@@ -70,6 +90,16 @@ namespace Chess
 		 * duplicated search effort
 		 */
 		BUFFER(int32, exclude_list, max_moves);
+
+		/**
+		 * The list of killer moves to try
+		 */
+		BUFFER(int32, killer_list, 4);
+
+		/**
+		 * The list of counter moves to try
+		 */
+		BUFFER(int32, counter_list, 2);
 
 		/**
 		 * Index of the last capture returned
@@ -100,6 +130,16 @@ namespace Chess
 		 * The list of moves already searched
 		 */
 		MoveList searched_moves;
+
+		/**
+		 * The list of killer moves
+		 */
+		MoveList killer_moves;
+
+		/**
+		 * The list of counter-moves
+		 */
+		MoveList counter_moves;
 
 		/**
 		 * Current position (for move scoring)
@@ -205,8 +245,25 @@ namespace Chess
 	{
 		pos = &_pos;
 		capture_index = -1;
-		winning_captures.init(capture_list,
-			MoveGen::generate_captures(_pos, capture_list ) );
+		n_captures = MoveGen::generate_captures( _pos, capture_list );
+		winning_captures.init(capture_list, n_captures);
+	}
+
+	/**
+	 * Initialize the winning captures 2 phase
+	 *
+	 * @note This should be done prior to initializing for losing
+	 *       captures, since here we generate all captures
+	 *
+	 * @param [in] _pos The current position
+	 */
+	template <> inline
+	void SearchPhase::init<phase_t::winning_captures2>(Position& _pos)
+	{
+		if (capture_index < 0) capture_index = 0;
+		pos = &_pos;
+		winning_captures.init(&capture_list[capture_index],
+			n_captures - capture_index);
 	}
 
 	/**
@@ -233,7 +290,7 @@ namespace Chess
 		if (capture_index < 0) capture_index = 0;
 		pos = &_pos;
 		losing_captures.init(&capture_list[capture_index],
-			winning_captures.size - capture_index);
+			n_captures - capture_index);
 	}
 
 	/**
@@ -245,6 +302,28 @@ namespace Chess
 	void SearchPhase::init< phase_t::pv_move >(Position& _pos)
 	{
 		searched_moves.init(exclude_list, 0);
+	}
+
+	/**
+	 * Initialize the killer-move phase
+	 *
+	 * @param [in] _pos The current position
+	 */
+	template <> inline
+	void SearchPhase::init<phase_t::killer_moves >(Position& _pos)
+	{
+		killer_moves.init(killer_list, 0);
+	}
+
+	/**
+	 * Initialize the counter-move phase
+	 *
+	 * @param [in] _pos The current position
+	 */
+	template <> inline
+	void SearchPhase::init<phase_t::counter_moves>(Position& _pos)
+	{
+		counter_moves.init(counter_list, 0);
 	}
 
 	/**
@@ -303,9 +382,43 @@ namespace Chess
 					return score(*this->pos, mv1) - score(*this->pos, mv2 );
 			});
 
+			if (!valid) return false;
+
 			capture_index++;
 
+			if ( skip(move) ) continue;
+
+			return (score(*pos, move)
+				> 0);
+		}
+	}
+
+	/**
+	 * Get the next winning capture, according to SEE
+	 *
+	 * @param[out] move The next capture. If none are left, this
+	 *                  is unmodified
+	 *
+	 * @return True if \a move is valid, or false if the list of
+	 *         winning captures is exhausted
+	 */
+	template <> inline
+	bool SearchPhase::next_move<phase_t::winning_captures2>(int32& move)
+	{
+		while (true)
+		{
+			const bool valid = winning_captures.next(move,
+				[this](int32 mv1, int32 mv2) {
+					const int mv1_score =
+						see(*this->pos, this->pos->get_turn(), extract_to(mv1));
+					const int mv2_score =
+						see(*this->pos, this->pos->get_turn(), extract_to(mv2));
+					return mv1_score - mv2_score;
+			});
+
 			if (!valid) return false;
+
+			capture_index++;
 
 			if ( skip(move) ) continue;
 
@@ -334,12 +447,35 @@ namespace Chess
 
 			if (skip(move)) continue;
 
+			// Skip counter-moves and killers
+
+			bool _skip = false;
+			for (int i = 0; i < killer_moves.size ; i++)
+			{
+				if (move == killer_list[i])
+				{
+					_skip = true; break;
+				}
+			}
+
+			if (_skip) continue;
+
+			for (int i = 0; i < counter_moves.size; i++)
+			{
+				if (move == counter_list[i])
+				{
+					_skip = true; break;
+				}
+			}
+
+			if (_skip) continue;
+
 			return true;
 		}
 	}
 
 	/**
-	 * Get the next losing capture
+	 * Get the next "losing" capture (ordered by SEE value)
 	 *
 	 * @param[out] move The next capture. If none are left, this
 	 *                  is unmodified
@@ -352,9 +488,13 @@ namespace Chess
 	{
 		while (true)
 		{
-			bool valid = losing_captures.next(move,
-				[this]( int32 mv1, int32 mv2 ) {
-					return score(*this->pos, mv1) - score(*this->pos, mv2);
+			const bool valid = losing_captures.next(move,
+				[this](int32 mv1, int32 mv2) {
+					const int mv1_score =
+						see(*this->pos, this->pos->get_turn(), extract_to(mv1));
+					const int mv2_score =
+						see(*this->pos, this->pos->get_turn(), extract_to(mv2));
+					return mv1_score - mv2_score;
 			});
 
 			if (!valid) return false;
@@ -391,6 +531,34 @@ namespace Chess
 	bool SearchPhase::next_move< phase_t::pv_move >(int32& move)
 	{
 		return searched_moves.next(move);
+	}
+
+	/**
+	 * Get the next killer move
+	 *
+	 * @param [out] move The killer move to try
+	 *
+	 * @return True if \a move is valid, or false if the list of
+	 *         moves is exhausted
+	 */
+	template <> inline
+	bool SearchPhase::next_move<phase_t::killer_moves >(int32& move)
+	{
+		return killer_moves.next(move);
+	}
+
+	/**
+	 * Get the next counter move
+	 *
+	 * @param [out] move The counter move to try
+	 *
+	 * @return True if \a move is valid, or false if the list of
+	 *         moves is exhausted
+	 */
+	template <> inline
+	bool SearchPhase::next_move<phase_t::counter_moves>(int32& move)
+	{
+		return counter_moves.next(move);
 	}
 }
 

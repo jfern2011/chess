@@ -120,8 +120,17 @@ namespace Chess
 				pieces = pos.get_bitboard< piece_t::pawn >(to_move)
 							& attackers[to_move];
 
-				if (pieces && last_capture != piece_t::empty)
+				if (pieces && (last_capture != piece_t::empty
+					|| pos.ep_data().target == square))
 				{
+					if (pos.ep_data().target == square
+						&& last_capture == piece_t::empty)
+					{
+						scores[ n_moves ] =
+							tables.piece_value[ piece_t::pawn ]
+								- scores[ n_moves-1 ];
+					}
+
 					last_capture = piece_t::pawn;
 					break;
 				}
@@ -194,6 +203,12 @@ namespace Chess
 				const square_t from =
 					static_cast<square_t>(msb64(pieces));
 				uint64 new_attackers;
+
+				if (from > 63)
+				{
+					std::printf("oh, no!!!\n");
+					std::fflush(stdout);
+				}
 
 				const bool queen_attacks_diag =
 					last_capture == piece_t::queen &&

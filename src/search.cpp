@@ -486,6 +486,13 @@ namespace Chess
 				score = search_root();
 			}
 
+			// Back up the PV from this iteration
+
+			for (int i = 0; _pv[0][i] && i < max_ply; i++)
+			{
+				_saved_pv[i] = _pv[0][i];
+			}
+
 			_iteration_depth++;
 			lines.clear();
 		}
@@ -523,6 +530,8 @@ namespace Chess
 				<< ", fl = "
 				<< _fail_lo
 				<< " (" << pct_fl_s << "%)"
+				<< "\nkhits = "
+				<< _killer_hits
 				<< "\n";
 
 		return score;
@@ -666,7 +675,7 @@ namespace Chess
 		 * Try a PV move from the previous search
 		 * iteration
 		 */
-		const int32 pv_move = _pv[0][depth];
+		const int32 pv_move = _saved_pv[depth];
 
 		if ((depth < _iteration_depth-1) &&
 			MoveGen::validate_move(pos, pv_move, in_check))
@@ -705,7 +714,7 @@ namespace Chess
 		 * If probing the hash table returned a move to
 		 * try, search that one first
 		 */
-		if (hint)
+		if (hint && hint != pv_move)
 		{
 #ifdef DEBUG_HASH
 			{
@@ -860,7 +869,7 @@ namespace Chess
 			 * depth by three plies:
 			 */
 			if (do_null && !zugzwang
-				&& depth+R < _iteration_depth)
+				&& depth+R <= _iteration_depth)
 			{
 				pos.make_move(0);
 				_node_count++;
@@ -915,7 +924,113 @@ namespace Chess
 		}
 
 		/*
-		 * 2. Search non-captures
+		 * #. Search SEE-based winning captures
+		 */
+
+		phase.init<phase_t::winning_captures2>(pos);
+
+		score = search_moves< phase_t::winning_captures2 >(
+			phase, alpha, beta, depth, !do_null, do_zws, best_move);
+
+		do_zws = alpha > init_alpha;
+
+		if ( beta <= score )
+		{
+			if (!avoid)
+			{
+				entry.score = beta;
+				entry.set_move(best_move);
+				entry.set_type(FAIL_HI);
+			}
+
+			_fail_hi++;
+
+			return beta;
+		}
+
+		/*
+		 * #. Search killer moves from the current ply
+		 */
+
+		phase.init<phase_t::killer_moves>(pos);
+
+		for (int i = 0; i < 2; i++)
+		{
+			const int32 killer = _killers[depth][i].move;
+
+			if (MoveGen::validate_move(pos, killer, in_check))
+			{
+				phase.killer_moves.push_back(killer);
+				score = search_moves< phase_t::killer_moves >(
+					phase, alpha, beta, depth, !do_null, do_zws,
+					best_move);
+
+				do_zws = alpha > init_alpha;
+
+				if ( beta <= score )
+				{
+					if (!avoid)
+					{
+						entry.score = beta;
+						entry.set_move(best_move);
+						entry.set_type(FAIL_HI);
+					}
+
+					_killers[depth][i].hits++;
+					_killer_hits++;
+					_fail_hi++;
+
+					return beta;
+				}
+			}
+		}
+
+		/*
+		 * #. Search killer moves from 2 plies back
+		 */
+
+		if (depth >= 2)
+		{
+			for (int i = 0; i < 2; i++)
+			{
+				const int32 killer = _killers[depth-2][i].move;
+
+				if (MoveGen::validate_move(pos, killer, in_check))
+				{
+					phase.killer_moves.push_back(killer);
+					score = search_moves< phase_t::killer_moves >(
+						phase, alpha, beta, depth, !do_null, do_zws,
+						best_move);
+
+					do_zws = alpha > init_alpha;
+
+					if ( beta <= score )
+					{
+						if (!avoid)
+						{
+							entry.score = beta;
+							entry.set_move(best_move);
+							entry.set_type(FAIL_HI);
+						}
+
+						_killers[depth-2][i].hits++;
+						_killer_hits++;
+						_fail_hi++;
+
+						return beta;
+					}
+				}
+			}
+		}
+
+		/*
+		 * #. Search counter-moves
+		 */
+
+		phase.init<phase_t::counter_moves>(pos);
+
+		/*
+		 * 2. Search remaining non-captures
 		 */
 
 		phase.init<phase_t::non_captures>(pos);
@@ -932,6 +1047,18 @@ namespace Chess
 				entry.score = beta;
 				entry.set_move(best_move);
 				entry.set_type(FAIL_HI);
+			}
+
+			// Save this killer move
+
+			if (_killers[depth][0].hits > 
+				_killers[depth][1].hits)
+			{
+				_killers[depth][1].move = best_move;
+			}
+			else
+			{
+				_killers[depth][0].move = best_move;
 			}
 
 			_fail_hi++;
@@ -1173,12 +1300,27 @@ namespace Chess
 
 		_exact = _fail_hi = _fail_lo = 0;
 		_nmr = 0;
+		_killer_hits = 0;
 
 		_next_abort_check = 100000;
 		_abort_search = false;
 
 		for (size_t i= 0; i < max_ply; i++)
+		{
+			_saved_pv[i] = 0;
+
+			/**
+			 * @todo We can re-use killers and counter-moves
+			 *       in between searches
+			 */
+			_counter_moves[i][0] = {};
+			_counter_moves[i][1] = {};
+
+			_killers[i][0] = {};
+			_killers[i][1] = {};
+
 			_pv[0][i] = 0;
+		}
 
 		lines.clear();
 	}
