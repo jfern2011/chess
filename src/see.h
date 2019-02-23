@@ -37,7 +37,7 @@ namespace Chess
 	};
 
 #ifdef SEE_TEST
-	extern see_record test_record;
+	static see_record test_record;
 #endif
 
 	/**

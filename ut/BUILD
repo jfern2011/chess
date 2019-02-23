@@ -62,7 +62,7 @@ cc_test(
 	name  = "search_ut",
 	srcs  = ["ut_main.cpp", "search_ut.cpp"],
 	copts = [
-		"-DDEBUG", "-Wall", "-DSAFE_BUFFER", "-DSEE_TEST"
+		"-DDEBUG", "-Wall", "-DSAFE_BUFFER"
 	],
 	deps  = [
 		"@googletest//:gtest_main",
