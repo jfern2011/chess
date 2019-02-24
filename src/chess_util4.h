@@ -431,6 +431,37 @@ namespace Chess
 	}
 
 	/**
+	 * Display the given 64-bit integer as an 8x8 bit array
+	 *
+	 * @param[in] board The bitboard
+	 */
+	inline void printBitboard(uint64 board)
+	{
+		int prev_rank = 8;
+		uint64 one = 1;
+		for (int sq = 63; sq >= -1; sq--)
+		{
+			if (get_rank(sq) != prev_rank)
+			{
+				std::printf("\n ---+---+---+---+---+---+---+--- \n");
+				if (sq == -1) break;
+
+				prev_rank = get_rank(sq);
+			}
+
+			if (board & (one << sq))
+				std::printf("| * ");
+			else
+				std::printf("|   ");
+
+			if (sq % 8 == 0) std::printf("|");
+		}
+
+		std::printf("\n");
+		std::fflush(stdout);
+	}
+
+	/**
 	 * Get the human-readable form of a 21-bit packed move
 	 *
 	 * @param[in] move The move to parse
