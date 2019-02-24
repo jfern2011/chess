@@ -65,7 +65,7 @@ namespace
         }
     }
 
-    TEST(DataTables, _3rd_rank_array)
+    TEST(DataTables, _3rd_rank)
     {
         const auto& tables = Chess::DataTables::get();
 
@@ -78,7 +78,7 @@ namespace
                   tables._3rd_rank[Chess::player_t::black]);
     }
 
-    TEST(DataTables, a1h8_64_array)
+    TEST(DataTables, a1h8_64)
     {
         const auto& tables = Chess::DataTables::get();
 
@@ -105,7 +105,7 @@ namespace
         }
     }
 
-    TEST(DataTables, back_rank_array)
+    TEST(DataTables, back_rank)
     {
         const auto& tables = Chess::DataTables::get();
 
@@ -118,7 +118,7 @@ namespace
         EXPECT_EQ(tables.back_rank[Chess::player_t::black], ff);
     }
 
-    TEST(DataTables, bishop_attacks_array)
+    TEST(DataTables, bishop_attacks)
     {
         const auto& tables = Chess::DataTables::get();
 
@@ -176,6 +176,200 @@ namespace
             }
 
             offset += variations.size();
+        }
+    }
+
+    TEST(DataTables, bishop_attacks_mask)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        const Chess::uint64 frame =
+            Chess::rank_1 | Chess::rank_8 |
+            Chess::file_a | Chess::file_h;
+
+        for (int sq = 0; sq < 64; sq++)
+        {
+            Chess::uint64 mask =
+                tables.northwest_mask[sq] |
+                tables.northeast_mask[sq] |
+                tables.southwest_mask[sq] |
+                tables.southeast_mask[sq];
+
+            mask ^= (mask & frame);
+
+            ASSERT_EQ(tables.bishop_attacks_mask[sq],
+                mask);
+        }
+    }
+
+    TEST(DataTables, bishop_db_shifts)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        for (int sq = 0; sq < 64; sq++)
+        {
+            std::vector<Chess::uint64> variations;
+            get_occupancy_variations(sq, Chess::piece_t::bishop,
+                                     variations);
+
+            const int shift =
+                64 - Util::get_msb(variations.size());
+
+            ASSERT_EQ(tables.bishop_db_shifts[sq],
+                shift);
+        }
+    }
+
+    TEST(DataTables, bishop_mobility)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        const int numel1 = sizeof(tables.bishop_attacks ) /
+            sizeof(tables.bishop_attacks[0]);
+
+        const int numel2 = sizeof(tables.bishop_mobility) /
+            sizeof(tables.bishop_mobility[0]);
+
+        static_assert(numel1 == numel2, "");
+
+        for (int i = 0; i < numel1; i++)
+        {
+            ASSERT_EQ(Util::bit_count(tables.bishop_attacks[i]),
+                tables.bishop_mobility[i]);
+        }
+    }
+
+    TEST(DataTables, bishop_offsets)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        int offset = 0;
+        for (int sq = 0; sq < 64; sq++)
+        {
+            ASSERT_EQ(tables.bishop_offsets[sq],
+                offset);
+
+            std::vector<Chess::uint64> variations;
+            get_occupancy_variations(sq, Chess::piece_t::bishop,
+                                     variations);
+
+            offset += variations.size();
+        }
+    }
+
+    TEST(DataTables, bishop_range_mask)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        const Chess::uint64 one = 1;
+
+        for (int sq = 0; sq < 64; sq++)
+        {
+            Chess::uint64 mask =
+                tables.northwest_mask[sq] |
+                tables.northeast_mask[sq] |
+                tables.southwest_mask[sq] |
+                tables.southeast_mask[sq];
+
+            mask |= one << sq;
+
+            ASSERT_EQ(tables.bishop_range_mask[sq],
+                mask);
+        }
+    }
+
+    TEST(DataTables, castle_OO_dest)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        EXPECT_EQ(tables.castle_OO_dest[Chess::player_t::white],
+                  Chess::square_t::G1);
+        EXPECT_EQ(tables.castle_OO_dest[Chess::player_t::black],
+                  Chess::square_t::G8);
+    }
+
+    TEST(DataTables, castle_OO_path)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        Chess::square_t sq1 =
+            tables.castle_OO_path[Chess::player_t::white][0];
+        Chess::square_t sq2 =
+            tables.castle_OO_path[Chess::player_t::white][1];
+
+        EXPECT_NE(sq1, sq2);
+
+        EXPECT_TRUE(sq1 == Chess::square_t::F1 ||
+                    sq1 == Chess::square_t::G1);
+
+        EXPECT_TRUE(sq2 == Chess::square_t::F1 ||
+                    sq2 == Chess::square_t::G1);
+
+        sq1 =
+            tables.castle_OO_path[Chess::player_t::black][0];
+        sq2 =
+            tables.castle_OO_path[Chess::player_t::black][1];
+
+        EXPECT_NE(sq1, sq2);
+
+        EXPECT_TRUE(sq1 == Chess::square_t::F8 ||
+                    sq1 == Chess::square_t::G8);
+
+        EXPECT_TRUE(sq2 == Chess::square_t::F8 ||
+                    sq2 == Chess::square_t::G8);
+    }
+
+    TEST(DataTables, castle_OOO_dest)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        EXPECT_EQ(tables.castle_OOO_dest[Chess::player_t::white],
+                  Chess::square_t::C1);
+        EXPECT_EQ(tables.castle_OOO_dest[Chess::player_t::black],
+                  Chess::square_t::C8);
+    }
+
+    TEST(DataTables, castle_OOO_path)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        Chess::square_t sq1 =
+            tables.castle_OOO_path[Chess::player_t::white][0];
+        Chess::square_t sq2 =
+            tables.castle_OOO_path[Chess::player_t::white][1];
+
+        EXPECT_NE(sq1, sq2);
+
+        EXPECT_TRUE(sq1 == Chess::square_t::D1 ||
+                    sq1 == Chess::square_t::C1);
+
+        EXPECT_TRUE(sq2 == Chess::square_t::D1 ||
+                    sq2 == Chess::square_t::C1);
+
+        sq1 =
+            tables.castle_OOO_path[Chess::player_t::black][0];
+        sq2 =
+            tables.castle_OOO_path[Chess::player_t::black][1];
+
+        EXPECT_NE(sq1, sq2);
+
+        EXPECT_TRUE(sq1 == Chess::square_t::D8 ||
+                    sq1 == Chess::square_t::C8);
+
+        EXPECT_TRUE(sq2 == Chess::square_t::D8 ||
+                    sq2 == Chess::square_t::C8);
+    }
+
+    TEST(DataTables, clear_mask)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        const Chess::uint64 one = 1;
+
+        for (int sq = 0; sq < 64; sq++)
+        {
+            ASSERT_EQ(tables.clear_mask[sq],
+                      ~(one << sq));
         }
     }
 
