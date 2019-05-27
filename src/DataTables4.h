@@ -143,7 +143,7 @@ namespace Chess
          * En-passant target squares. These are invalid except for the 4th
          * and 5th ranks
          */
-        BUFFER(uint64, ep_target, 64);
+        BUFFER(int, ep_target, 64);
 
         /**
          *  Material exchange[piece captured][piece moved]. A positive

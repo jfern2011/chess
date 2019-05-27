@@ -373,30 +373,71 @@ namespace
         }
     }
 
-    TEST(DataTables, h1a8_64_array)
+    TEST(DataTables, directions)
     {
         const auto& tables = Chess::DataTables::get();
 
-        Chess::uint64 one = 1;
+        for (int i = 0; i < 64; i++)
+        {
+            for (int j = 0; j < 64; j++)
+            {
+                if (i == j) continue;
+
+                if (     Chess::get_rank(i) == Chess::get_rank(j))
+                {
+                    ASSERT_EQ(tables.directions[i][j],
+                        Chess::direction_t::along_rank);
+                }
+                else if (Chess::get_file(i) == Chess::get_file(j))
+                {
+                    ASSERT_EQ(tables.directions[i][j],
+                        Chess::direction_t::along_file);
+                }
+                else if (tables.h1a8_64[i] & tables.set_mask[j])
+                {
+                    ASSERT_EQ(tables.directions[i][j],
+                        Chess::direction_t::along_h1a8);
+                }
+                else if (tables.a1h8_64[i] & tables.set_mask[j])
+                {
+                    ASSERT_EQ(tables.directions[i][j],
+                        Chess::direction_t::along_a1h8);
+                }
+                else
+                {
+                    ASSERT_EQ(tables.directions[i][j],
+                        Chess::direction_t::none);
+                }
+            }
+        }
+    }
+
+    TEST(DataTables, east_mask)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        const Chess::uint64 one  = 1;
+        const Chess::uint64 rank = 0xff;
 
         for (int i = 0; i < 64; i++)
         {
-            auto mask = one << i;
+            EXPECT_EQ(tables.east_mask[i],
+                ((one << i)-1) & (rank << (8*(i/8))));
+        }
+    }
 
-            for (int j = i; j < 64; j += 9)
-            {
-                mask |= one << j;
-                if ((j-7) % 8 == 0) break;
-            }
+    TEST(DataTables, ep_target)
+    {
+        const auto& tables = Chess::DataTables::get();
 
-            for (int j = i; j >= 0; j -= 9)
-            {
-                mask |= one << j;
-                if (j % 8 == 0) break;
-            }
+        for (int i = 24; i <= 31; i++)
+        {
+            EXPECT_EQ(tables.ep_target[i], i-8);
+        }
 
-            EXPECT_EQ(tables.h1a8_64[i],
-                mask);
+        for (int i = 32; i <= 39; i++)
+        {
+            EXPECT_EQ(tables.ep_target[i], i+8);
         }
     }
 
@@ -468,5 +509,131 @@ namespace
         check_exchange(empty, queen);
         check_exchange(empty, king);
         check_exchange(empty, empty);
+    }
+
+    TEST(DataTables, files64)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        const Chess::uint64 one    = 1;
+        const Chess::uint64 h_file = (one << 0) |
+                                     (one << 8) |
+                                     (one << 16) |
+                                     (one << 24) |
+                                     (one << 32) |
+                                     (one << 40) |
+                                     (one << 48) |
+                                     (one << 56);
+
+        for (int i = 0; i < 64; i++)
+        {
+            EXPECT_EQ(tables.files64[i], h_file << (i%8));
+        }
+    }
+
+    TEST(DataTables, h1a8_64_array)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        Chess::uint64 one = 1;
+
+        for (int i = 0; i < 64; i++)
+        {
+            auto mask = one << i;
+
+            for (int j = i; j < 64; j += 9)
+            {
+                mask |= one << j;
+                if ((j-7) % 8 == 0) break;
+            }
+
+            for (int j = i; j >= 0; j -= 9)
+            {
+                mask |= one << j;
+                if (j % 8 == 0) break;
+            }
+
+            EXPECT_EQ(tables.h1a8_64[i],
+                mask);
+        }
+    }
+
+    TEST(DataTables, king_attacks)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        const Chess::uint64 one = 1;
+
+        for (int i = 0; i < 64; i++)
+        {
+            Chess::uint64 mask = 0;
+
+            if (i < 56)
+            {
+                mask |= one << (i+8);
+            }
+
+            if (i < 56 && (i == 0 || (i % 8 != 7)))
+            {
+                mask |= one << (i+9);
+            }
+
+            if (i < 56 && (i % 8 != 0))
+            {
+                mask |= one << (i+7);
+            }
+
+            if (i == 0 || (i % 8 != 7))
+            {
+                mask |= one << (i+1);
+            }
+
+            if (i % 8 != 0)
+            {
+                mask |= one << (i-1);
+            }
+
+            if (i > 7)
+            {
+                mask |= one << (i-8);
+            }
+
+            if (i > 7 && (i % 8 != 7))
+            {
+                mask |= one << (i-7);
+            }
+
+            if (i > 7 && (i % 8 != 0))
+            {
+                mask |= one << (i-9);
+            }
+
+            EXPECT_EQ(tables.king_attacks[i],
+                mask) << "square " << i;
+        }
+    }
+
+    TEST(DataTables, king_home)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        EXPECT_EQ(tables.king_home[Chess::player_t::black],
+            Chess::square_t::E8);
+
+        EXPECT_EQ(tables.king_home[Chess::player_t::white],
+            Chess::square_t::E1);
+    }
+
+    TEST(DataTables, kingside)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        const Chess::uint64 one = 1;
+
+        EXPECT_EQ( tables.kingside[Chess::player_t::black],
+            (one << 58) | (one << 57));
+
+        EXPECT_EQ( tables.kingside[Chess::player_t::white],
+            (one << 1 ) | (one << 2 ));
     }
 }
