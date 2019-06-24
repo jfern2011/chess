@@ -1,3 +1,4 @@
+#include <map>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -635,5 +636,164 @@ namespace
 
         EXPECT_EQ( tables.kingside[Chess::player_t::white],
             (one << 1 ) | (one << 2 ));
+    }
+
+    TEST(DataTables, knight_attacks)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        const Chess::uint64 one = 1;
+
+        std::map<Chess::square_t, Chess::uint64>
+            attacks_from;
+
+        attacks_from[Chess::square_t::H1] = (one << Chess::square_t::G3) |
+                                            (one << Chess::square_t::F2);
+        attacks_from[Chess::square_t::G1] = (one << Chess::square_t::F3) |
+                                            (one << Chess::square_t::H3) |
+                                            (one << Chess::square_t::E2);
+        attacks_from[Chess::square_t::B1] = (one << Chess::square_t::A3) |
+                                            (one << Chess::square_t::C3) |
+                                            (one << Chess::square_t::D2);
+        attacks_from[Chess::square_t::A1] = (one << Chess::square_t::B3) |
+                                            (one << Chess::square_t::C2);
+        attacks_from[Chess::square_t::H2] = (one << Chess::square_t::F1) |
+                                            (one << Chess::square_t::F3) |
+                                            (one << Chess::square_t::G4);
+        attacks_from[Chess::square_t::G2] = (one << Chess::square_t::E1) |
+                                            (one << Chess::square_t::E3) |
+                                            (one << Chess::square_t::F4) |
+                                            (one << Chess::square_t::H4);
+        attacks_from[Chess::square_t::B2] = (one << Chess::square_t::A4) |
+                                            (one << Chess::square_t::C4) |
+                                            (one << Chess::square_t::D3) |
+                                            (one << Chess::square_t::D1);
+        attacks_from[Chess::square_t::A2] = (one << Chess::square_t::B4) |
+                                            (one << Chess::square_t::C3) |
+                                            (one << Chess::square_t::C1);
+        attacks_from[Chess::square_t::H8] = (one << Chess::square_t::F7) |
+                                            (one << Chess::square_t::G6);
+        attacks_from[Chess::square_t::G8] = (one << Chess::square_t::E7) |
+                                            (one << Chess::square_t::F6) |
+                                            (one << Chess::square_t::H6);
+        attacks_from[Chess::square_t::B8] = (one << Chess::square_t::D7) |
+                                            (one << Chess::square_t::C6) |
+                                            (one << Chess::square_t::A6);
+        attacks_from[Chess::square_t::A8] = (one << Chess::square_t::C7) |
+                                            (one << Chess::square_t::B6);
+        attacks_from[Chess::square_t::H7] = (one << Chess::square_t::F8) |
+                                            (one << Chess::square_t::F6) |
+                                            (one << Chess::square_t::G5);
+        attacks_from[Chess::square_t::G7] = (one << Chess::square_t::E8) |
+                                            (one << Chess::square_t::E6) |
+                                            (one << Chess::square_t::F5) |
+                                            (one << Chess::square_t::H5);
+        attacks_from[Chess::square_t::B7] = (one << Chess::square_t::A5) |
+                                            (one << Chess::square_t::C5) |
+                                            (one << Chess::square_t::D6) |
+                                            (one << Chess::square_t::D8);
+        attacks_from[Chess::square_t::A7] = (one << Chess::square_t::B5) |
+                                            (one << Chess::square_t::C6) |
+                                            (one << Chess::square_t::C8);
+
+        for (int i = 0; i < 64; i++)
+        {
+            auto iter = attacks_from.find(
+                static_cast<Chess::square_t>(i));
+
+            if (iter == attacks_from.end())
+            {
+                Chess::uint64 expected = 0;
+
+                switch (Chess::get_rank(i))
+                {
+                case 0:
+                    expected = (one << (i+ 6)) |
+                               (one << (i+10)) |
+                               (one << (i+15)) | 
+                               (one << (i+17));
+                    break;
+                case 1:
+                    expected = (one << (i-10)) |
+                               (one << (i- 6)) |
+                               (one << (i+ 6)) |
+                               (one << (i+10)) |
+                               (one << (i+15)) | 
+                               (one << (i+17));
+                    break;
+                case 7:
+                    expected = (one << (i- 6)) |
+                               (one << (i-10)) |
+                               (one << (i-15)) | 
+                               (one << (i-17));
+                    break;
+                case 6:
+                    expected = (one << (i-10)) |
+                               (one << (i- 6)) |
+                               (one << (i+ 6)) |
+                               (one << (i+10)) |
+                               (one << (i-15)) | 
+                               (one << (i-17));
+                default:
+                    break;
+                }
+
+                switch (Chess::get_file(i))
+                {
+                case 0:
+                    expected = (one << (i- 6)) |
+                               (one << (i+10)) |
+                               (one << (i-15)) | 
+                               (one << (i+17));
+                    break;
+                case 1:
+                    expected = (one << (i- 6)) |
+                               (one << (i+10)) |
+                               (one << (i-15)) | 
+                               (one << (i-17)) |
+                               (one << (i+15)) | 
+                               (one << (i+17));
+                    break;
+                case 7:
+                    expected = (one << (i+ 6)) |
+                               (one << (i-10)) |
+                               (one << (i+15)) | 
+                               (one << (i-17));
+                    break;
+                case 6:
+                    expected = (one << (i+ 6)) |
+                               (one << (i-10)) |
+                               (one << (i+15)) | 
+                               (one << (i-17)) |
+                               (one << (i-15)) | 
+                               (one << (i+17));
+                default:
+                    break;
+                }
+
+                if (expected == 0)
+                {
+                    // Knight is somewhere in the center
+
+                    expected = (one << (i+ 6)) |
+                               (one << (i+10)) |
+                               (one << (i- 6)) |
+                               (one << (i-10)) |
+                               (one << (i+15)) | 
+                               (one << (i+17)) |
+                               (one << (i-15)) | 
+                               (one << (i-17));
+                }
+
+                EXPECT_EQ(expected, tables.knight_attacks[i])
+                    << "Failed on square " << i;
+            }
+            else
+            {
+                Chess::uint64 expected = iter->second;
+                EXPECT_EQ(expected, tables.knight_attacks[i])
+                    << "Failed on square " << i;
+            }
+        }
     }
 }
