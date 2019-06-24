@@ -796,4 +796,25 @@ namespace
             }
         }
     }
+
+    TEST(DataTables, lsb)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        auto lsb = [](Chess::uint16 word) {
+            if (word == 0) return((Chess::uint8)0xff);
+
+            Chess::uint8 lsb = 0;
+            
+            while (((1 << lsb) & word) == 0)
+                lsb++;
+
+            return lsb;
+        };
+
+        for (Chess::uint32 i = 1; i <= 65535; i++)
+        {
+            ASSERT_EQ(tables.lsb[i], lsb(i));
+        }
+    }
 }
