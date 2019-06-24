@@ -905,4 +905,25 @@ namespace
             EXPECT_EQ( actual, i+7 );
         }
     }
+
+    TEST(DataTables, msb)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        auto msb = [](Chess::uint16 word) {
+            if (word == 0) return((Chess::uint8)0xff);
+
+            Chess::uint8 msb = 15;
+            
+            while (((1 << msb) & word) == 0)
+                msb--;
+
+            return msb;
+        };
+
+        for (Chess::uint32 i = 1; i <= 65535; i++)
+        {
+            ASSERT_EQ(tables.msb[i], msb(i));
+        }
+    }
 }
