@@ -817,4 +817,92 @@ namespace
             ASSERT_EQ(tables.lsb[i], lsb(i));
         }
     }
+
+    TEST(DataTables, minus_16)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        for (int i = 16; i < 64; i++)
+        {
+            const int actual =
+                tables.minus_16[Chess::player_t::white][i];
+            EXPECT_EQ( actual, i-16 );
+        }
+
+        for (int i = 0 ; i < 48; i++)
+        {
+            const int actual =
+                tables.minus_16[Chess::player_t::black][i];
+            EXPECT_EQ( actual, i+16 );
+        }
+    }
+
+    TEST(DataTables, minus_8)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        for (int i = 8; i < 64; i++)
+        {
+            const int actual =
+                tables.minus_8 [Chess::player_t::white][i];
+            EXPECT_EQ( actual, i-8 );
+        }
+
+        for (int i = 0 ; i < 56; i++)
+        {
+            const int actual =
+                tables.minus_8 [Chess::player_t::black][i];
+            EXPECT_EQ( actual, i+8 );
+        }
+    }
+
+    TEST(DataTables, minus_9)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        for (int i = 9; i < 64; i++)
+        {
+            if (Chess::get_file(i) == 0)
+                continue;
+
+            const int actual =
+                tables.minus_9 [Chess::player_t::white][i];
+            EXPECT_EQ( actual, i-9 );
+        }
+
+        for (int i = 0; i < 55; i++)
+        {
+            if (Chess::get_file(i) == 7)
+                continue;
+
+            const int actual =
+                tables.minus_9 [Chess::player_t::black][i];
+            EXPECT_EQ( actual, i+9 );
+        }
+    }
+
+    TEST(DataTables, minus_7)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        for (int i = 7; i < 64; i++)
+        {
+            if (Chess::get_file(i) == 7)
+                continue;
+
+            const int actual =
+                tables.minus_7 [Chess::player_t::white][i];
+            EXPECT_EQ( actual, i-7 );
+        }
+
+        for (int i = 0; i < 56; i++)
+        {
+            if (Chess::get_file(i) == 0)
+                continue;
+
+            const int actual =
+                tables.minus_7 [Chess::player_t::black][i];
+            EXPECT_EQ( actual, i+7 );
+        }
+    }
 }
