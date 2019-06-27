@@ -863,7 +863,15 @@ namespace Chess
                     (east_mask[sq1]      & west_mask [sq2])     |
                     (east_mask[sq2]      & west_mask [sq1]);
 
-                if (h1a8_64[sq1] == h1a8_64[sq2])
+                if (sq1 == sq2)
+                {
+                    // In this case, rays are undefined
+                    
+                    ray_extend[sq1][sq2]= 0;
+                    directions[sq1][sq2]
+                        = direction_t::none;
+                }
+                else if (h1a8_64[sq1] == h1a8_64[sq2])
                 {
                     ray_extend[sq1][sq2] = h1a8_64[sq1];
                     directions[sq1][sq2] =
@@ -970,52 +978,141 @@ namespace Chess
             set_mask[square_t::F8] |
             set_mask[square_t::G8];
 
+        // Used to ensure a square index is in bounds
+
+        auto in_range = [](int i) {
+            if (i >= 0 && i <= 63)
+                return static_cast<square_t>(i);
+            return square_t::BAD_SQUARE;
+        };
+
         for (int i = 0; i < 64; i++)
         {
-            const int bad_square =
-                static_cast<int>(square_t::BAD_SQUARE);
+            if (get_file(i) > 0)
+            {
+                plus_7[player_t::white][i] =
+                    in_range(i+7);
+                plus_9[player_t::black][i] =
+                    in_range(i-9);
+            }
+            else
+            {
+                plus_7[player_t::white][i] =
+                    square_t::BAD_SQUARE;
+                plus_9[player_t::black][i] =
+                    square_t::BAD_SQUARE;
+            }
 
-            plus_7[player_t::white][i]  =
-                static_cast<square_t>(
-                    std::min(i + 7, bad_square));
-            plus_7[player_t::black][i]  =
-                static_cast<square_t>(std::max(i - 7, 0));
+            if (get_file(i) < 7)
+            {
+                plus_7[player_t::black][i] =
+                    in_range(i-7);
+                plus_9[player_t::white][i] =
+                    in_range(i+9);
+            }
+            else
+            {
+                plus_7[player_t::black][i] =
+                    square_t::BAD_SQUARE;
+                plus_9[player_t::white][i] =
+                    square_t::BAD_SQUARE;
+            }
 
-            plus_8[player_t::white][i]  =
-                static_cast<square_t>(
-                    std::min(i + 8, bad_square));
-            plus_8[player_t::black][i]  =
-                static_cast<square_t>(std::max(i - 8, 0));
+            if (get_rank(i) < 7)
+            {
+                plus_8[player_t::white][i] =
+                    in_range(i+8);
+            }
+            else
+            {
+                plus_8[player_t::white][i] =
+                    square_t::BAD_SQUARE;
+            }
 
-            plus_9[player_t::white][i]  =
-                static_cast<square_t>(
-                    std::min(i + 9, bad_square));
-            plus_9[player_t::black][i]  =
-                static_cast<square_t>(std::max(i - 9, 0));
+            if (get_rank(i) > 0)
+            {
+                plus_8[player_t::black][i] =
+                    in_range(i-8);
+            }
+            else
+            {
+                plus_8[player_t::black][i] =
+                    square_t::BAD_SQUARE;
+            }
 
-            minus_7[player_t::white][i] =
-                static_cast<square_t>(std::max(i - 7, 0));
-            minus_7[player_t::black][i] =
-                static_cast<square_t>(
-                    std::min(i + 7, bad_square));
+            if (get_file(i) < 7)
+            {
+                minus_7[player_t::white][i] =
+                    in_range(i-7);
+                minus_9[player_t::black][i] =
+                    in_range(i+9);
+            }
+            else
+            {
+                minus_7[player_t::white][i] =
+                    square_t::BAD_SQUARE;
+                minus_9[player_t::black][i] =
+                    square_t::BAD_SQUARE;
+            }
 
-            minus_8[player_t::white][i] =
-                static_cast<square_t>(std::max(i - 8, 0));
-            minus_8[player_t::black][i] =
-                static_cast<square_t>(
-                    std::min(i + 8, bad_square));
+            if (get_file(i) > 0)
+            {
+                minus_7[player_t::black][i] =
+                    in_range(i+7);
+                minus_9[player_t::white][i] =
+                    in_range(i-9);
+            }
+            else
+            {
+                minus_7[player_t::black][i] =
+                    square_t::BAD_SQUARE;
+                minus_9[player_t::white][i] =
+                    square_t::BAD_SQUARE;
+            }
 
-            minus_9[player_t::white][i] =
-                static_cast<square_t>(std::max(i - 9, 0));
-            minus_9[player_t::black][i] =
-                static_cast<square_t>(
-                    std::min(i + 9, bad_square));
+            if (get_rank(i) > 0)
+            {
+                minus_8[player_t::white][i] =
+                    in_range(i-8);
+            }
+            else
+            {
+                minus_8[player_t::white][i] =
+                    square_t::BAD_SQUARE;
+            }
 
-            minus_16[player_t::white][i] =
-                static_cast<square_t>(std::max(i -16, 0));
-            minus_16[player_t::black][i] =
-                static_cast<square_t>(
-                    std::min(i +16, bad_square));
+            if (get_rank(i) < 7)
+            {
+                minus_8[player_t::black][i] =
+                    in_range(i+8);
+            }
+            else
+            {
+                minus_8[player_t::black][i] =
+                    square_t::BAD_SQUARE;
+            }
+
+            if (get_rank(i) > 1)
+            {
+                minus_16[player_t::white][i] =
+                    in_range(i-16);
+            }
+            else
+            {
+                minus_16[player_t::white][i] =
+                    square_t::BAD_SQUARE;
+            }
+
+            if (get_rank(i) < 6)
+            {
+                minus_16[player_t::black][i] =
+                    in_range(i+16);
+            }
+            else
+            {
+                minus_16[player_t::black][i] =
+                    square_t::BAD_SQUARE;
+            }
         }
 
         castle_OO_dest [player_t::white] = square_t::G1;
