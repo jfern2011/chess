@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <map>
 #include <vector>
 
@@ -1417,6 +1418,422 @@ namespace
         } // for i ...
     }
 
+    TEST(DataTables, ray_extend)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        const Chess::uint64 one = 1;
+
+        auto along_a1h8 = []( int sq1, int sq2 ) {
+            if (sq1 == sq2) return false;
+
+            int i   = std::min(sq1, sq2);
+            int tgt = std::max(sq1, sq2);
+
+            for (; i < 64; i += 7 )
+            {
+                if (i == tgt) return true;
+
+                if ( Chess::get_file(i) == 0 )
+                    break;
+            }
+
+            return false;
+        };
+
+        auto along_h1a8 = []( int sq1, int sq2 ) {
+            if (sq1 == sq2) return false;
+
+            int i   = std::min(sq1, sq2);
+            int tgt = std::max(sq1, sq2);
+
+            for (; i < 64; i += 9 )
+            {
+                if (i == tgt) return true;
+
+                if ( Chess::get_file(i) == 7 )
+                    break;
+            }
+
+            return false;
+        };
+
+        for ( int i = 0; i <= 63; i++ )
+        {
+            for ( int j = 0; j <= 63; j++ )
+            {
+                if (i == j)
+                {
+                    ASSERT_EQ(tables.ray_extend[i][j], 0);
+                }
+                else
+                {
+                    Chess::uint64 expected = 0;
+
+                    if   (   Chess::get_file(i) == Chess::get_file(j))
+                    {
+                        expected =
+                            (one << i) | tables.north_mask[i]|
+                                         tables.south_mask[i];
+                    }
+                    else if (Chess::get_rank(i) == Chess::get_rank(j))
+                    {
+                        expected =
+                            (one << i) | tables.east_mask[i]|
+                                         tables.west_mask[i];
+                    }
+                    else if ( along_h1a8(i,j) )
+                    {
+                        expected =
+                            (one << i) | tables.southeast_mask[i]|
+                                         tables.northwest_mask[i];
+                    }
+                    else if ( along_a1h8(i,j) )
+                    {
+                        expected =
+                            (one << i) | tables.northeast_mask[i]|
+                                         tables.southwest_mask[i];
+                    }
+
+                    ASSERT_EQ(tables.ray_extend[i][j],
+                        expected) << i << ", " << j;
+                }
+            } // for j ...
+        } // for i ...
+    }
+
+    TEST(DataTables, ray_segment)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        auto along_a1h8 = []( int sq1, int sq2 ) {
+            if (sq1 == sq2) return false;
+
+            int i   = std::min(sq1, sq2);
+            int tgt = std::max(sq1, sq2);
+
+            for (; i < 64; i += 7 )
+            {
+                if (i == tgt) return true;
+
+                if ( Chess::get_file(i) == 0 )
+                    break;
+            }
+
+            return false;
+        };
+
+        auto along_h1a8 = []( int sq1, int sq2 ) {
+            if (sq1 == sq2) return false;
+
+            int i   = std::min(sq1, sq2);
+            int tgt = std::max(sq1, sq2);
+
+            for (; i < 64; i += 9 )
+            {
+                if (i == tgt) return true;
+
+                if ( Chess::get_file(i) == 7 )
+                    break;
+            }
+
+            return false;
+        };
+
+        for ( int i = 0; i <= 63; i++ )
+        {
+            for ( int j = 0; j <= 63; j++ )
+            {
+                if (i == j)
+                {
+                    ASSERT_EQ(tables.ray_segment[i][j], 0);
+                }
+                else
+                {
+                    Chess::uint64 expected = 0;
+
+                    if   (   Chess::get_file(i) == Chess::get_file(j))
+                    {
+                        if (i > j)
+                        {
+                            expected = tables.north_mask[j] &
+                                       tables.south_mask[i];
+                        }
+                        else
+                        {
+                            expected = tables.north_mask[i] &
+                                       tables.south_mask[j];
+                        }
+                    }
+                    else if (Chess::get_rank(i) == Chess::get_rank(j))
+                    {
+                        if (i > j)
+                        {
+                            expected =  tables.west_mask[j] &
+                                        tables.east_mask[i];
+                        }
+                        else
+                        {
+                            expected =  tables.west_mask[i] &
+                                        tables.east_mask[j];
+                        }
+                    }
+                    else if ( along_h1a8(i,j) )
+                    {
+                        if (i > j)
+                        {
+                            expected = tables.northwest_mask[j] &
+                                       tables.southeast_mask[i];
+                        }
+                        else
+                        {
+                            expected = tables.northwest_mask[i] &
+                                       tables.southeast_mask[j];
+                        }
+                    }
+                    else if ( along_a1h8(i,j) )
+                    {
+                        if (i > j)
+                        {
+                            expected = tables.northeast_mask[j] &
+                                       tables.southwest_mask[i];
+                        }
+                        else
+                        {
+                            expected = tables.northeast_mask[i] &
+                                       tables.southwest_mask[j];
+                        }
+                    }
+
+                    ASSERT_EQ(tables.ray_segment[i][j],
+                        expected) << i << ", " << j;
+                }
+            } // for j ...
+        } // for i ...
+    }
+
+    TEST(DataTables, rook_attacks)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        Chess::uint32 offset = 0;
+        for (int sq = 0; sq < 64; sq++)
+        {
+            std::vector<Chess::uint64> variations;
+            get_occupancy_variations(sq, Chess::piece_t::rook,
+                                     variations);
+
+            const int shifts =
+                64 - Util::get_msb(variations.size());
+
+            for (auto var : variations)
+            {
+                Chess::uint64 attacks_from =
+                    tables.north_mask[sq] |
+                    tables.west_mask[sq]  |
+                    tables.south_mask[sq] |
+                    tables.east_mask[sq];
+
+                int blocker =
+                    Util::get_lsb(var & tables.north_mask[sq]);
+
+                if (blocker != -1)
+                    attacks_from ^=
+                        tables.north_mask[blocker];
+
+                blocker =
+                    Util::get_lsb(var & tables.west_mask[sq]);
+
+                if (blocker != -1)
+                    attacks_from ^=
+                        tables.west_mask[blocker];
+
+                blocker =
+                    Util::get_msb(var & tables.south_mask[sq]);
+
+                if (blocker != -1)
+                    attacks_from ^=
+                        tables.south_mask[blocker];
+
+                blocker =
+                    Util::get_msb(var & tables.east_mask[sq]);
+
+                if (blocker != -1)
+                    attacks_from ^=
+                        tables.east_mask[blocker];
+
+                const Chess::uint32 index = offset +
+                    ((var * tables.rook_magics[sq]) >> shifts);
+
+                ASSERT_EQ(tables.rook_attacks[index],
+                    attacks_from);
+            }
+
+            offset += variations.size();
+        }
+    }
+
+    TEST(DataTables, rook_attacks_mask)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        const Chess::uint64 frame =
+            Chess::rank_1 | Chess::rank_8 |
+            Chess::file_a | Chess::file_h;
+
+        const Chess::uint64 one     = 1;
+        const Chess::uint64 corners =
+            (one << 63) | (one << 56) | (one << 7) |
+            (one << 0);
+
+        for (int sq = 0; sq < 64; sq++)
+        {
+            Chess::uint64 mask =
+                tables.north_mask[sq] |
+                tables.east_mask[sq]  |
+                tables.south_mask[sq] |
+                tables.west_mask[sq];
+
+            if (sq == 0 || sq == 7 || sq == 56 || sq == 63)
+            {
+                mask ^= (mask & corners);
+            }
+            else if (Chess::get_rank(sq) == 0)
+            {
+                mask ^= (mask & (Chess::rank_8 | corners));
+            }
+            else if (Chess::get_rank(sq) == 7)
+            {
+                mask ^= (mask & (Chess::rank_1 | corners));
+            }
+            else if (Chess::get_file(sq) == 0)
+            {
+                mask ^= (mask & (Chess::file_a | corners));
+            }
+            else if (Chess::get_file(sq) == 7)
+            {
+                mask ^= (mask & (Chess::file_h | corners));
+            }
+            else
+            {
+                mask ^= (mask & frame);
+            }
+
+            ASSERT_EQ(tables.rook_attacks_mask[sq],
+                mask) << sq;
+        }
+    }
+
+    TEST(DataTables, rook_db_shifts)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        for (int sq = 0; sq < 64; sq++)
+        {
+            std::vector<Chess::uint64> variations;
+            get_occupancy_variations(sq, Chess::piece_t::rook,
+                                     variations);
+
+            const int shift =
+                64 - Util::get_msb(variations.size());
+
+            ASSERT_EQ(tables.rook_db_shifts[sq],
+                shift);
+        }
+    }
+
+    TEST(DataTables, rook_mobility)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        const int numel1 = sizeof(tables.rook_attacks ) /
+            sizeof(tables.rook_attacks[0]);
+
+        const int numel2 = sizeof(tables.rook_mobility) /
+            sizeof(tables.rook_mobility[0]);
+
+        static_assert(numel1 == numel2, "");
+
+        for (int i = 0; i < numel1; i++)
+        {
+            ASSERT_EQ(Util::bit_count(tables.rook_attacks[i]),
+                tables.rook_mobility[i]);
+        }
+    }
+
+    TEST(DataTables, rook_offsets)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        int offset = 0;
+        for (int sq = 0; sq < 64; sq++)
+        {
+            ASSERT_EQ(tables.rook_offsets[sq],
+                offset);
+
+            std::vector<Chess::uint64> variations;
+            get_occupancy_variations(sq, Chess::piece_t::rook,
+                                     variations);
+
+            offset += variations.size();
+        }
+    }
+
+    TEST(DataTables, rook_range_mask)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        const Chess::uint64 one = 1;
+
+        for (int sq = 0; sq < 64; sq++)
+        {
+            Chess::uint64 mask =
+                tables.north_mask[sq] |
+                tables.east_mask[sq]  |
+                tables.south_mask[sq] |
+                tables.west_mask[sq];
+
+            mask |= one << sq;
+
+            ASSERT_EQ(tables.rook_range_mask[sq],
+                mask);
+        }
+    }
+
+    TEST(DataTables, queenside)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        const Chess::uint64 one = 1;
+
+        EXPECT_EQ(tables.queenside[Chess::player_t::white],
+            (one << 6 ) | (one << 5 ) | (one << 4 ));
+        EXPECT_EQ(tables.queenside[Chess::player_t::black],
+            (one << 62) | (one << 61) | (one << 60));
+    }
+
+    TEST(DataTables, set_mask)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        const Chess::uint64 one = 1;
+
+        for (int i = 0; i < 64; i++)
+        {
+            EXPECT_EQ( tables.set_mask[i], one << i );
+        }
+    }
+
+    TEST(DataTables, sign)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        EXPECT_EQ(tables.sign[Chess::player_t::white],
+            1);
+        EXPECT_EQ(tables.sign[Chess::player_t::black],
+            -1);
+    }
+
     TEST(DataTables, south_mask)
     {
         const auto& tables = Chess::DataTables::get();
@@ -1480,6 +1897,31 @@ namespace
         {
             ASSERT_EQ(tables.southwest_mask[i],
                 create_mask(i)) << i;
+        }
+    }
+
+    TEST(DataTables, west_mask)
+    {
+        const auto& tables = Chess::DataTables::get();
+
+        const Chess::uint64 one = 1;
+
+        for (int i = 0; i < 64; i++)
+        {
+            Chess::uint64 expected = 0;
+
+            if (Chess::get_file(i) < 7)
+            {
+                for (int j = i+1;
+                     Chess::get_rank(j) == Chess::get_rank(i);
+                     j++)
+                {
+                    expected |= (one << j);
+                }
+            }
+
+            ASSERT_EQ( tables.west_mask[i],
+                expected ) << i;
         }
     }
 }
