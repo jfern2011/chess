@@ -8,6 +8,31 @@ namespace Chess
     constexpr char Position::init_fen[];
 
     /**
+     * Perform a byte-wise comparison between this object
+     * and another
+     *
+     * @param[in] rhs The object to compare against
+     *
+     * @return True if this EnPassant is the same as \a
+     *         rhs
+     */
+    bool Position::EnPassant::operator==(const EnPassant& rhs)
+        const
+    {
+        return src[0] == rhs.src[0] &&
+               src[1] == rhs.src[1] &&
+               target == rhs.target;
+    }
+
+    /**
+     * Set all members to their defaults
+     */
+    void Position::EnPassant::clear()
+    {
+        target = src[0] = src[1] = square_t::BAD_SQUARE;
+    }
+
+    /**
      * Dump the set of random numbers to standard output
      */
     void Position::HashInput::print()

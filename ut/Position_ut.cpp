@@ -15,6 +15,36 @@ using namespace Chess;
 
 namespace
 {
+    TEST(EnPassant, equality)
+    {
+        Position::EnPassant ep[2];
+
+        ep[0].src[0] = Chess::square_t::D4;
+        ep[0].src[1] = Chess::square_t::F4;
+        ep[0].target = Chess::square_t::E3;
+
+        ep[1].src[0] = Chess::square_t::D4;
+        ep[1].src[1] = Chess::square_t::F4;
+        ep[1].target = Chess::square_t::E3;
+
+        EXPECT_EQ(ep[0], ep[1]);
+    }
+
+    TEST(EnPassant, clear)
+    {
+        Position::EnPassant ep;
+
+        ep.src[0] = Chess::square_t::D4;
+        ep.src[1] = Chess::square_t::F4;
+        ep.target = Chess::square_t::E3;
+
+        ep.clear();
+
+        EXPECT_EQ(ep.src[0], Chess::square_t::BAD_SQUARE);
+        EXPECT_EQ(ep.src[1], Chess::square_t::BAD_SQUARE);
+        EXPECT_EQ(ep.target, Chess::square_t::BAD_SQUARE);
+    }
+
     TEST(Position, hashCastleWhite)
     {
         Handle<std::ostream>

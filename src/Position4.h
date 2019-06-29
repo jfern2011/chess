@@ -314,30 +314,6 @@ namespace Chess
     };
 
     /**
-     * Perform a byte-wise comparison between this object
-     * and another
-     *
-     * @param[in] rhs The object to compare against
-     *
-     * @return True if this EnPassant is the same as \a
-     *         rhs
-     */
-    inline bool Position::EnPassant::operator==(const EnPassant& rhs)
-        const
-    {
-        return src[0] == rhs.src[0] && src[1] == rhs.src[1]
-            && target == rhs.target;
-    }
-
-    /**
-     * Set all members to their defaults
-     */
-    inline void Position::EnPassant::clear()
-    {
-        target = src[0] = src[1] = square_t::BAD_SQUARE;
-    }
-
-    /**
      * Clear all entries
      */
     inline void Position::HashInput::clear()
