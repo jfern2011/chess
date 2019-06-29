@@ -45,6 +45,146 @@ namespace
         EXPECT_EQ(ep.target, Chess::square_t::BAD_SQUARE);
     }
 
+    TEST(HashInput, equality)
+    {
+        const Chess::int16 n_integers= 781;
+
+        Chess::Position::HashInput hash[2];
+
+        Chess::uint64 rands[n_integers];
+
+        for (int i= 0; i < n_integers; i++)
+        {
+            rands[i] =  Chess::rand64();
+        }
+
+        for (int i = 0; i < 2; i++)
+        {
+            Chess::int16 rind = 0;
+
+            for (int j = 0; j < 2; j++)
+            {
+                hash[i].castle_rights[Chess::player_t::white][j]
+                    = rands[rind++];
+                hash[i].castle_rights[Chess::player_t::black][j]
+                    = rands[rind++];
+            }
+
+            for (int j = 0; j < 8; j++)
+            {
+                hash[i].en_passant[j] = rands[rind++];
+            }
+
+            for (int j = 0; j < 64; j++)
+            {
+                hash[i].piece[Chess::player_t::white][
+                    Chess::piece_t::pawn  ][j] = rands[rind++];
+                hash[i].piece[Chess::player_t::white][
+                    Chess::piece_t::rook  ][j] = rands[rind++];
+                hash[i].piece[Chess::player_t::white][
+                    Chess::piece_t::knight][j] = rands[rind++];
+                hash[i].piece[Chess::player_t::white][
+                    Chess::piece_t::bishop][j] = rands[rind++];
+                hash[i].piece[Chess::player_t::white][
+                    Chess::piece_t::queen ][j] = rands[rind++];
+                hash[i].piece[Chess::player_t::white][
+                    Chess::piece_t::king  ][j] = rands[rind++];
+
+                hash[i].piece[Chess::player_t::black][
+                    Chess::piece_t::pawn  ][j] = rands[rind++];
+                hash[i].piece[Chess::player_t::black][
+                    Chess::piece_t::rook  ][j] = rands[rind++];
+                hash[i].piece[Chess::player_t::black][
+                    Chess::piece_t::knight][j] = rands[rind++];
+                hash[i].piece[Chess::player_t::black][
+                    Chess::piece_t::bishop][j] = rands[rind++];
+                hash[i].piece[Chess::player_t::black][
+                    Chess::piece_t::queen ][j] = rands[rind++];
+                hash[i].piece[Chess::player_t::black][
+                    Chess::piece_t::king  ][j] = rands[rind++];
+            }
+
+            hash[i].to_move = rands[rind++];
+
+            ASSERT_EQ(rind, n_integers);
+        }
+
+        EXPECT_EQ(hash[0], hash[1]);
+    }
+
+    TEST(HashInput, clear)
+    {
+        const Chess::int16 n_integers= 781;
+
+        Chess::Position::HashInput hash;
+
+        Chess::uint64 rands[n_integers];
+
+        for (int i= 0; i < n_integers; i++)
+        {
+            rands[i] =  Chess::rand64();
+        }
+
+        Chess::int16 rind = 0;
+
+        for (int j = 0; j < 2; j++)
+        {
+            hash.castle_rights[Chess::player_t::white][j]
+                = rands[rind++];
+            hash.castle_rights[Chess::player_t::black][j]
+                = rands[rind++];
+        }
+
+        for (int j = 0; j < 8; j++)
+        {
+            hash.en_passant[j] = rands[rind++];
+        }
+
+        for (int j = 0; j < 64; j++)
+        {
+            hash.piece[Chess::player_t::white][
+                Chess::piece_t::pawn  ][j] = rands[rind++];
+            hash.piece[Chess::player_t::white][
+                Chess::piece_t::rook  ][j] = rands[rind++];
+            hash.piece[Chess::player_t::white][
+                Chess::piece_t::knight][j] = rands[rind++];
+            hash.piece[Chess::player_t::white][
+                Chess::piece_t::bishop][j] = rands[rind++];
+            hash.piece[Chess::player_t::white][
+                Chess::piece_t::queen ][j] = rands[rind++];
+            hash.piece[Chess::player_t::white][
+                Chess::piece_t::king  ][j] = rands[rind++];
+
+            hash.piece[Chess::player_t::black][
+                Chess::piece_t::pawn  ][j] = rands[rind++];
+            hash.piece[Chess::player_t::black][
+                Chess::piece_t::rook  ][j] = rands[rind++];
+            hash.piece[Chess::player_t::black][
+                Chess::piece_t::knight][j] = rands[rind++];
+            hash.piece[Chess::player_t::black][
+                Chess::piece_t::bishop][j] = rands[rind++];
+            hash.piece[Chess::player_t::black][
+                Chess::piece_t::queen ][j] = rands[rind++];
+            hash.piece[Chess::player_t::black][
+                Chess::piece_t::king  ][j] = rands[rind++];
+        }
+
+        hash.to_move = rands[rind++];
+
+        ASSERT_EQ(rind, n_integers);
+
+        hash.clear();
+
+        const int size = sizeof(Position::HashInput);
+
+        const char* cp = (char*)&hash;
+
+        for (int i = 0; i < size; i++)
+        {
+            EXPECT_EQ(cp[i], 0);
+        }
+    }
+
     TEST(Position, hashCastleWhite)
     {
         Handle<std::ostream>
