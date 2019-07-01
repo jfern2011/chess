@@ -12,7 +12,7 @@ namespace Chess
      *
      * Represents a chess position
      */
-    class Position
+    class Position final
     {
 
     public:
@@ -205,7 +205,7 @@ namespace Chess
          * Bitmasks describing the allowed castling abilities for each
          * side
          */
-        BUFFER(char, _castle_rights, max_ply, 2);
+        BUFFER(uint8, _castle_rights, max_ply, 2);
 
         /**
          * A record of en passant squares, indexed by ply
@@ -217,13 +217,13 @@ namespace Chess
          * just informational, we don't bother incrementing it for
          * null moves
          */
-        int _full_move;
+        int32 _full_move;
 
         /**
          * The half-move clock (see FEN notation). Note that we do not
          * increment this for null moves
          */
-        BUFFER(int, _half_move, max_ply);
+        BUFFER(int32, _half_move, max_ply);
 
         /**
          * A set of 64-bit integers used to generate a Zobrist hash key
@@ -261,7 +261,7 @@ namespace Chess
         /**
          * The material balance, per side
          */
-        BUFFER(int, _material, 2);
+        BUFFER(uint16, _material, 2);
 
         /**
          *  Bitboards that give the locations of all squares occupied by
@@ -286,7 +286,7 @@ namespace Chess
         BUFFER(piece_t, _pieces, 64);
 
         /**
-         * The current ply
+         * The current ply (resets for every search)
          */
         int _ply;
 
@@ -330,7 +330,7 @@ namespace Chess
     inline uint64 Position::attacks_from(square_t square,
         player_t to_move) const
     {
-        return 0;
+        Abort(0);
     }
 
     /**
@@ -351,7 +351,7 @@ namespace Chess
     inline uint64 Position::attacks_from(square_t square,
         uint64 occupied, player_t to_move) const
     {
-        return 0;
+        Abort(0);
     }
 
 #ifndef DOXYGEN_SKIP
@@ -428,7 +428,7 @@ namespace Chess
     inline uint64 Position::attacks_from< piece_t::pawn >(square_t square,
         uint64, player_t to_move) const
     {
-        return attacks_from<piece_t::pawn>(square);
+        return attacks_from<piece_t::pawn>(square, to_move);
     }
 
     template <>
@@ -465,7 +465,7 @@ namespace Chess
         const uint64 occupied = _occupied[player_t::white] |
                                 _occupied[player_t::black];
 
-        auto& tables = DataTables::get();
+        const auto& tables = DataTables::get();
 
         out |= tables.pawn_attacks[flip(to_move)][square]
                 & _pawns[to_move];

@@ -185,6 +185,11 @@ namespace
         }
     }
 
+    TEST(Position, attacks_from)
+    {
+        
+    }
+
     TEST(Position, hashCastleWhite)
     {
         Handle<std::ostream>

@@ -8,41 +8,41 @@
 
 namespace Chess
 {
-	/**
-	 * @class OutputSource
-	 *
-	 * Allows individual components (e.g. the search algorithm) to write
-	 * to one or more shared stream objects
-	 */
-	class OutputSource
-	{
+    /**
+     * @class OutputSource
+     *
+     * Allows individual components (e.g. the search algorithm) to write
+     * to one or more shared stream objects
+     */
+    class OutputSource final
+    {
 
-	public:
+    public:
 
-		OutputSource(const std::string& name,
-			Handle<std::ostream> stream);
+        OutputSource(const std::string& name,
+            Handle<std::ostream> stream);
 
-		~OutputSource();
+        ~OutputSource();
 
-		std::string get_name() const;
+        std::string get_name() const;
 
-		bool write(const char* format, ...)
-			const;
+        bool write(const char* format, ...)
+            const;
 
-	private:
+    private:
 
-		/**
-		 * Name of the component handling this \ref
-		 * OutputSource
-		 */
-		const std::string _name;
+        /**
+         * Name of the component handling this \ref
+         * OutputSource
+         */
+        const std::string _name;
 
-		/**
-		 * The underlying stream object to write to
-		 */
-		Handle<std::ostream>
-			_stream;
-	};
+        /**
+         * The underlying stream object to write to
+         */
+        Handle<std::ostream>
+            _stream;
+    };
 }
 
 #endif
