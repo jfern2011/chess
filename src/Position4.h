@@ -85,13 +85,14 @@ namespace Chess
     public:
 
         Position(Handle<std::ostream> stream,
-                 const std::string& fen= init_fen);
+                 const std::string& fen = init_fen );
 
-        Position(const Position& other);
+        Position(const Position& other)            = default;
+        Position(Position&& other)                 = default;
+        Position& operator=(const Position& other) = default;
+        Position& operator=(Position&& other)      = default;
 
         ~Position();
-
-        Position& operator=( const Position& rhs );
 
         bool operator==(const Position& rhs) const;
 

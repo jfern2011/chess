@@ -156,116 +156,10 @@ namespace Chess
     }
 
     /**
-     * Copy constructor
-     *
-     * @param[in] other The Position to copy
-     */
-    Position::Position(const Position& other)
-    {
-        *this = other;
-    }
-
-    /**
      * Destructor
      */
     Position::~Position()
     {
-    }
-
-    /*
-     * Assignment operator
-     *
-     * @param [in] rhs The Position to assign *this to
-     *
-     * @return *this
-     */
-    Position& Position::operator=(const Position& rhs)
-    {
-        if (this != &rhs)
-        {
-            _bishops[player_t::white] =
-                rhs._bishops[player_t::white];
-            _bishops[player_t::black] =
-                rhs._bishops[player_t::black];
-
-            for (int i = 0; i < max_ply; i++)
-            {
-                _castle_rights[i][player_t::white] =
-                    rhs._castle_rights[i][player_t::white];
-                _castle_rights[i][player_t::black] =
-                    rhs._castle_rights[i][player_t::black];
-
-                _ep_info[i] = rhs._ep_info[i];
-            }
-
-            _full_move  = rhs._full_move;
-
-            for (int i = 0; i < max_ply; i++)
-            {
-                _half_move[i] = rhs._half_move[i];
-            }
-
-            _hash_input = rhs._hash_input;
-            _is_init    = rhs._is_init;
-
-            _kings[player_t::white]    =
-                rhs._kings[ player_t::white ];
-            _kings[player_t::black]    =
-                rhs._kings[ player_t::black ];
-
-            _king_sq[player_t::white]  =
-                rhs._king_sq[player_t::white];
-            _king_sq[player_t::black]  =
-                rhs._king_sq[player_t::black];
-
-            _knights[player_t::white]  =
-                rhs._knights[player_t::white];
-            _knights[player_t::black]  =
-                rhs._knights[player_t::black];
-
-            _material[player_t::white] =
-                rhs._material[player_t::white];
-            _material[player_t::black] =
-                rhs._material[player_t::black];
-
-            _occupied[player_t::white] =
-                rhs._occupied[player_t::white];
-            _occupied[player_t::black] =
-                rhs._occupied[player_t::black];
-
-            _output = rhs._output;
-
-            _pawns[player_t::white]    =
-                rhs._pawns[ player_t::white ];
-            _pawns[player_t::black]    =
-                rhs._pawns[ player_t::black ];
-
-            for (int i = 0; i < 64; i++)
-            {
-                _pieces[i] = rhs._pieces[i];
-            }
-
-            _ply = rhs._ply;
-
-            _queens[player_t::white]   =
-                rhs._queens[player_t::white ];
-            _queens[player_t::black]   =
-                rhs._queens[player_t::black ];
-
-            _rooks[player_t::white]    =
-                rhs._rooks[ player_t::white ];
-            _rooks[player_t::black]    =
-                rhs._rooks[ player_t::black ];
-
-            for (int i = 0; i < max_ply; i++)
-            {
-                _save_hash[i] = rhs._save_hash[i];
-            }
-
-            _to_move = rhs._to_move;
-        }
-
-        return *this;
     }
 
     /**
@@ -295,11 +189,12 @@ namespace Chess
         for (int i = 0; i < max_ply; i++)
         {
             same = same
-                && _ep_info[i]          == rhs._ep_info[i]
-                && _half_move[i]        == rhs._half_move[i]
-                && _castle_rights[i][0] == rhs._castle_rights[i][0]
-                && _castle_rights[i][1] == rhs._castle_rights[i][1]
-                && _save_hash[i]        == rhs._save_hash[i];
+                && _ep_info[i]             == rhs._ep_info[i]
+                && _half_move[i]           == rhs._half_move[i]
+                && _castle_rights[i][0]    == rhs._castle_rights[i][0]
+                && _castle_rights[i][1]    == rhs._castle_rights[i][1]
+                && _last_halfmove_reset[i] == rhs._last_halfmove_reset[i]
+                && _save_hash[i]           == rhs._save_hash[i];
         }
 
         same = same

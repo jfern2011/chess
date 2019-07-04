@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 
 #include <iostream>
+#include <utility>
 
 /*
  * Note: Include *after* gtest to protect against
@@ -183,6 +184,52 @@ namespace
         {
             EXPECT_EQ(cp[i], 0);
         }
+    }
+
+    TEST(Position, copy_ctor)
+    {
+        Chess::Handle<std::ostream>
+            stream(new std::ostream(std::cout.rdbuf()));
+
+        Chess::Position pos1(stream);
+        Chess::Position pos2( pos1 );
+
+        EXPECT_EQ(pos1, pos2);
+    }
+
+    TEST(Position, move_ctor)
+    {
+        Chess::Handle<std::ostream>
+            stream(new std::ostream(std::cout.rdbuf()));
+
+        Chess::Position pos1(stream);
+        Chess::Position pos2( pos1 );
+        Chess::Position pos3( std::move(pos1) );
+
+        EXPECT_EQ(pos2, pos3);
+    }
+
+    TEST(Position, copy_assign)
+    {
+        Chess::Handle<std::ostream>
+            stream(new std::ostream(std::cout.rdbuf()));
+
+        Chess::Position pos1(stream);
+        Chess::Position pos2 = pos1;
+
+        EXPECT_EQ(pos1, pos2);
+    }
+
+    TEST(Position, move_assign)
+    {
+        Chess::Handle<std::ostream>
+            stream(new std::ostream(std::cout.rdbuf()));
+
+        Chess::Position pos1(stream);
+        Chess::Position pos2( pos1 );
+        Chess::Position pos3 = std::move( pos1 );
+
+        EXPECT_EQ(pos2, pos3);
     }
 
     TEST(Position, attacks_from)
