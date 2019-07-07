@@ -115,7 +115,7 @@ namespace Util
      *
      ******************************************************************
      */
-    template<typename T> inline T get_bit(size_t bit)
+    template<typename T> inline T get_bit(std::size_t bit)
     {
         if (!(bit < 8*sizeof(T))) return (T)~0;
         return ((T)1) << bit;

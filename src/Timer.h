@@ -5,44 +5,44 @@
 
 namespace Chess
 {
-	/**
-	 * A simple profiler
-	 */
-	class Timer final
-	{
-		const int64 billion = 1e9;
+    /**
+     * A simple profiler
+     */
+    class Timer final
+    {
+        const int64 billion = 1e9;
 
-	public:
+    public:
 
-		Timer();
+        Timer();
 
-		~Timer();
+        ~Timer();
 
-		int64 elapsed() const;
+        int64 elapsed() const;
 
-		int64 start();
+        int64 start();
 
-		int64 stop();
+        int64 stop();
 
-	private:
+    private:
 
-		int64 _t_now() const;
+        int64 _t_now() const;
 
-		/**
-		 * True if the timer is running
-		 */
-		bool _is_running;
+        /**
+         * True if the timer is running
+         */
+        bool _is_running;
 
-		/**
-		 * Last start->stop period (ns)
-		 */
-		int64 _time_used;
+        /**
+         * Last start->stop period (ns)
+         */
+        int64 _time_used;
 
-		/**
-		 * The start time
-		 */
-		int64 _tstart;
-	};
+        /**
+         * The start time
+         */
+        int64 _tstart;
+    };
 }
 
 #endif
