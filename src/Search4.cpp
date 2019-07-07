@@ -165,7 +165,8 @@ namespace Chess
     {
         if (_next_node_check <= _node_count)
         {
-            const auto now = std::chrono::steady_clock::now();
+            const auto now =
+                        std::chrono::steady_clock::now();
             const auto dur = now - _start_time;
 
             if (_stop_time <= now)
