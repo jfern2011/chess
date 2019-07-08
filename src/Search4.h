@@ -31,7 +31,7 @@ namespace Chess
 
     private:
 
-        bool _out_of_time() const;
+        bool _check_timeout();
 
         void _save_pv(int32 depth, int32 move);
 
@@ -39,7 +39,7 @@ namespace Chess
 
         bool _is_init;
 
-        int32 _max_iterations;
+        int32 _max_depth;
 
         int64 _next_node_check;
 

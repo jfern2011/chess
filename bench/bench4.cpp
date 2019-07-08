@@ -18,17 +18,18 @@ int main(int argc, char** argv)
     // 8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1
     // r2q2rk/pb3p1p/2n4Q/5N2/8/8/PP3PPP/R3R1K1 w - - 0 1
 
-    Chess::Search4::duration_t dur(1000000000);
+    Chess::Search4::duration_t dur = std::chrono::seconds(2);
 
     Chess::Search4 search;
     AbortIfNot(search.init(pos), EXIT_FAILURE);
 
     std::clock_t begin = clock();
-    search.run(90000, dur);
+    const Chess::int16 score = search.run(90000, dur);
     std::clock_t end = clock();
 
     double elapsed = double(end - begin) / CLOCKS_PER_SEC;
 
+    std::cout << "Score = " << score << "\n";
     std::cout << "Finished in " << elapsed << " seconds."
         << std::endl;
 

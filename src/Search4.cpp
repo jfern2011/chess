@@ -11,7 +11,7 @@ namespace Chess
     Search4::Search4()
         : _aborted(false),
           _is_init(false),
-          _max_iterations(0),
+          _max_depth(1),
           _next_node_check(0),
           _node_count(0),
           _position(),
@@ -34,7 +34,7 @@ namespace Chess
         _position = pos;
 
         _aborted = false;
-        _next_node_check = 100;
+        _next_node_check = 0;
         _node_count  = 0;
         _qnode_count = 0;
 
@@ -141,20 +141,19 @@ namespace Chess
     {
         AbortIfNot(_is_init , false);
         AbortIfNot(depth > 0, false);
-
-        _max_iterations = depth;
         
-        _start_time = std::chrono::steady_clock::now();
-        _stop_time  = _start_time + timeout;
+        _start_time =  std::chrono::steady_clock::now();
+        _stop_time  =  _start_time + timeout;
 
         int16 score = -king_value;
 
-        for (int32 ply=0; ply < _max_iterations; ply++)
+        for (_max_depth =  1; _max_depth <= depth;
+             _max_depth++)
         {
-            const int16 temp = search_root();
+            const int16 tmp_score = search_root();
 
             if ( _aborted ) break;
-            score = temp;
+            score = tmp_score;
         }
 
         _is_init = false;
@@ -163,22 +162,10 @@ namespace Chess
 
     int16 Search4::search(int32 depth, int16 alpha, int16 beta)
     {
-        if (_next_node_check <= _node_count)
+        if (_next_node_check <= _node_count
+            && _check_timeout())
         {
-            const auto now =
-                        std::chrono::steady_clock::now();
-            const auto dur = now - _start_time;
-
-            if (_stop_time <= now)
-            {
-                _aborted = true; return beta;
-            }
-
-            // Check for timeouts once per second
-
-            const int64 nps  = _node_count / dur.count();
-            _next_node_check =
-                _node_count + nps;
+            _aborted = true; return beta;
         }
 
         Position& pos = *_position;
@@ -191,8 +178,8 @@ namespace Chess
         /*
          * Don't quiece() if we're in check:
          */
-        if (_max_iterations <= depth && !in_check)
-            return quiesce(depth, alpha, beta);
+        if (_max_depth <= depth && !in_check)
+            return quiesce( depth, alpha, beta );
 
         BUFFER(int32, moves, max_moves);
         size_t n_moves;
@@ -314,9 +301,24 @@ namespace Chess
         return -best.second;
     }
 
-    inline bool Search4::_out_of_time() const
+    bool Search4::_check_timeout()
     {
-        return std::chrono::steady_clock::now() > _stop_time;
+        const auto now = std::chrono::steady_clock::now();
+        const auto dur = now - _start_time;
+
+        if (_stop_time <= now)
+            return true;
+
+        // Check for timeouts once per second
+
+        const auto nps =
+                _node_count * decltype(dur)::period::den /
+                    dur.count();
+
+        _next_node_check =
+            _node_count + nps;
+
+        return false;
     }
 
     void Search4::_save_pv(int32 depth, int32 move)
