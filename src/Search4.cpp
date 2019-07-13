@@ -2,6 +2,7 @@
 #include <utility>
 
 #include "abort/abort.h"
+#include "chess_util4.h"
 #include "eval.h"
 #include "MoveGen4.h"
 #include "Search4.h"
@@ -35,6 +36,17 @@ namespace Chess
 
     Search4::~Search4()
     {
+    }
+
+    MoveList Search4::get_pv()
+    {
+        MoveList list; list.init(_pv[0], 0);
+
+        for (size_t i = 0;
+             _pv[0][i] && i < max_ply; i++ )
+            list.size++;
+
+        return list;
     }
 
     auto Search4::get_stats() const -> Statistics
@@ -179,6 +191,22 @@ namespace Chess
 
             if ( _aborted ) break;
             score = tmp_score;
+
+            // Display the principal variation
+            // TODO Dump this to a stream configured
+            // for UCI or human-readable format
+
+            MoveList list = get_pv();
+            int32 move = 0;
+
+            std::printf("[%2d]: %hd --> ", _max_depth, score);
+            while (list.next(move))
+            {
+                std::printf("%s ",
+                    format_san(move, "").c_str());
+            }
+            std::printf("\n");
+            std::fflush(stdout);
         }
 
         _is_init = false;
@@ -217,6 +245,8 @@ namespace Chess
 
             if (n_moves == 0)
             {
+                _stats.lnode_count++;
+
                 /*
                  * Mark the end of this variation:
                  */
@@ -239,6 +269,8 @@ namespace Chess
 
             if (n_moves == 0)
             {
+                _stats.lnode_count++;
+
                 /*
                  * Mark the end of this variation:
                  */
@@ -248,6 +280,7 @@ namespace Chess
             }
         }
 
+        int32 best_move = 0;
         for (size_t i = 0; i < n_moves; i++)
         {
             _stats.node_count++;
@@ -264,8 +297,14 @@ namespace Chess
                 return beta;
 
             if ( score > alpha )
+            {
+                best_move = move;
                 alpha = score;
+            }
         }
+
+        if (best_move)
+            _save_pv(depth, best_move);
 
         return alpha;
     }
@@ -319,6 +358,7 @@ namespace Chess
 
             if (score < best.second)
             {
+                _save_pv(0, move);
                 best.first = move; best.second
                     = score;
             }

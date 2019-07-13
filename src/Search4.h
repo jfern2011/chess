@@ -3,6 +3,7 @@
 
 #include <chrono>
 
+#include "MoveList.h"
 #include "Position4.h"
 
 namespace Chess
@@ -40,6 +41,8 @@ namespace Chess
         Search4();
 
         ~Search4();
+
+        MoveList get_pv();
 
         Statistics get_stats() const;
 
