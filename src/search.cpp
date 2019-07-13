@@ -555,12 +555,12 @@ namespace Chess
 
 			// Null move signals the end of a variation:
 			if (move == 0) return;
-		}
 
-		for (register uint32 i = depth+1; i < max_ply; i++)
-		{
-			if ((_pv[depth][i] = _pv[depth+1][i])
-				== 0) break;
+            for (register uint32 i = depth+1; i < max_ply; i++)
+            {
+                if ((_pv[depth][i] = _pv[depth+1][i])
+                    == 0) break;
+            }
 		}
 	}
 
