@@ -12,6 +12,27 @@ namespace Chess
 
     public:
 
+        class Statistics final
+        {
+
+        public:
+
+            Statistics();
+
+            Statistics(const Statistics& stats) = default;
+            Statistics(Statistics&& stats) = default;
+
+            Statistics& operator=(const Statistics& stats) = default;
+            Statistics& operator=(Statistics&& stats) = default;
+
+            ~Statistics() = default;
+
+            void clear();
+
+            int64 node_count;
+            int64 qnode_count;
+        };
+
         using duration_t =
             std::chrono::steady_clock::duration;
 
@@ -19,7 +40,9 @@ namespace Chess
 
         ~Search4();
 
-        bool init(Handle< Position > pos);
+        Statistics get_stats() const;
+
+        bool init(Handle<Position> pos);
 
         int16 quiesce(int32 depth, int16 alpha, int16 beta);
 
@@ -43,17 +66,15 @@ namespace Chess
 
         int64 _next_node_check;
 
-        int64 _node_count;
-
         Handle<Position> _position;
 
         BUFFER(int32, _pv, max_ply,
             max_ply);
 
-        int64 _qnode_count;
-
         std::chrono::steady_clock::time_point
             _start_time;
+
+        Statistics _stats;
 
         std::chrono::steady_clock::time_point
             _stop_time;

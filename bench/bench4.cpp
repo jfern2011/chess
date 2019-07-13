@@ -29,7 +29,12 @@ int main(int argc, char** argv)
 
     double elapsed = double(end - begin) / CLOCKS_PER_SEC;
 
-    std::cout << "Score = " << score << "\n";
+    auto stats = search.get_stats();
+
+    std::cout << "Score   = " << score << "\n";
+    std::cout << "Nodes   = " << stats.node_count  << "\n";
+    std::cout << "Quiesce = " << stats.qnode_count << "\n";
+
     std::cout << "Finished in " << elapsed << " seconds."
         << std::endl;
 

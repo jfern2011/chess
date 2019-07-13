@@ -8,14 +8,24 @@
 
 namespace Chess
 {
+    Search4::Statistics::Statistics()
+        : node_count(0),
+          qnode_count(0)
+    {
+    }
+
+    void Search4::Statistics::clear()
+    {
+        node_count  = 0;
+        qnode_count = 0;
+    }
+
     Search4::Search4()
         : _aborted(false),
           _is_init(false),
           _max_depth(1),
           _next_node_check(0),
-          _node_count(0),
           _position(),
-          _qnode_count(0),
           _start_time(),
           _stop_time()
     {
@@ -23,6 +33,11 @@ namespace Chess
 
     Search4::~Search4()
     {
+    }
+
+    auto Search4::get_stats() const -> Statistics
+    {
+        return _stats;
     }
 
     bool Search4::init(Handle<Position> pos)
@@ -35,8 +50,8 @@ namespace Chess
 
         _aborted = false;
         _next_node_check = 0;
-        _node_count  = 0;
-        _qnode_count = 0;
+        
+        _stats.clear();
 
         const auto size = sizeof( _pv[0][0] )
             * max_ply * max_ply;
@@ -111,14 +126,14 @@ namespace Chess
 
         for (size_t i = 0; i < n_moves; i++)
         {
-            _node_count++; _qnode_count++;
+            _stats.node_count++; _stats.qnode_count++;
 
             const int32 move = moves[i];
 
             pos.make_move(move);
 
-            const int16 score =
-                -quiesce( depth+1, -beta, -alpha );
+            const int16 score
+                = -quiesce(depth + 1, -beta, -alpha );
 
             pos.unmake_move(move);
 
@@ -162,7 +177,7 @@ namespace Chess
 
     int16 Search4::search(int32 depth, int16 alpha, int16 beta)
     {
-        if (_next_node_check <= _node_count
+        if (_next_node_check <= _stats.node_count
             && _check_timeout())
         {
             _aborted = true; return beta;
@@ -224,7 +239,7 @@ namespace Chess
 
         for (size_t i = 0; i < n_moves; i++)
         {
-            _node_count++;
+            _stats.node_count++;
 
             const int32 move = moves[i];
 
@@ -280,7 +295,7 @@ namespace Chess
 
         for (size_t i = 0; i < n_moves; i++)
         {
-            _node_count++;
+            _stats.node_count++;
 
             const int32 move = moves[i];
 
@@ -312,11 +327,11 @@ namespace Chess
         // Check for timeouts once per second
 
         const auto nps =
-                _node_count * decltype(dur)::period::den /
-                    dur.count();
+            _stats.node_count * decltype(dur)::period::den /
+                dur.count();
 
         _next_node_check =
-            _node_count + nps;
+            _stats.node_count + nps;
 
         return false;
     }
