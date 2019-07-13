@@ -190,7 +190,8 @@ namespace Chess
         if (_next_node_check <= _stats.node_count
             && _check_timeout())
         {
-            _aborted = true; return beta;
+            _aborted = true; _stats.lnode_count++;
+            return beta;
         }
 
         Position& pos = *_position;
