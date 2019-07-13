@@ -76,7 +76,7 @@ namespace Chess
         return true;
     }
 
-    int16 Search4::quiesce(int32 depth, int16 alpha, int16 beta)
+    int16 Search4::quiesce(uint32 depth, int16 alpha, int16 beta)
     {
         Position& pos = *_position;
 
@@ -128,7 +128,7 @@ namespace Chess
          */
         if (n_moves == 0 || max_ply <= depth)
         {
-            _save_pv(max_ply-1, 0);
+            _save_pv(depth, 0);
 
             _stats.lnode_count++;
             return score;
@@ -174,13 +174,13 @@ namespace Chess
         return alpha;
     }
 
-    int16 Search4::run(int32 depth, duration_t timeout)
+    int16 Search4::run(uint32 depth, duration_t timeout)
     {
         AbortIfNot(_is_init , false);
         AbortIfNot(depth > 0, false);
         
-        _start_time =  std::chrono::steady_clock::now();
-        _stop_time  =  _start_time + timeout;
+        _start_time  =  std::chrono::steady_clock::now();
+        _stop_time   =  _start_time + timeout;
 
         int16 score = -king_value;
 
@@ -199,7 +199,7 @@ namespace Chess
             MoveList list = get_pv();
             int32 move = 0;
 
-            std::printf("[%2d]: %hd --> ", _max_depth, score);
+            std::printf("[%2u]: %hd --> ", _max_depth, score);
             while (list.next(move))
             {
                 std::printf("%s ",
@@ -213,7 +213,7 @@ namespace Chess
         return score;
     }
 
-    int16 Search4::search(int32 depth, int16 alpha, int16 beta)
+    int16 Search4::search(uint32 depth, int16 alpha, int16 beta)
     {
         if (_next_node_check <= _stats.node_count
             && _check_timeout())
@@ -387,7 +387,7 @@ namespace Chess
         return false;
     }
 
-    void Search4::_save_pv(int32 depth, int32 move)
+    void Search4::_save_pv(uint32 depth, int32 move)
     {
         if (depth < max_ply)
         {
@@ -397,7 +397,7 @@ namespace Chess
             if (move == 0) return;
         }
 
-        for  (int32 i = depth + 1; i < max_ply; i += 1 )
+        for  (uint32 i = depth + 1; i < max_ply; i += 1)
         {
             if ((_pv[depth][i] = _pv[depth+1][i])
                 == 0) break;

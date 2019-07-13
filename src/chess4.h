@@ -18,13 +18,13 @@ namespace Chess
 	using int16  = std::int16_t;
 	using uint8  = std::uint8_t;
 
-	const int max_ply      = 512;
-	const int max_moves    = 256;
-	const int pawn_value   = 100;
-	const int knight_value = 325;
-	const int bishop_value = 325;
-	const int rook_value   = 500;
-	const int queen_value  = 975;
+	const uint32 max_ply      = 512;
+	const uint32 max_moves    = 256;
+	const int    pawn_value   = 100;
+	const int    knight_value = 325;
+	const int    bishop_value = 325;
+	const int    rook_value   = 500;
+	const int    queen_value  = 975;
 
 	/* Required by unit tests */
 	const int empty_value  = 0;

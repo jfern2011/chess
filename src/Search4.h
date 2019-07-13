@@ -30,9 +30,9 @@ namespace Chess
 
             void clear();
 
-            int64 lnode_count;
-            int64 node_count;
-            int64 qnode_count;
+            uint64 lnode_count;
+            uint64 node_count;
+            uint64 qnode_count;
         };
 
         using duration_t =
@@ -48,11 +48,11 @@ namespace Chess
 
         bool init(Handle<Position> pos);
 
-        int16 quiesce(int32 depth, int16 alpha, int16 beta);
+        int16 quiesce(uint32 depth, int16 alpha, int16 beta);
 
-        int16 run(int32 depth, duration_t timeout);
+        int16 run(uint32 depth, duration_t timeout);
 
-        int16 search (int32 depth, int16 alpha, int16 beta);
+        int16 search (uint32 depth, int16 alpha, int16 beta);
 
         int16 search_root();
 
@@ -66,9 +66,9 @@ namespace Chess
 
         bool _is_init;
 
-        int32 _max_depth;
+        uint32 _max_depth;
 
-        int64 _next_node_check;
+        uint64 _next_node_check;
 
         Handle<Position> _position;
 
