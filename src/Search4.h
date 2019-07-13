@@ -29,6 +29,7 @@ namespace Chess
 
             void clear();
 
+            int64 lnode_count;
             int64 node_count;
             int64 qnode_count;
         };

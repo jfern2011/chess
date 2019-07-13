@@ -33,6 +33,7 @@ int main(int argc, char** argv)
 
     std::cout << "Score   = " << score << "\n";
     std::cout << "Nodes   = " << stats.node_count  << "\n";
+    std::cout << "Lnodes  = " << stats.lnode_count << "\n";
     std::cout << "Quiesce = " << stats.qnode_count << "\n";
 
     std::cout << "Finished in " << elapsed << " seconds."

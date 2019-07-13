@@ -9,13 +9,15 @@
 namespace Chess
 {
     Search4::Statistics::Statistics()
-        : node_count(0),
+        : lnode_count(0),
+          node_count(0),
           qnode_count(0)
     {
     }
 
     void Search4::Statistics::clear()
     {
+        lnode_count = 0;
         node_count  = 0;
         qnode_count = 0;
     }
@@ -80,6 +82,8 @@ namespace Chess
 
             if (n_moves == 0)
             {
+                _stats.lnode_count++;
+
                 /*
                  * Mark the end of this variation:
                  */
@@ -92,25 +96,19 @@ namespace Chess
                 return depth - king_value;
             }
         }
+        else
+        {
+            n_moves = MoveGen::generate_captures(
+                pos, moves);
+        }
 
         /*
          * Get an initial score for this position:
          */
         const int16 score =
-            tables.sign[pos.get_turn()] * evaluate(pos);
-
-        /*
-         * Check if we can fail-high; not sure if this is correct for
-         * zugzwang positions...
-         */
-        if (score >= beta)
-            return beta;
+            tables.sign[ pos.get_turn() ] * evaluate(pos);
 
         if (alpha < score) alpha = score;
-
-        if (!in_check)
-            n_moves = MoveGen::generate_captures(
-                pos, moves);
 
         /*
          * Return the heuristic value of this position if
@@ -118,8 +116,20 @@ namespace Chess
          */
         if (n_moves == 0 || max_ply <= depth)
         {
-            _save_pv(depth, 0);
+            _save_pv(max_ply-1, 0);
+
+            _stats.lnode_count++;
             return score;
+        }
+
+        /*
+         * Check if we can fail-high; not sure if this is
+         * correct for zugzwang positions...
+         */
+        if (score >= beta)
+        {
+            _stats.lnode_count++;
+            return beta;
         }
 
         int32 best_move = 0;
