@@ -186,7 +186,7 @@ namespace Chess
                 && _rooks[j]    == rhs._rooks[j];
         }
 
-        for (int i = 0; i < max_ply; i++)
+        for (uint32 i = 0; i < max_ply; i++)
         {
             same = same
                 && _ep_info[i]             == rhs._ep_info[i]
@@ -934,7 +934,7 @@ namespace Chess
 
         _to_move  = player_t::white;
 
-        for (int i = 0; i < max_ply; i++)
+        for (uint32 i = 0; i < max_ply; i++)
         {
             _last_halfmove_reset[i] = 0;
 

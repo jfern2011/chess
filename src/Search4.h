@@ -60,7 +60,7 @@ namespace Chess
 
         bool _check_timeout();
 
-        void _save_pv(int32 depth, int32 move);
+        void _save_pv(uint32 depth, int32 move);
 
         bool _aborted;
 

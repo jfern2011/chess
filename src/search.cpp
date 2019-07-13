@@ -322,7 +322,7 @@ namespace Chess
 		 * Return the heuristic value of this position if
 		 * no captures are left:
 		 */
-		if (n_moves == 0 || max_ply <= depth)
+		if (n_moves == 0 || static_cast<int>(max_ply) <= depth)
 		{
 			_exact++;
 
@@ -488,7 +488,7 @@ namespace Chess
 
 			// Back up the PV from this iteration
 
-			for (int i = 0; _pv[0][i] && i < max_ply; i++)
+			for (uint32 i = 0; _pv[0][i] && i < max_ply; i++)
 			{
 				_saved_pv[i] = _pv[0][i];
 			}
@@ -547,7 +547,7 @@ namespace Chess
 	 * @param [in] depth The starting depth
 	 * @param [in] move  The move to save at depth \a depth
 	 */
-	void Search::save_pv(int depth, int move)
+	void Search::save_pv(uint32 depth, int move)
 	{
 		if (depth < max_ply)
 		{
@@ -557,7 +557,7 @@ namespace Chess
 			if (move == 0) return;
 		}
 
-		for (register int i = depth+1; i < max_ply; i++)
+		for (register uint32 i = depth+1; i < max_ply; i++)
 		{
 			if ((_pv[depth][i] = _pv[depth+1][i])
 				== 0) break;

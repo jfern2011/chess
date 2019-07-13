@@ -43,7 +43,7 @@ namespace Chess
 
 		int16 run(int timeout, int depth, int32 best);
 
-		void save_pv(int depth, int move);
+		void save_pv(uint32 depth, int move);
 
 		int16 search( int depth, int16 alpha, int16 beta,
 		              bool do_null );
