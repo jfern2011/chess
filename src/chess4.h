@@ -20,11 +20,11 @@ namespace Chess
 
 	const uint32 max_ply      = 512;
 	const uint32 max_moves    = 256;
-	const int    pawn_value   = 100;
-	const int    knight_value = 325;
-	const int    bishop_value = 325;
-	const int    rook_value   = 500;
-	const int    queen_value  = 975;
+	const int16  pawn_value   = 100;
+	const int16  knight_value = 325;
+	const int16  bishop_value = 325;
+	const int16  rook_value   = 500;
+	const int16  queen_value  = 975;
 
 	/* Required by unit tests */
 	const int empty_value  = 0;
@@ -33,7 +33,7 @@ namespace Chess
 	 * Assign the king a large value that still fits within
 	 * 16 bits (signed)
 	 */
-	const int king_value   = 32000;
+	const int16 king_value = 32000;
 
 	const int castle_K = 0x1;
 	const int castle_Q = 0x2;
