@@ -97,14 +97,15 @@ namespace Chess
         bool operator==(const Position& rhs) const;
 
         template <piece_t type>
-        uint64 attacks_from(
-            square_t square, player_t to_move= player_t::both) const;
+        uint64 attacks_from(square_t square,
+                            player_t to_move = player_t::both) const;
 
         template <piece_t type>
         uint64 attacks_from(square_t square, uint64 occupied,
-            player_t to_move = player_t::both) const;
+                            player_t to_move = player_t::both) const;
 
-        uint64 attacks_to  (square_t square, player_t to_move) const;
+        uint64 attacks_to  (square_t square,
+                            player_t to_move) const;
 
         bool can_castle_long( player_t to_move) const;
 

@@ -234,7 +234,20 @@ namespace
 
     TEST(Position, attacks_from)
     {
-        
+        Chess::Handle<std::ostream>
+            stream(new std::ostream(std::cout.rdbuf()));
+
+        Chess::Position pos(stream, "6k1/1P6/8/1R1p4/8/8/1P6/6K1 w - - 0 1");
+
+        const Chess::uint64 one = 1;
+
+        const Chess::uint64 attacks =
+            pos.attacks_from<Chess::piece_t::rook>(Chess::square_t::B5);
+
+        //Chess::uint64 expected =
+
+
+
     }
 
     TEST(Position, hashCastleWhite)

@@ -13,7 +13,7 @@ int main(int argc, char** argv)
             stream(new std::ostream(std::cout.rdbuf()));
 
     Chess::Handle<Chess::Position>
-        pos(new Chess::Position(stream/*, "r6k/6pp/7N/8/8/1Q6/8/7K w - - 0 1"*/));
+        pos(new Chess::Position(stream, "q1r4k/6pp/7N/8/8/1Q6/6PP/7K w - - 0 1"));
 
     // 8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1
     // r2q2rk/pb3p1p/2n4Q/5N2/8/8/PP3PPP/R3R1K1 w - - 0 1
