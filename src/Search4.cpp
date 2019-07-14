@@ -185,6 +185,8 @@ namespace Chess
         for (_max_depth =  1; _max_depth <= depth;
              _max_depth++)
         {
+            _pv_set.clear();
+            
             const int16 tmp_score = search_root();
 
             if ( _aborted ) break;
