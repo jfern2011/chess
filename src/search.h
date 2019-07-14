@@ -7,7 +7,7 @@
 #include "OutputChannel.h"
 #include "see.h"
 #include "SearchPhase.h"
-#include "Variation.h"
+//#include "Variation.h"
 
 namespace Chess
 {
@@ -62,7 +62,7 @@ namespace Chess
 		bool store(uint64 key, uint8 draft, int16 score,
 				   int32 move, int type);
 
-		Variation lines;
+		//Variation lines;
 
 		HashTable<1> hash_table;
 

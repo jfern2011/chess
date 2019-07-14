@@ -423,7 +423,7 @@ namespace Chess
 
 		_set_defaults(); _is_init = false;
 
-		lines.resize(_multipv ? 10 : 1); // Number of lines
+		//lines.resize(_multipv ? 10 : 1); // Number of lines
 
 		auto& channel = *_channel;
 
@@ -460,7 +460,7 @@ namespace Chess
 					score = search( 0, -king_value, king_value, true );
 
 				if (_abort_search) break;
-
+/*
 				lines.insert(get_pv(), score);
 
 				{
@@ -477,7 +477,7 @@ namespace Chess
 							lines[0], temp, moveN )
 						<< std::string("\n");
 				}
-
+*/
 				prev_score = score;
 			}
 			else
@@ -494,7 +494,7 @@ namespace Chess
 			}
 
 			_iteration_depth++;
-			lines.clear();
+//			lines.clear();
 		}
 
 		double pct_fh = _fail_hi * 100.0 / _node_count;
@@ -1266,7 +1266,7 @@ namespace Chess
 					= score;
 			}
 
-			lines.insert(get_pv(), -score);
+//			lines.insert(get_pv(), -score);
 		}
 
 		return -best.second;
@@ -1433,6 +1433,6 @@ namespace Chess
 		_lmr_factor = 1;
 		_lmr_thresh = 2;
 
-		lines.clear();
+//		lines.clear();
 	}
 }

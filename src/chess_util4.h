@@ -171,11 +171,12 @@ namespace Chess
 	 *                          disambiguates that move, e.g. Ngf3
 	 *                          specifies the file
 	 * @param [in] in_check     If true, then append "+"
+     * @param [in] mate         True if checkmated
 	 *
 	 * @return The formatted string
 	 */
 	inline std::string format_san(int move, std::string file_or_rank,
-								  bool in_check=false)
+		bool in_check=false, bool mate=false)
 	{
 		const piece_t captured = extract_captured(move);
 		const square_t from    = extract_from(move);
@@ -204,6 +205,7 @@ namespace Chess
 		out += square_str[to];
 
 		if (in_check) out += "+";
+        if (mate)     out += "+";
 
 		if (promote != piece_t::empty)
 		{

@@ -29,6 +29,7 @@ namespace Chess
           _max_depth(1),
           _next_node_check(0),
           _position(),
+          _pv_set(),
           _start_time(),
           _stop_time()
     {
@@ -38,15 +39,12 @@ namespace Chess
     {
     }
 
-    MoveList Search4::get_pv()
+    std::vector<int32>
+    Search4::get_pv(size_t index) const
     {
-        MoveList list; list.init(_pv[0], 0);
+        AbortIfNot(index < _pv_set.size(), std::vector<int32>());
 
-        for (size_t i = 0;
-             _pv[0][i] && i < max_ply; i++ )
-            list.size++;
-
-        return list;
+        return _pv_set[index];
     }
 
     auto Search4::get_stats() const -> Statistics
@@ -176,8 +174,8 @@ namespace Chess
 
     int16 Search4::run(uint32 depth, duration_t timeout)
     {
-        AbortIfNot(_is_init , false);
-        AbortIfNot(depth > 0, false);
+        AbortIfNot(_is_init , -king_value);
+        AbortIfNot(depth > 0, -king_value);
         
         _start_time  =  std::chrono::steady_clock::now();
         _stop_time   =  _start_time + timeout;
@@ -196,16 +194,12 @@ namespace Chess
             // TODO Dump this to a stream configured
             // for UCI or human-readable format
 
-            MoveList list = get_pv();
-            int32 move = 0;
+            Position temp(*_position);
+            const std::string line =
+                MultiVariation::format( get_pv(0), temp);
 
-            std::printf("[%2u]: %hd --> ", _max_depth, score);
-            while (list.next(move))
-            {
-                std::printf("%s ",
-                    format_san(move, "").c_str());
-            }
-            std::printf("\n");
+            std::printf("[%2u]: %5hd --> %s\n",
+                        _max_depth, score, line.c_str());
             std::fflush(stdout);
         }
 
@@ -359,12 +353,26 @@ namespace Chess
             if (score < best.second)
             {
                 _save_pv(0, move);
+
+                // Insert the newly computed variation
+
+                _pv_set.insert(_get_pv(),
+                    -best.second);
+
                 best.first = move; best.second
                     = score;
             }
         }
 
         return -best.second;
+    }
+
+    bool Search4::setNumberOfLines(size_t size)
+    {
+        AbortIfNot(size < max_moves, false);
+        _pv_set.resize(size);
+
+        return true;
     }
 
     bool Search4::_check_timeout()
@@ -385,6 +393,17 @@ namespace Chess
             _stats.node_count + nps;
 
         return false;
+    }
+
+    MoveList Search4::_get_pv()
+    {
+        MoveList list; list.init(_pv[0], 0);
+
+        for (size_t i = 0;
+             _pv[0][i] && i < max_ply; i++ )
+            list.size++;
+
+        return list;
     }
 
     void Search4::_save_pv(uint32 depth, int32 move)

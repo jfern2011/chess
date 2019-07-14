@@ -40,6 +40,9 @@ namespace Chess
 
     private:
 
+        static bool _is_mated(const Position& pos,
+                              player_t to_move);
+
         /**
          * Encapsulates a line with a corresponding score
          */

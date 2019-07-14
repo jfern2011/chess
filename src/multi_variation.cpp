@@ -20,15 +20,8 @@ namespace Chess
     }
 
     /**
-     * Destructor
-     */
-    MultiVariation::~MultiVariation()
-    {
-    }
-
-    /**
-     * Clear all variations (does not affect the
-     * \ref size())
+     *  Clear all variations (does not affect the
+     *  \ref size())
      */
     void MultiVariation::clear()
     {
@@ -276,12 +269,35 @@ namespace Chess
 
             const bool played_check = pos.in_check(
                 pos.get_turn());
+            const bool mate = _is_mated(pos, pos.get_turn());
 
             out += pad(format_san(move,
                 file_or_rank(played_check, move),
-                    played_check)) + " ";
+                    played_check, mate)) + " ";
         }
         
         return out;
+    }
+
+    /**
+     * Determine if the given side is checkmated
+     *
+     * @param [in] pos     A Position
+     * @param [in] to_move The player
+     *
+     * @return  True if \a to_move is checkmated
+     */
+    bool MultiVariation::_is_mated(const Position& pos,
+                                   player_t to_move)
+    {
+        if (pos.in_check(to_move))
+        {
+            BUFFER( int32, moves, max_moves );
+
+            return MoveGen::generate_check_evasions(
+                    pos, moves) == 0;
+        }
+
+        return false;
     }
 }

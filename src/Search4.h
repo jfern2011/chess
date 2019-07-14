@@ -4,6 +4,7 @@
 #include <chrono>
 
 #include "MoveList.h"
+#include "multi_variation.h"
 #include "Position4.h"
 
 namespace Chess
@@ -42,7 +43,7 @@ namespace Chess
 
         ~Search4();
 
-        MoveList get_pv();
+        std::vector<int32> get_pv(size_t index) const;
 
         Statistics get_stats() const;
 
@@ -56,9 +57,13 @@ namespace Chess
 
         int16 search_root();
 
+        bool setNumberOfLines(size_t size);
+
     private:
 
         bool _check_timeout();
+
+        MoveList _get_pv();
 
         void _save_pv(uint32 depth, int32 move);
 
@@ -74,6 +79,8 @@ namespace Chess
 
         BUFFER(int32, _pv, max_ply,
             max_ply);
+
+        MultiVariation _pv_set;
 
         std::chrono::steady_clock::time_point
             _start_time;
