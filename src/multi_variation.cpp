@@ -175,7 +175,7 @@ namespace Chess
          * destination square. These require prepending either
          * the file or rank prior to the destination square
          */
-        auto file_or_rank = [=](bool check, int32 mv)
+        auto file_or_rank = [&](bool check, int32 mv)
         {
             std::string out;
 
