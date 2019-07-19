@@ -16,7 +16,7 @@ namespace Chess
     MultiVariation::MultiVariation(size_t nLines)
         : _capacity(0), _lines()
     {
-        resize(nLines);
+        reserve(nLines);
     }
 
     /**
@@ -128,7 +128,7 @@ namespace Chess
      *
      * @param[in] size The new size
      */
-    void MultiVariation::resize(size_t size)
+    void MultiVariation::reserve(size_t size)
     {
         _capacity = size;
 

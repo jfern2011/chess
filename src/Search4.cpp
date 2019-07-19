@@ -372,7 +372,7 @@ namespace Chess
     bool Search4::setNumberOfLines(size_t size)
     {
         AbortIfNot(size < max_moves, false);
-        _pv_set.resize(size);
+        _pv_set.reserve(size);
 
         return true;
     }

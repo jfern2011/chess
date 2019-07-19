@@ -33,7 +33,7 @@ namespace Chess
         void                      clear     ();
         const std::vector<int32>& get       (size_t index , int16& score) const;
         bool                      insert    (const MoveList& line, int16 score);
-        void                      resize    (size_t size);
+        void                      reserve   (size_t size);
         size_t                    size      () const;
         static std::string        format    (const std::vector<int32>& line,
                                              Position& pos, size_t moveNum = 1);
