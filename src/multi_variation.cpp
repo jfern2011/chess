@@ -170,37 +170,43 @@ namespace Chess
             else return mv;
         };
 
+        BUFFER( int32, mv_list, max_moves );
+        size_t n_moves = 0;
+
+        /*
+         * Generate the list of moves
+         */
+        auto generate_moves = [&](bool check)
+        {
+            if (check)
+            {
+                n_moves = MoveGen::generate_check_evasions(
+                    pos, mv_list);
+            }
+            else
+            {
+                n_moves = MoveGen::generate_captures(
+                    pos, mv_list);
+
+                n_moves += MoveGen::generate_noncaptures(
+                    pos, &mv_list[n_moves]);
+            }
+        };
+
         /*
          * Disambiguate between moves of the same piece and
          * destination square. These require prepending either
          * the file or rank prior to the destination square
          */
-        auto file_or_rank = [&pos](bool check, int32 mv)
+        auto file_or_rank = [&](bool check, int32 mv)
         {
             std::string out;
 
-            BUFFER( int32, moves, max_moves );
-            size_t n_moves;
-
-            if (check)
-            {
-                n_moves = MoveGen::generate_check_evasions(
-                    pos, moves);
-
-                if (n_moves == 0) return out;
-            }
-            else
-            {
-                n_moves = MoveGen::generate_captures(
-                    pos, moves);
-
-                n_moves += MoveGen::generate_noncaptures(
-                    pos, &moves[n_moves]);
-            }
+            if (check && n_moves == 0) { return (out); };
 
             for (size_t i = 0; i < n_moves; i++)
             {
-                const int32 move = moves[i];
+                const int32 move = mv_list[i];
                 if (move == mv) continue;
 
                 if (extract_to(mv) == extract_to(move) &&
@@ -264,6 +270,11 @@ namespace Chess
             {
                 moveNum++;
             }
+
+            // Generate moves for the current player
+
+            generate_moves( pos.in_check(
+                pos.get_turn()) );
 
             pos.make_move(move);
 
