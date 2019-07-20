@@ -196,13 +196,19 @@ namespace Chess
             // TODO Dump this to a stream configured
             // for UCI or human-readable format
 
-            Position temp(*_position);
-            const std::string line =
-                MultiVariation::format( get_pv(0), temp);
+            for (size_t i = 0; i < _pv_set.size(); i++)
+            {
+                int16 pvs;
+                const std::vector<int32> line_v = _pv_set.get(i, pvs);
 
-            std::printf("[%2u]: %5hd --> %s\n",
-                        _max_depth, score, line.c_str());
-            std::fflush(stdout);
+                Position temp(*_position);
+                const std::string line =
+                    MultiVariation::format(line_v, temp);
+
+                std::printf("[%2u]: %5hd --> %s \n" , _max_depth, pvs,
+                            line.c_str());
+                std::fflush(stdout);
+            }
         }
 
         _is_init = false;
@@ -352,18 +358,18 @@ namespace Chess
 
             pos.unmake_move(move);
 
+            _save_pv(0, move);
+
             if (score < best.second)
             {
-                _save_pv(0, move);
-
-                // Insert the newly computed variation
-
-                _pv_set.insert(_get_pv(),
-                    -best.second);
-
                 best.first = move; best.second
                     = score;
             }
+
+            // Insert the newly computed variation
+
+            _pv_set.insert(_get_pv(),
+                -score);
         }
 
         return -best.second;
