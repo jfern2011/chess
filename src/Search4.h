@@ -51,7 +51,10 @@ namespace Chess
 
         int16 quiesce(uint32 depth, int16 alpha, int16 beta);
 
-        int16 run(uint32 depth, duration_t timeout, uint64 node_limit);
+        int16 run(uint32 depth,
+                  duration_t timeout,
+                  uint64 node_limit,
+                  bool mate_search );
 
         int16 search (uint32 depth, int16 alpha, int16 beta);
 
@@ -70,6 +73,8 @@ namespace Chess
         bool _aborted;
 
         bool _is_init;
+
+        bool _mate_search;
 
         uint32 _max_depth;
 

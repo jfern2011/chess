@@ -26,6 +26,7 @@ namespace Chess
     Search4::Search4()
         : _aborted(false),
           _is_init(false),
+          _mate_search(false),
           _max_depth(1),
           _max_nodes(0),
           _next_node_check(0),
@@ -63,6 +64,7 @@ namespace Chess
 
         _aborted         = false;
         _next_node_check = 0;
+        _mate_search     = false;
         _max_nodes       = 0;
 
         _stats.clear();
@@ -175,14 +177,32 @@ namespace Chess
     }
 
     int16 Search4::run(uint32 depth, duration_t timeout,
-                       uint64 node_limit)
+        uint64 node_limit, bool mate_search )
     {
         AbortIfNot(_is_init , -king_value);
         AbortIfNot(depth > 0, -king_value);
         
+        _mate_search =  mate_search;
         _max_nodes   =  node_limit;
         _start_time  =  std::chrono::steady_clock::now();
         _stop_time   =  _start_time + timeout;
+
+        if (mate_search)
+        {
+            // Because we're not scoring positions
+            // in mate search, lines that do not yield
+            // a checkmate are just random moves
+
+            AbortIfNot(setNumberOfLines(1), 0);
+        }
+
+        const int16 mate_margin = 1000;
+        const int16 mate_thresh = queen_value  * 8 +
+                                  rook_value   * 2 +
+                                  knight_value * 2 + 
+                                  bishop_value * 2 + 
+                                  queen_value  * 1 +
+                                  mate_margin;
 
         int16 score = -king_value;
 
@@ -196,6 +216,8 @@ namespace Chess
             if ( _aborted ) break;
             score = tmp_score;
 
+            const bool mate_found = score > mate_thresh;
+
             // Display the principal variation
             // TODO Dump this to a stream configured
             // for UCI or human-readable format
@@ -203,16 +225,24 @@ namespace Chess
             for (size_t i = 0; i < _pv_set.size(); i++)
             {
                 int16 pvs;
-                const std::vector<int32> line_v = _pv_set.get(i, pvs);
+                const std::vector< int32 > line_v = _pv_set.get(i, pvs);
 
                 Position temp(*_position);
                 const std::string line =
                     MultiVariation::format(line_v, temp);
 
-                std::printf("[%2u]: %5hd --> %s \n" , _max_depth, pvs,
-                            line.c_str());
-                std::fflush(stdout);
+                if (!_mate_search || (_mate_search && mate_found))
+                {
+                    std::printf("[%2u]: %5hd --> %s\n", _max_depth, pvs,
+                                line.c_str());
+                    std::fflush(stdout);
+                }
             }
+
+            // If a mate was found, we need not
+            // search further
+
+            if (mate_found) break;
         }
 
         _is_init = false;
@@ -238,7 +268,7 @@ namespace Chess
         /*
          * Don't quiece() if we're in check:
          */
-        if (_max_depth <= depth && !in_check)
+        if (_max_depth <= depth && !in_check && !_mate_search)
             return quiesce( depth, alpha, beta );
 
         BUFFER(int32, moves, max_moves);
@@ -285,6 +315,13 @@ namespace Chess
                 return 0;
             }
         }
+
+        // We're not in checkmate. If we're performing a mate
+        // search, and at max depth, just return
+
+        if (_mate_search &&
+            _max_depth <= depth)
+            return 0;
 
         int32 best_move = 0;
         for (size_t i = 0; i < n_moves; i++)
