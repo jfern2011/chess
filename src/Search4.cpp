@@ -27,6 +27,7 @@ namespace Chess
         : _aborted(false),
           _is_init(false),
           _max_depth(1),
+          _max_nodes(0),
           _next_node_check(0),
           _position(),
           _pv_set(),
@@ -60,9 +61,10 @@ namespace Chess
 
         _position = pos;
 
-        _aborted = false;
+        _aborted         = false;
         _next_node_check = 0;
-        
+        _max_nodes       = 0;
+
         _stats.clear();
 
         const auto size = sizeof( _pv[0][0] )
@@ -172,11 +174,13 @@ namespace Chess
         return alpha;
     }
 
-    int16 Search4::run(uint32 depth, duration_t timeout)
+    int16 Search4::run(uint32 depth, duration_t timeout,
+                       uint64 node_limit)
     {
         AbortIfNot(_is_init , -king_value);
         AbortIfNot(depth > 0, -king_value);
         
+        _max_nodes   =  node_limit;
         _start_time  =  std::chrono::steady_clock::now();
         _stop_time   =  _start_time + timeout;
 
@@ -218,7 +222,7 @@ namespace Chess
     int16 Search4::search(uint32 depth, int16 alpha, int16 beta)
     {
         if (_next_node_check <= _stats.node_count
-            && _check_timeout())
+            && _check_abort())
         {
             _aborted = true; _stats.lnode_count++;
             return beta;
@@ -383,7 +387,7 @@ namespace Chess
         return true;
     }
 
-    bool Search4::_check_timeout()
+    bool Search4::_check_abort()
     {
         const auto now = std::chrono::steady_clock::now();
         const auto dur = now - _start_time;
@@ -400,7 +404,10 @@ namespace Chess
         _next_node_check =
             _stats.node_count + nps;
 
-        return false;
+        // Check if we reached the node limit:
+
+        return _stats.node_count >=
+            _max_nodes;
     }
 
     MoveList Search4::_get_pv()

@@ -51,7 +51,7 @@ namespace Chess
 
         int16 quiesce(uint32 depth, int16 alpha, int16 beta);
 
-        int16 run(uint32 depth, duration_t timeout);
+        int16 run(uint32 depth, duration_t timeout, uint64 node_limit);
 
         int16 search (uint32 depth, int16 alpha, int16 beta);
 
@@ -61,7 +61,7 @@ namespace Chess
 
     private:
 
-        bool _check_timeout();
+        bool _check_abort();
 
         MoveList _get_pv();
 
@@ -72,6 +72,8 @@ namespace Chess
         bool _is_init;
 
         uint32 _max_depth;
+
+        uint64 _max_nodes;
 
         uint64 _next_node_check;
 
