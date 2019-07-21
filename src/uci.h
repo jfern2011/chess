@@ -20,9 +20,6 @@ namespace Chess
 
         ~UCI() = default;
 
-        bool install(std::shared_ptr<EngineInterface>
-            engine) override;
-
     protected:
 
     };

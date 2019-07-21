@@ -21,10 +21,10 @@ namespace Chess
         Protocol& operator=(const Protocol& protocol) = default;
         Protocol& operator=(Protocol&& protocol)      = default;
 
-        virtual ~Protocol() = default;
+        virtual ~Protocol() = 0;
 
-        virtual bool install(std::shared_ptr<EngineInterface>
-                             engine) = 0;
+        bool install(std::shared_ptr<EngineInterface>
+                     engine);
 
     protected:
 

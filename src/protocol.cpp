@@ -6,4 +6,16 @@ namespace Chess
         : m_engine(nullptr)
     {
     }
+
+    Protocol::~Protocol()
+        = default;
+
+    bool Protocol::install(std::shared_ptr<EngineInterface>
+                           engine)
+    {
+        AbortIfNot(engine, false);
+        
+        m_engine = engine;
+        return true;
+    }
 }
