@@ -13,5 +13,6 @@ cc_library(
 		"//perft:__pkg__",
 		"//ut:__pkg__",
 		"//bench:__pkg__",
+        "//exec:__pkg__",
 	],
 )

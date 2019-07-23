@@ -20,6 +20,11 @@ namespace Chess
 
         ~UCI() = default;
 
+        bool cmd_stop(const std::string& );
+
+        bool init(std::shared_ptr<CommandInterface>
+                  cmd) override;
+
     protected:
 
     };

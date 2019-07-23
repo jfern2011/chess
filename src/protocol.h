@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 
+#include "command_interface.h"
 #include "engine_interface.h"
 
 namespace Chess
@@ -21,9 +22,12 @@ namespace Chess
         Protocol& operator=(const Protocol& protocol) = default;
         Protocol& operator=(Protocol&& protocol)      = default;
 
-        virtual ~Protocol() = 0;
+        virtual ~Protocol() = default;
 
-        bool install(std::shared_ptr<EngineInterface>
+        virtual bool init(
+            std::shared_ptr<CommandInterface> cmd) = 0;
+
+        bool install(std::shared_ptr< EngineInterface >
                      engine);
 
     protected:

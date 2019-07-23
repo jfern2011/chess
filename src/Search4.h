@@ -43,6 +43,8 @@ namespace Chess
 
         ~Search4();
 
+        void abort();
+
         std::vector<int32> get_pv(size_t index) const;
 
         Statistics get_stats() const;

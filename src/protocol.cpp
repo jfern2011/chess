@@ -7,9 +7,6 @@ namespace Chess
     {
     }
 
-    Protocol::~Protocol()
-        = default;
-
     bool Protocol::install(std::shared_ptr<EngineInterface>
                            engine)
     {

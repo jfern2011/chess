@@ -41,6 +41,11 @@ namespace Chess
     {
     }
 
+    void Search4::abort()
+    {
+        _aborted = true;
+    }
+
     std::vector<int32>
     Search4::get_pv(size_t index) const
     {
