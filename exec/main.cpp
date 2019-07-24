@@ -82,7 +82,7 @@ bool go(int argc, char** argv)
     AbortIfNot(engine->m_search, false);
 
     std::shared_ptr< Chess::Protocol >
-        protocol(new Chess::UCI());
+        protocol(new Chess::UCI(stream));
     AbortIfNot(protocol, false);
 
     AbortIfNot(protocol->install(engine),
@@ -102,7 +102,7 @@ bool go(int argc, char** argv)
         &Chess::CommandInterface::process, *cmd_interface,
             std::placeholders::_1);
 
-    while (true)
+    while (!protocol->terminated())
     {
         AbortIfNot(handler.poll(1000),
             false);

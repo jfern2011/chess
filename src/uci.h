@@ -10,7 +10,8 @@ namespace Chess
 
     public:
 
-        UCI();
+        explicit UCI(std::shared_ptr< std::ostream >
+                     stream);
 
         UCI(const UCI& uci) = default;
         UCI(UCI&& uci)      = default;
@@ -20,7 +21,9 @@ namespace Chess
 
         ~UCI() = default;
 
-        bool cmd_stop(const std::string& );
+        bool cmd_isready(const std::string& );
+        bool cmd_quit   (const std::string& );
+        bool cmd_stop   (const std::string& );
 
         bool init(std::shared_ptr<CommandInterface>
                   cmd) override;
