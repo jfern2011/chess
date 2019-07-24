@@ -44,12 +44,16 @@ namespace Chess
 
             if ( (size_t)fsize > _buf.size() )
                 _buf.resize(fsize);
+            
+            _buf.assign( _buf.size(), '\0' );
 
             AbortIf(::read(_fd, &_buf[0], fsize) < 0,
                 false);
 
+            const std::string input(_buf, 0, fsize );
+
             std::vector< std::string > tokens; Util::split(
-                _buf, tokens, "\n");
+                input, tokens, "\n");
 
             if (input_signal)
             {
