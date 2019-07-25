@@ -9,7 +9,7 @@ namespace Chess
     {
     }
 
-    bool Protocol::install(std::shared_ptr< EngineInterface>
+    bool Protocol::install(std::shared_ptr<EngineInterface >
                            engine)
     {
         AbortIfNot(engine, false);

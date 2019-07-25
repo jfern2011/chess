@@ -5,8 +5,27 @@
 namespace Chess
 {
     UCI::UCI( std::shared_ptr<std::ostream> stream )
-        : Protocol(stream)
+        : Protocol(stream), m_debug(false)
     {
+    }
+
+    bool UCI::cmd_debug(const std::string& enable)
+    {
+        if (enable == "on")
+        {
+            m_debug = true;
+        }
+        else if (enable == "off")
+        {
+            m_debug = false;
+        }
+        else
+        {
+            Abort(false, "Received '%s'",
+                  enable.c_str());
+        }
+
+        return true;
     }
 
     bool UCI::cmd_isready(const std::string& )
@@ -38,6 +57,10 @@ namespace Chess
                    cmd)
     {
         AbortIfNot(cmd, false);
+
+        AbortIfNot(cmd->install("debug", std::bind(
+            &UCI::cmd_debug  , std::ref(*this), std::placeholders::_1)),
+                false);
 
         AbortIfNot(cmd->install("isready", std::bind(
             &UCI::cmd_isready, std::ref(*this), std::placeholders::_1)),
