@@ -21,10 +21,11 @@ namespace Chess
 
         ~UCI() = default;
 
-        bool cmd_debug  (const std::string& enable);
-        bool cmd_isready(const std::string& );
-        bool cmd_quit   (const std::string& );
-        bool cmd_stop   (const std::string& );
+        bool cmd_debug     (const std::string& enable);
+        bool cmd_isready   (const std::string& );
+        bool cmd_quit      (const std::string& );
+        bool cmd_stop      (const std::string& );
+        bool cmd_ucinewgame(const std::string& );
 
         bool init(std::shared_ptr<CommandInterface>
                   cmd) override;
