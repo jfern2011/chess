@@ -1652,11 +1652,19 @@ namespace Chess
 			const piece_t captured = extract_captured(move);
 			const square_t from    = extract_from(move);
 			const piece_t moved    = extract_moved(move);
+            const piece_t promote  = extract_promote(move);
 			const square_t to      = extract_to(move);
 
 			const square_t king_square = pos.get_king_square(to_move);
 
 			const auto& tables = DataTables::get();
+
+            /*
+             * Make sure we have valid from/to squares
+             */
+            if ( from == square_t::BAD_SQUARE
+                || to == square_t::BAD_SQUARE )
+                return false;
 
 			/*
 			 * Verify that (1) the moved piece exists on the origin square,
@@ -1803,6 +1811,14 @@ namespace Chess
 							pos.piece_on(step1) != piece_t::empty)
 						return false;
 				}
+
+                if (promote != piece_t::empty)
+                {
+                    if (!(get_rank(to) == 7 && to_move == player_t::white))
+                        return false;
+                    if (!(get_rank(to) == 0 && to_move == player_t::black))
+                        return false;
+                }
 				break;
 			case piece_t::bishop:
 			case piece_t::rook:
