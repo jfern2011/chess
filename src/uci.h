@@ -23,6 +23,7 @@ namespace Chess
 
         bool cmd_debug     (const std::string& enable);
         bool cmd_isready   (const std::string& );
+        bool cmd_position  (const std::string& args);
         bool cmd_quit      (const std::string& );
         bool cmd_stop      (const std::string& );
         bool cmd_ucinewgame(const std::string& );
@@ -30,7 +31,7 @@ namespace Chess
         bool init(std::shared_ptr<CommandInterface>
                   cmd) override;
 
-    protected:
+    private:
 
         bool m_debug;
     };
