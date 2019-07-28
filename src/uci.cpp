@@ -160,9 +160,6 @@ namespace Chess
         // Update the internal position:
 
         *m_engine->m_master = master;
-
-        (*m_stream) << m_engine->m_master->get_fen() << "\n";
-         m_stream->flush();
         return true;
     }
 
