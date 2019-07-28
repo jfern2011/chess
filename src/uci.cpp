@@ -5,9 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "abort/abort.h"
 #include "MoveGen4.h"
-#include "util/str_util.h"
 
 namespace Chess
 {
@@ -149,7 +147,7 @@ namespace Chess
 
                 AbortIfNot(MoveGen::validate_move(
                         master, move, in_check),
-                    false, "'%s'", mv->c_str());
+                    false);
 
                 // The move has been verified; play it
 
@@ -175,6 +173,19 @@ namespace Chess
         AbortIfNot(m_engine->m_search, false);
 
         m_engine->m_search->abort();
+        return true;
+    }
+
+    bool UCI::cmd_uci(const std::string& )
+    {
+        AbortIfNot(m_stream, false);
+
+        auto& stream = *m_stream;
+
+        stream << "id name Anonymous\n";
+        stream << "id author Jason L. Fernandez\n";
+
+        stream.flush();
         return true;
     }
 
@@ -226,5 +237,21 @@ namespace Chess
                 false);
 
         return true;
+    }
+
+    OptionBase::OptionBase(const std::string& name,
+                           const std::string& type)
+        : m_name(name), m_type(type)
+    {
+    }
+
+    std::string OptionBase::name() const
+    {
+        return m_name;
+    }
+
+    std::string OptionBase::type() const
+    {
+        return m_type;
     }
 }
