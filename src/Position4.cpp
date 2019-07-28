@@ -571,14 +571,16 @@ namespace Chess
     /**
      * Reset to the position encoded in Forsyth–Edwards Notation (FEN)
      *
-     * @param [in] fen    A FEN position
+     * @param [in] fenPos A FEN position
      *
      * @return True if the new FEN position was successfully processed
      */
-    bool Position::reset(const std::string& fen)
+    bool Position::reset(const std::string& fenPos)
     {
         Position backup(*this);
         int square = 63;
+
+        const std::string fen = Util::trim( fenPos );
 
         // Clear member fields. Note this sets _ply = 0
         set_default();
