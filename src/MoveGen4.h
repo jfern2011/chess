@@ -1814,9 +1814,9 @@ namespace Chess
 
                 if (promote != piece_t::empty)
                 {
-                    if (!(get_rank(to) == 7 && to_move == player_t::white))
+                    if (get_rank(to) != 7 && to_move == player_t::white)
                         return false;
-                    if (!(get_rank(to) == 0 && to_move == player_t::black))
+                    if (get_rank(to) != 0 && to_move == player_t::black)
                         return false;
                 }
 				break;
@@ -1842,10 +1842,10 @@ namespace Chess
 							 && pos.can_castle_short( to_move ))
 					{
 						if ((occupied & tables.kingside[to_move])
-							|| !pos.under_attack(tables.castle_OO_path [to_move][0],
-												 opponent)
-							|| !pos.under_attack(tables.castle_OO_path [to_move][1],
-												 opponent))
+							|| pos.under_attack(tables.castle_OO_path [to_move][0],
+												opponent)
+							|| pos.under_attack(tables.castle_OO_path [to_move][1],
+												opponent))
 						{
 							return false;
 						}
@@ -1854,10 +1854,10 @@ namespace Chess
 								&& pos.can_castle_long(to_move))
 					{
 						if ((occupied & tables.queenside[to_move])
-							|| !pos.under_attack(tables.castle_OOO_path[to_move][0],
-												 opponent)
-							|| !pos.under_attack(tables.castle_OOO_path[to_move][1],
-												 opponent))
+							|| pos.under_attack(tables.castle_OOO_path[to_move][0],
+												opponent)
+							|| pos.under_attack(tables.castle_OOO_path[to_move][1],
+												opponent))
 						{
 							return false;
 						}
