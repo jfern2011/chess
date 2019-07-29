@@ -9,8 +9,65 @@
 
 namespace Chess
 {
+    OptionBase::OptionBase(const std::string& name,
+                           const std::string& type)
+        : m_name(name), m_type(type)
+    {
+    }
+
+    std::string OptionBase::name() const
+    {
+        return m_name;
+    }
+
+    std::string OptionBase::type() const
+    {
+        return m_type;
+    }
+
+    Check::Check(const std::string& name, bool initValue)
+        : Option(name, "check"),
+          m_default(initValue)
+    {
+        m_uciOutput = " name " + m_name +
+                      " type " + m_type +
+                      " default ";
+
+        m_uciOutput += m_default ? "true" : "false";
+    }
+
+    Spin::Spin(const std::string& name,
+               int64 initValue, int64 min, int64 max)
+        : Option(name, "spin"),
+          m_default(initValue),
+          m_max(max),
+          m_min(min)
+    {
+        m_uciOutput = " name "    + m_name +
+                      " type "    + m_type +
+                      " default " + std::to_string(m_default) +
+                      " min "     + std::to_string(m_min)     +
+                      " max "     + std::to_string(m_max);
+    }
+
+    Combo::Combo(const std::string& name,
+                 const std::string& initValue)
+        : Option(name, "combo")
+    {
+        m_options.push_back(initValue);
+        m_default = initValue;
+
+        m_uciOutput = " name "    + m_name +
+                      " type "    + m_type +
+                      " default " + m_default;
+
+        for (auto& var : m_options)
+            m_uciOutput += " var " + var;
+    }
+
     UCI::UCI( std::shared_ptr<std::ostream> stream )
-        : Protocol(stream), m_debug(false)
+        : Protocol(stream),
+          m_debug(false), m_options()
     {
     }
 
@@ -211,6 +268,7 @@ namespace Chess
                    cmd)
     {
         AbortIfNot(cmd, false);
+        AbortIfNot(initOptions(), false);
 
         AbortIfNot(cmd->install("debug", std::bind(
             &UCI::cmd_debug     , std::ref(*this), std::placeholders::_1)),
@@ -239,19 +297,8 @@ namespace Chess
         return true;
     }
 
-    OptionBase::OptionBase(const std::string& name,
-                           const std::string& type)
-        : m_name(name), m_type(type)
+    bool UCI::initOptions()
     {
-    }
-
-    std::string OptionBase::name() const
-    {
-        return m_name;
-    }
-
-    std::string OptionBase::type() const
-    {
-        return m_type;
+        return true;
     }
 }
