@@ -197,6 +197,50 @@ namespace Chess
             m_uciOutput += " var " + var;
     }
 
+    class Button final : public OptionBase
+    {
+
+    public:
+
+        using updater_t = std::function<bool()>;
+
+        Button(const std::string& name);
+
+        Button(const Button& button) = default;
+        Button(Button&& button)      = default;
+
+        Button& operator=(const Button& button) = default;
+        Button& operator=(Button&& button)      = default;
+
+        ~Button() = default;
+
+        bool update( const std::string&  )
+            override;
+
+        updater_t m_updater;
+    };
+
+    class String final : public Option< std::string >
+    {
+
+    public:
+
+        String(const std::string& name,
+               const std::string& initValue);
+
+        String(const String& string) = default;
+        String(String&& string)      = default;
+
+        String& operator=(const String& string) = default;
+        String& operator=(String&& string)      = default;
+
+        ~String() = default;
+
+    private:
+
+        std::string m_default;
+    };
+
     class UCI final : public Protocol
     {
 

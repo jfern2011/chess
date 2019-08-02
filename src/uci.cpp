@@ -25,6 +25,11 @@ namespace Chess
         return m_type;
     }
 
+    std::string OptionBase::print() const
+    {
+        return "option" + m_uciOutput + "\n";
+    }
+
     Check::Check(const std::string& name, bool initValue)
         : Option(name, "check"),
           m_default(initValue)
@@ -63,6 +68,30 @@ namespace Chess
 
         for (auto& var : m_options)
             m_uciOutput += " var " + var;
+    }
+
+    Button::Button(const std::string& name)
+        : OptionBase(name, "button"),
+          m_updater()
+    {
+        m_uciOutput = " name " + m_name +
+                      " type " + m_type;
+    }
+
+    bool Button::update (const std::string& )
+    {
+        AbortIfNot(m_updater  , false);
+        AbortIfNot(m_updater(), false);
+        return true;
+    }
+
+    String::String(const std::string& name,
+                   const std::string& initValue)
+        : Option(name, "string")
+    {
+        m_uciOutput = " name "    + m_name +
+                      " type "    + m_type +
+                      " default " + m_default;
     }
 
     UCI::UCI( std::shared_ptr<std::ostream> stream )
