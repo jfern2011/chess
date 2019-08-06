@@ -421,9 +421,9 @@ namespace Chess
         return -best.second;
     }
 
-    bool Search4::setNumberOfLines(size_t size)
+    bool Search4::setNumberOfLines(const int64& size)
     {
-        AbortIfNot(size < max_moves, false);
+        AbortIfNot( (size_t)size < max_moves, false );
         _pv_set.reserve(size);
 
         return true;

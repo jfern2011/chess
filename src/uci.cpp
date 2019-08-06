@@ -271,7 +271,13 @@ namespace Chess
         stream << "id name Anonymous\n";
         stream << "id author Jason L. Fernandez\n";
 
-        stream.flush();
+        for (const auto& option : m_options)
+        {
+            stream<< option.second->print()<< "\n";
+        }
+
+        stream << "uciok\n" << std::flush;
+
         return true;
     }
 
@@ -319,6 +325,10 @@ namespace Chess
             &UCI::cmd_stop      , std::ref(*this), std::placeholders::_1)),
                 false);
 
+        AbortIfNot(cmd->install("uci", std::bind(
+            &UCI::cmd_uci       , std::ref(*this), std::placeholders::_1)),
+                false);
+
         AbortIfNot(cmd->install("ucinewgame", std::bind(
             &UCI::cmd_ucinewgame, std::ref(*this), std::placeholders::_1)),
                 false);
@@ -328,6 +338,23 @@ namespace Chess
 
     bool UCI::initOptions()
     {
+        AbortIfNot(m_engine, false);
+        AbortIfNot(m_engine->m_search, false);
+
+        {
+            auto opt = std::make_shared<Spin>("MultiPV",  // Name
+                                              1,          // Default
+                                              1,          // Min
+                                              max_moves); // Max
+            AbortIfNot(opt, false);
+
+            opt->m_updater = std::bind(&Search4::setNumberOfLines,
+                                       std::ref(*m_engine->m_search),
+                                       std::placeholders::_1);
+
+            m_options["MultiPV"] = opt;
+        }
+
         return true;
     }
 }

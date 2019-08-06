@@ -62,7 +62,9 @@ namespace Chess
 
         int16 search_root();
 
-        bool setNumberOfLines(size_t size);
+        // Configuration
+
+        bool setNumberOfLines(const int64& size);
 
     private:
 
