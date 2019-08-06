@@ -253,6 +253,55 @@ namespace Chess
         return true;
     }
 
+    bool UCI::cmd_setoption (const std::string& args)
+    {
+        const std::string argsLc = Util::to_lower(args);
+
+        std::vector< std::string > tokens;
+        Util::split(argsLc, tokens);
+
+        AbortIf(tokens.size() < 2, false);
+
+        AbortIf(Util::trim(tokens[0]) != "name", false);
+
+        const size_t nameStart  =
+            argsLc.find("name" ) + 4;
+        const size_t valueStart =
+            argsLc.find("value");
+
+        AbortIfNot(nameStart < args.size(), false );
+
+        const size_t len =
+            valueStart == std::string::npos ?
+                valueStart : (valueStart-nameStart);
+
+        const std::string name =
+            Util::trim( argsLc.substr(nameStart, len) );
+
+        auto iter = m_options.find(name);
+
+        AbortIf( iter == m_options.end(), false );
+
+        if (valueStart != std::string::npos)
+        {
+            AbortIfNot(valueStart+5 < args.size(),
+                false);
+
+            const std::string value =
+                Util::trim( args.substr(valueStart+5) );
+
+            AbortIfNot(iter->second->update(value),
+                false);
+        }
+        else // this is a button (contains no arguments)
+        {
+            AbortIfNot(iter->second->update("---"),
+                false);
+        }
+
+        return true;
+    }
+
     bool UCI::cmd_stop( const std::string&  )
     {
         AbortIfNot(m_engine, false);
@@ -268,15 +317,15 @@ namespace Chess
 
         auto& stream = *m_stream;
 
-        stream << "id name Anonymous\n";
-        stream << "id author Jason L. Fernandez\n";
+        stream  <<  "id name Anonymous\n";
+        stream  <<  "id author Jason L. Fernandez\n";
 
         for (const auto& option : m_options)
         {
-            stream<< option.second->print()<< "\n";
+            stream << option.second->print() << "\n";
         }
 
-        stream << "uciok\n" << std::flush;
+        stream  <<  "uciok\n" << std::flush;
 
         return true;
     }
@@ -321,6 +370,10 @@ namespace Chess
             &UCI::cmd_quit      , std::ref(*this), std::placeholders::_1)),
                 false);
 
+        AbortIfNot(cmd->install("setoption", std::bind(
+            &UCI::cmd_setoption , std::ref(*this), std::placeholders::_1)),
+                false);
+
         AbortIfNot(cmd->install("stop", std::bind(
             &UCI::cmd_stop      , std::ref(*this), std::placeholders::_1)),
                 false);
@@ -342,7 +395,7 @@ namespace Chess
         AbortIfNot(m_engine->m_search, false);
 
         {
-            auto opt = std::make_shared<Spin>("MultiPV",  // Name
+            auto opt = std::make_shared<Spin>("multipv",  // Name
                                               1,          // Default
                                               1,          // Min
                                               max_moves); // Max
@@ -352,7 +405,7 @@ namespace Chess
                                        std::ref(*m_engine->m_search),
                                        std::placeholders::_1);
 
-            m_options["MultiPV"] = opt;
+            m_options["multipv"] = opt;
         }
 
         return true;
