@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstring>
 #include <utility>
 
@@ -32,6 +33,7 @@ namespace Chess
           _next_node_check(0),
           _position(),
           _pv_set(),
+          m_restrictSearch(),
           _start_time(),
           _stop_time()
     {
@@ -59,13 +61,54 @@ namespace Chess
         return _stats;
     }
 
-    bool Search4::init(Handle<Position> pos)
+    bool Search4::init(Handle<Position> pos,
+                       const std::vector<int32>& moves)
     {
         _is_init = false;
 
-        AbortIfNot(pos, false);
+        AbortIfNot( pos, false );
 
         _position = pos;
+
+        // Generate the restricted list of moves
+        // that will be searched
+
+        BUFFER(int32, legalMoves, max_moves);
+        size_t n_moves;
+
+        if (pos->in_check(pos->get_turn()))
+        {
+            n_moves = MoveGen::generate_check_evasions(
+                *pos, legalMoves);
+        }
+        else
+        {
+            n_moves = MoveGen::generate_captures(
+                *pos, legalMoves);
+
+            n_moves += MoveGen::generate_noncaptures(
+                *pos, &legalMoves[n_moves]);
+        }
+
+        if (moves.empty())
+        {
+            m_restrictSearch = std::move(
+                std::vector<int32>( legalMoves, legalMoves+n_moves));
+        }
+        else
+        {
+            auto legals = std::move(
+                std::vector<int32>( legalMoves, legalMoves+n_moves));
+
+            for (auto move : moves)
+            {
+                AbortIf(std::find(legals.begin(),
+                    legals.end(), move) == legals.end(),
+                        false);
+            }
+
+            m_restrictSearch = moves;
+        }
 
         _aborted         = false;
         _next_node_check = 0;
@@ -391,11 +434,9 @@ namespace Chess
         auto best = std::make_pair<int32,int16>(
             0, king_value+1);
 
-        for (size_t i = 0; i < n_moves; i++)
+        for (auto move : m_restrictSearch)
         {
             _stats.node_count++;
-
-            const int32 move = moves[i];
 
             pos.make_move( move );
 

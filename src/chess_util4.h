@@ -162,6 +162,28 @@ namespace Chess
 		return static_cast<player_t>(player ^ 1);
 	}
 
+    /**
+     * Get the UCI-compatible form of a set of internal move bits
+     *
+     * @param[in] move The move to convert
+     *
+     * @return The UCI representation of this move
+     */
+    inline std::string formatCoordinate(int32 move)
+    {
+        const square_t from    = extract_from(move);
+        const square_t to      = extract_to(move);
+        const piece_t  promote = extract_promote(move);
+
+        std::string out(square_str[from]);
+        out += square_str[to];
+
+        if (promote != piece_t::empty)
+            out += enum2piece ( promote );
+
+        return out;
+    }
+
 	/**
 	 * Format a move in standard algebraic notation
 	 *

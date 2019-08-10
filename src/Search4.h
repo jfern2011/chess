@@ -1,8 +1,6 @@
 #ifndef __SEARCH4_H__
 #define __SEARCH4_H__
 
-#include <chrono>
-
 #include "MoveList.h"
 #include "multi_variation.h"
 #include "Position4.h"
@@ -36,9 +34,6 @@ namespace Chess
             uint64 qnode_count;
         };
 
-        using duration_t =
-            std::chrono::steady_clock::duration;
-
         Search4();
 
         ~Search4();
@@ -49,7 +44,8 @@ namespace Chess
 
         Statistics get_stats() const;
 
-        bool init(Handle<Position> pos);
+        bool init(Handle<Position> pos,
+                  const std::vector<int32>& moves);
 
         int16 quiesce(uint32 depth, int16 alpha, int16 beta);
 
@@ -92,6 +88,9 @@ namespace Chess
             max_ply);
 
         MultiVariation _pv_set;
+
+        std::vector<int32>
+            m_restrictSearch;
 
         std::chrono::steady_clock::time_point
             _start_time;

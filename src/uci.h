@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "Position4.h"
 #include "protocol.h"
 
 #include "abort/abort.h"
@@ -258,6 +259,7 @@ namespace Chess
         ~UCI() = default;
 
         bool cmd_debug     (const std::string& enable);
+        bool cmd_go        (const std::string& args);
         bool cmd_isready   (const std::string& );
         bool cmd_position  (const std::string& args);
         bool cmd_quit      (const std::string& );
@@ -272,6 +274,9 @@ namespace Chess
     private:
 
         bool initOptions();
+
+        int32 str2move(const Position& pos,
+                       const std::string& str) const;
 
         bool m_debug;
 

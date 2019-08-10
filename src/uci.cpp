@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -119,6 +120,217 @@ namespace Chess
         return true;
     }
 
+    bool UCI::cmd_go( const std::string& args )
+    {
+        AbortIfNot(m_engine, false);
+        AbortIfNot(m_engine->m_search, false);
+        AbortIfNot(m_engine->m_master, false);
+
+        const uint64 maxU64 =
+            std::numeric_limits<uint64>::max();
+
+        // Inputs used by the search class
+
+        uint32             depth        = max_moves;
+        bool               mateSearch   = false;
+        uint64             nodeLimit    = maxU64;
+        std::vector<int32> searchMoves;
+        duration_t         timeout      = duration_t::max();
+
+        const std::string argsLc =
+            Util::to_lower(args);
+
+        std::vector< std::string > tokens;
+        Util::split(argsLc, tokens);
+
+        auto iter = std::find(tokens.begin(),
+            tokens.end(), "searchmoves");
+
+        if (iter != tokens.end())
+        {
+            const Position& master = *m_engine->m_master;
+
+            const bool in_check =
+                master.in_check(master.get_turn());
+
+            for (auto mv = ++iter, end = tokens.end();
+                 mv != end; ++mv)
+            {
+                const int32 move = str2move(
+                    master, *mv);
+
+                if (move == -1) break;
+
+                AbortIfNot(MoveGen::validate_move(
+                        master, move, in_check),
+                    false);
+
+                // Move has been verified as playable
+
+                searchMoves.push_back(move);
+            }
+        }
+
+        iter = std::find(
+            tokens.begin() , tokens.end(), "mate");
+
+        if (iter != tokens.end())
+        {
+            mateSearch = true;
+            AbortIf(++iter == tokens.end(), false);
+            AbortIfNot(Util::from_string(*iter,
+                depth), false);
+        }
+        else
+        {
+            uint64 wtime     = maxU64;
+            uint64 btime     = maxU64;
+            uint64 winc      = 0;
+            uint64 binc      = 0;
+            uint32 movesToGo = max_moves;
+            uint64 moveTime  = maxU64;
+
+            iter = std::find(tokens.begin(), tokens.end(),
+                             "wtime");
+
+            if (iter != tokens.end())
+            {
+                AbortIf(++iter == tokens.end(), false);
+                AbortIfNot(Util::from_string(*iter,
+                    wtime), false);
+            }
+
+            iter = std::find(tokens.begin(), tokens.end(),
+                             "btime");
+
+            if (iter != tokens.end())
+            {
+                AbortIf(++iter == tokens.end(), false);
+                AbortIfNot(Util::from_string(*iter,
+                    btime), false);
+            }
+
+            iter = std::find(tokens.begin(), tokens.end(),
+                             "winc");
+
+            if (iter != tokens.end())
+            {
+                AbortIf(++iter == tokens.end(), false);
+                AbortIfNot(Util::from_string(*iter,
+                    winc), false);
+            }
+
+            iter = std::find(tokens.begin(), tokens.end(),
+                             "binc");
+
+            if (iter != tokens.end())
+            {
+                AbortIf(++iter == tokens.end(), false);
+                AbortIfNot(Util::from_string(*iter,
+                    binc), false);
+            }
+
+            iter = std::find(tokens.begin(), tokens.end(),
+                             "movestogo");
+
+            if (iter != tokens.end())
+            {
+                AbortIf(++iter == tokens.end(), false);
+                AbortIfNot(Util::from_string(*iter,
+                    movesToGo), false);
+            }
+
+            iter = std::find(tokens.begin(), tokens.end(),
+                             "depth");
+
+            if (iter != tokens.end())
+            {
+                AbortIf(++iter == tokens.end(), false);
+                AbortIfNot(Util::from_string(*iter,
+                    depth), false);
+            }
+
+            iter = std::find(tokens.begin(), tokens.end(),
+                             "nodes");
+
+            if (iter != tokens.end())
+            {
+                AbortIf(++iter == tokens.end(), false);
+                AbortIfNot(Util::from_string(*iter,
+                    nodeLimit), false);
+            }
+
+            iter = std::find(tokens.begin(), tokens.end(),
+                             "movetime");
+
+            if (iter != tokens.end())
+            {
+                AbortIf(++iter == tokens.end(), false);
+                AbortIfNot(Util::from_string(*iter,
+                    moveTime), false);
+            }
+
+            // If none of movetime, nodes, or depth was specified,
+            // figure out how much time we have. The logic is pretty
+            // simple; we divide the amount of time we have left in
+            // the current time control by the number of moves left;
+            // if it's sudden death, we look at how much time our
+            // opponent has. If we've more time, take the difference
+            // and think for that long. Otherise, think for only 1
+            // second, and compensate by pondering
+            
+            if (depth     == max_moves &&
+                nodeLimit == maxU64    &&
+                moveTime  == maxU64)
+            {
+                const uint64 myTime =
+                    m_engine->m_master->get_turn() == player_t::white ? 
+                        wtime : btime;
+
+                const uint64 theirTime = 
+                    m_engine->m_master->get_turn() == player_t::white ? 
+                        btime : wtime;
+
+                if (movesToGo == max_moves ||
+                    movesToGo == 0)
+                    moveTime = 1000;  // in milliseconds
+                else
+                    moveTime = myTime / movesToGo;
+
+                if (theirTime < myTime)
+                {
+                    moveTime = std::max(myTime-theirTime,
+                        moveTime);
+                }
+
+                timeout = std::chrono::milliseconds(
+                    moveTime);
+            }
+        }
+
+        // Now initialize and run the search:
+
+        AbortIfNot(m_engine->m_search->init(
+            m_engine->m_master, searchMoves ),
+                false);
+
+        m_engine->m_search->run(
+            depth, timeout, nodeLimit, mateSearch );
+
+        // Report the best move found and exit:
+
+        const auto pv =
+            m_engine->m_search->get_pv(0);
+
+        AbortIf(pv.empty(), false);
+
+        (*m_stream)
+            << "bestmove "<< formatCoordinate(pv[0])
+            << std::endl;
+
+        return true;
+    }
+
     bool UCI::cmd_isready(const std::string& )
     {
         AbortIfNot(m_stream, false);
@@ -180,53 +392,10 @@ namespace Chess
             for (auto mv = ++iter, end = tokens.end();
                  mv != end; ++mv)
             {
-                AbortIf(mv->size() < 4, false);
-                const std::string from_s = mv->substr(0, 2);
-                const std::string to_s   = mv->substr(2, 2);
+                const int32 move = str2move(
+                    master, *mv);
 
-                square_t from = square_t::BAD_SQUARE;
-                square_t to   = square_t::BAD_SQUARE;
-
-                for (int i = 0; i < 64; i++)
-                {
-                    if (from_s == square_str[i])
-                        from = static_cast<square_t>(i);
-                    if (to_s   == square_str[i])
-                        to   = static_cast<square_t>(i);
-
-                    if (from != square_t::BAD_SQUARE &&
-                        to   != square_t::BAD_SQUARE)
-                        break;
-                }
-
-                const piece_t moved    = master.piece_on(from);
-
-                const bool is_ep = std::abs(from-to) % 8 != 0
-                    && moved == piece_t::pawn
-                    && master.piece_on(to) == piece_t::empty;
-
-                const piece_t captured =
-                    is_ep ? piece_t::pawn :master.piece_on(to);
-
-                piece_t promote = piece_t::empty;
-                if (mv->size() > 4)
-                {
-                    AbortIf(moved != piece_t::pawn, false);
-
-                    switch (mv->at(4))
-                    {
-                        case 'q': promote = piece_t::queen;  break;
-                        case 'n': promote = piece_t::knight; break;
-                        case 'b': promote = piece_t::bishop; break;
-                        case 'r': promote = piece_t::rook;   break;
-                        default:
-                            Abort(false, "promotion piece: '%c'",
-                                  mv->at(4));
-                    }
-                }
-
-                const int32 move = pack_move(
-                    captured, from, moved, promote, to);
+                AbortIf( move == -1, false );
 
                 const bool in_check =
                     master.in_check(master.get_turn() );
@@ -358,6 +527,10 @@ namespace Chess
             &UCI::cmd_debug     , std::ref(*this), std::placeholders::_1)),
                 false);
 
+        AbortIfNot(cmd->install("go", std::bind(
+            &UCI::cmd_go        , std::ref(*this), std::placeholders::_1)),
+                false);
+
         AbortIfNot(cmd->install("isready", std::bind(
             &UCI::cmd_isready   , std::ref(*this), std::placeholders::_1)),
                 false);
@@ -409,5 +582,65 @@ namespace Chess
         }
 
         return true;
+    }
+
+    int32 UCI::str2move(const Position& pos,
+                        const std::string& str) const
+    {
+        if (str.size() < 4) return -1;
+
+        const std::string from_s = str.substr(0, 2);
+        const std::string to_s   = str.substr(2, 2);
+
+        square_t from = square_t::BAD_SQUARE;
+        square_t to   = square_t::BAD_SQUARE;
+
+        for (int i = 0; i < 64; i++)
+        {
+            if (from_s == square_str[i])
+                from = static_cast<square_t>(i);
+            if (to_s   == square_str[i])
+                to   = static_cast<square_t>(i);
+
+            if (from != square_t::BAD_SQUARE &&
+                to   != square_t::BAD_SQUARE)
+                break;
+        }
+
+        if (from == square_t::BAD_SQUARE ||
+              to == square_t::BAD_SQUARE)
+            return -1;
+
+        const piece_t moved  =  pos.piece_on( from );
+
+        const bool is_ep = std::abs(from-to) % 8 != 0
+            && moved == piece_t::pawn
+            && pos.piece_on(to) == piece_t::empty;
+
+        const piece_t captured =
+            is_ep ?  piece_t::pawn : pos.piece_on(to);
+
+        piece_t promote = piece_t::empty;
+        if (str.size() > 4)
+        {
+            if ( moved != piece_t::pawn )
+                return -1;
+
+            switch (str.at(4))
+            {
+                case 'q': promote = piece_t::queen;  break;
+                case 'n': promote = piece_t::knight; break;
+                case 'b': promote = piece_t::bishop; break;
+                case 'r': promote = piece_t::rook;   break;
+                default:
+                    Abort(-1, "promotion piece: '%c'",
+                          str.at(4));
+            }
+        }
+
+        const int32 move = pack_move(
+            captured, from, moved, promote, to);
+
+        return move;
     }
 }

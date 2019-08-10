@@ -1,6 +1,7 @@
 #ifndef __CHESS_H__
 #define __CHESS_H__
 
+#include <chrono>
 #include <memory>
 #include <cstdint>
 
@@ -17,6 +18,8 @@ namespace Chess
 	using uint16 = std::uint16_t;
 	using int16  = std::int16_t;
 	using uint8  = std::uint8_t;
+
+    using duration_t = std::chrono::steady_clock::duration;
 
 	const uint32 max_ply      = 512;
 	const uint32 max_moves    = 256;
