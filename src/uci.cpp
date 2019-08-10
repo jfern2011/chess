@@ -125,6 +125,7 @@ namespace Chess
         AbortIfNot(m_engine, false);
         AbortIfNot(m_engine->m_search, false);
         AbortIfNot(m_engine->m_master, false);
+        AbortIfNot(m_stream, false);
 
         const uint64 maxU64 =
             std::numeric_limits<uint64>::max();
@@ -317,16 +318,23 @@ namespace Chess
         m_engine->m_search->run(
             depth, timeout, nodeLimit, mateSearch );
 
-        // Report the best move found and exit:
+        // Report the best move and exit:
 
         const auto pv =
-            m_engine->m_search->get_pv(0);
+            m_engine->m_search->get_pv( 0 );
 
         AbortIf(pv.empty(), false);
 
         (*m_stream)
-            << "bestmove "<< formatCoordinate(pv[0])
-            << std::endl;
+            <<"bestmove "<< formatCoordinate(pv[0]);
+
+        if (pv.size() > 1u)
+        {
+            (*m_stream)  << " ponder "
+                << formatCoordinate(pv[1] );
+        }
+
+        (*m_stream) << std::endl;
 
         return true;
     }
