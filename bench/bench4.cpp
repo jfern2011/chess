@@ -32,7 +32,7 @@ int main(int argc, char** argv)
     // 8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1
     // r2q2rk/pb3p1p/2n4Q/5N2/8/8/PP3PPP/R3R1K1 w - - 0 1
 
-    Chess::Search4::duration_t dur = std::chrono::seconds(2);
+    Chess::duration_t dur = std::chrono::seconds(2);
 
     Blah b;
     Chess::CommandInterface cmd;
@@ -40,7 +40,7 @@ int main(int argc, char** argv)
     cmd.process("blAh bluh bleh");
 
     Chess::Search4 search;
-    AbortIfNot(search.init(pos), EXIT_FAILURE);
+    AbortIfNot(search.init(pos, std::vector<Chess::int32>()), EXIT_FAILURE);
     search.setNumberOfLines(4);
 
     std::clock_t begin = clock();
