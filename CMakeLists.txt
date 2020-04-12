@@ -30,12 +30,30 @@ add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
                  ${CMAKE_CURRENT_BINARY_DIR}/googletest-build
                  EXCLUDE_FROM_ALL)
 
+# Check python version
+find_package(PythonInterp 2.7 REQUIRED)
+
+# Generate table lookup header files
+if (NOT TABLES_GENERATED)
+set(GENERATED_DIR "${CMAKE_CURRENT_LIST_DIR}/generated")
+execute_process(
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${GENERATED_DIR}"
+    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/scripts/generate_tables.py --directory=${GENERATED_DIR}
+)
+set(TABLES_GENERATED TRUE CACHE BOOL "Are lookup tables generated?" FORCE)
+endif()
+
+add_definitions(-DFAST_COMPILE)
+
 add_library(core STATIC
+    src/chess.cc
     src/data_tables.cc
+    src/debug.cc
 )
 
-target_include_directories(core PRIVATE
+target_include_directories(core PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}
 )
 
 add_executable(chess-ut
@@ -48,3 +66,10 @@ target_link_libraries(chess-ut
     core
 )
 
+add_executable(genmagics
+    offline/main.cc
+)
+
+target_link_libraries(genmagics
+    core
+)

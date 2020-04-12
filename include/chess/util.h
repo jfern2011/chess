@@ -137,18 +137,18 @@ constexpr int GetFile(int square) {
  * @return A bitmask with 1 bits for all squares along this file
  */
 constexpr std::uint64_t GetFileMask(int square) {
-    switch (GetFile(square)) {
-      case 0: return kFileH;
-      case 1: return kFileG;
-      case 2: return kFileF;
-      case 3: return kFileE;
-      case 4: return kFileD;
-      case 5: return kFileC;
-      case 6: return kFileB;
-      case 7: return kFileA;
-      default: // shouldn't get here
-        return 0;
-    }
+    constexpr std::uint64_t arr[64] = {
+        kFileH, kFileG, kFileF, kFileE, kFileD, kFileC, kFileB, kFileA,
+        kFileH, kFileG, kFileF, kFileE, kFileD, kFileC, kFileB, kFileA,
+        kFileH, kFileG, kFileF, kFileE, kFileD, kFileC, kFileB, kFileA,
+        kFileH, kFileG, kFileF, kFileE, kFileD, kFileC, kFileB, kFileA,
+        kFileH, kFileG, kFileF, kFileE, kFileD, kFileC, kFileB, kFileA,
+        kFileH, kFileG, kFileF, kFileE, kFileD, kFileC, kFileB, kFileA,
+        kFileH, kFileG, kFileF, kFileE, kFileD, kFileC, kFileB, kFileA,
+        kFileH, kFileG, kFileF, kFileE, kFileD, kFileC, kFileB, kFileA
+    };
+
+    return arr[square];
 }
 
 /**
@@ -161,9 +161,11 @@ constexpr std::uint64_t GetFileMask(int square) {
 template<typename T> constexpr std::int8_t GetLsb(T word) {
     std::int8_t bit = 0; T mask = 1;
 
-    while (mask) {
-        if (mask & word) return bit;
-        mask <<= 1; bit += 1;
+    if (word != 0) {
+        while (!(mask & word)) {
+            mask <<= 1; bit += 1;
+        }
+        return bit;
     }
 
     return -1;
@@ -180,9 +182,11 @@ template<typename T> constexpr std::int8_t GetMsb(T word) {
     std::int8_t bit = (8 * sizeof(T) - 1 );
     T mask = (T(1)) << bit;
 
-    while (mask && bit > 0) {
-        if (mask & word) return bit;
-        mask = (T(1)) << (--bit);
+    if (word != 0) {
+        while (!(mask & word)) {
+            mask >>= 1; bit -= 1;
+        }
+        return bit;
     }
 
     return -1;
@@ -209,18 +213,18 @@ constexpr int GetRank(int square) {
  * @return A bitmask with 1 bits for all squares along this rank
  */
 constexpr std::uint64_t GetRankMask(int square) {
-    switch (GetRank(square)) {
-      case 0: return kRank1;
-      case 1: return kRank2;
-      case 2: return kRank3;
-      case 3: return kRank4;
-      case 4: return kRank5;
-      case 5: return kRank6;
-      case 6: return kRank7;
-      case 7: return kRank8;
-      default: // shouldn't get here
-        return 0;
-    }
+    constexpr std::uint64_t arr[64] = {
+        kRank1, kRank1, kRank1, kRank1, kRank1, kRank1, kRank1, kRank1,
+        kRank2, kRank2, kRank2, kRank2, kRank2, kRank2, kRank2, kRank2,
+        kRank3, kRank3, kRank3, kRank3, kRank3, kRank3, kRank3, kRank3,
+        kRank4, kRank4, kRank4, kRank4, kRank4, kRank4, kRank4, kRank4,
+        kRank5, kRank5, kRank5, kRank5, kRank5, kRank5, kRank5, kRank5,
+        kRank6, kRank6, kRank6, kRank6, kRank6, kRank6, kRank6, kRank6,
+        kRank7, kRank7, kRank7, kRank7, kRank7, kRank7, kRank7, kRank7,
+        kRank8, kRank8, kRank8, kRank8, kRank8, kRank8, kRank8, kRank8
+    };
+
+    return arr[square];
 }
 
 /**

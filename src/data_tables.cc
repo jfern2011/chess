@@ -9,6 +9,8 @@
 namespace chess {
 namespace data_tables {
 
+#ifdef FAST_COMPILE
+
 /**
  * Runtime-intialized tables
  *
@@ -48,11 +50,12 @@ Initializer::Initializer() {
         bishop_attacks[i]  = internal::InitAttacksFromDiag(i);
         bishop_mobility[i] = internal::InitMobilityDiag(i);
     }
-
+/*
     for (std::uint32_t i = 0; i < internal::kAttacksRookDbSize; i++) {
         rook_attacks[i]  = internal::InitAttacksFromRook(i);
         rook_mobility[i] = internal::InitMobilityRook(i);
     }
+ */
 }
 
 /**
@@ -61,5 +64,8 @@ Initializer::Initializer() {
 Initializer initializer;
 
 }  // namespace internal
+
+#endif  // FAST_COMPILE
+
 }  // namespace data_tables
 }  // namespace chess
