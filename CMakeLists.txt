@@ -65,11 +65,3 @@ target_link_libraries(chess-ut
     gtest_main
     core
 )
-
-add_executable(genmagics
-    offline/main.cc
-)
-
-target_link_libraries(genmagics
-    core
-)
