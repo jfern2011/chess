@@ -46,10 +46,7 @@ public:
  * Initialize tables not created during compile time
  */
 Initializer::Initializer() {
-    for (std::uint32_t i = 0; i < internal::kAttacksDiagDbSize; i++) {
-        bishop_attacks[i]  = internal::InitAttacksFromDiag(i);
-        bishop_mobility[i] = internal::InitMobilityDiag(i);
-    }
+    bishop_attacks = internal::InitAttacksFromDiag();
 /*
     for (std::uint32_t i = 0; i < internal::kAttacksRookDbSize; i++) {
         rook_attacks[i]  = internal::InitAttacksFromRook(i);

@@ -794,6 +794,24 @@ constexpr std::uint64_t RookMagic(int square) {
  *
  * @return The set of squares attacked by a bishop
  */
+#ifdef FAST_COMPILE
+inline
+std::array<std::uint64_t,kAttacksDiagDbSize> InitAttacksFromDiag() {
+    std::array<std::uint64_t,kAttacksDiagDbSize> table = {0};
+
+    for (int from = 0; from < 64; from++) {
+        const OccupancySet<512> set = GenDiagOccupancies(from);
+        for (std::size_t i = 0; i < set.size; i++) {
+            const std::uint32_t ind = DiagOffset(from) +
+                ((DiagMagic(from) * set.table[i]) >> BishopDbShift(from));
+
+            table[ind] = AttacksFromDiag(from, set.table[i]);
+        }
+    }
+
+    return table;
+}
+#else
 constexpr std::uint64_t InitAttacksFromDiag(std::uint32_t index) {
 
     // 1. Determine the square of the attacking bishop
@@ -822,6 +840,7 @@ constexpr std::uint64_t InitAttacksFromDiag(std::uint32_t index) {
 
     return 0;
 }
+#endif
 
 /**
  * Get the rook "attacks from" bitboard at the given table index

@@ -5,7 +5,9 @@
  */
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -440,9 +442,17 @@ TEST(data_tables, bishop_attacks) {
                     gen_attacks_from_diag(square, occupied);
 
                 // Now, get the same thing by table lookup and compare:
+                const std::uint64_t except = chess::kFileA |
+                                             chess::kFileH |
+                                             chess::kRank1 |
+                                             chess::kRank8 |
+                                             std::uint64_t(1) << square;
+
+                const std::uint64_t occupancy = occupied ^ (occupied & except);
                 const std::uint32_t index =
-                    (occupied * chess::data_tables::kDiagMagics[square]) >>
-                        chess::data_tables::kBishopDbShifts[square];
+                    chess::data_tables::kBishopOffsets[square] +
+                        ((occupancy*chess::data_tables::kDiagMagics[square]) >>
+                            chess::data_tables::kBishopDbShifts[square]);
 
                 const std::uint64_t attacks =
                     chess::data_tables::bishop_attacks[index];
@@ -646,6 +656,112 @@ TEST(data_tables, kH1A8_64) {
         const std::uint64_t diag64 = createDiag(i);
 
         EXPECT_EQ(diag64, chess::data_tables::kH1A8_64[i]);
+    }
+}
+
+TEST(data_tables, lsb) {
+    /*
+     * Bitscan forward algorithm taken from here:
+     *
+     * https://www.chessprogramming.org/BitScan
+     */
+    constexpr std::int8_t index64[64] = {
+        0, 47,  1, 56, 48, 27,  2, 60,
+       57, 49, 41, 37, 28, 16,  3, 61,
+       54, 58, 35, 52, 50, 42, 21, 44,
+       38, 32, 29, 23, 17, 11,  4, 62,
+       46, 55, 26, 59, 40, 36, 15, 53,
+       34, 51, 20, 43, 31, 22, 10, 45,
+       25, 39, 14, 33, 19, 30,  9, 24,
+       13, 18,  8, 12,  7,  6,  5, 63
+    };
+
+    auto bitscanForward = [&index64](std::uint64_t bb) {
+        constexpr auto debruijn64 = std::uint64_t(0x03f79d71b4cb0a89);
+        if (bb == 0) return std::int8_t(-1);
+        return index64[((bb ^ (bb-1)) * debruijn64) >> 58];
+    };
+
+    ASSERT_EQ(chess::data_tables::kLsb.size(),
+              std::size_t(std::numeric_limits<std::uint16_t>::max())+1);
+
+    for (std::size_t i = 0; i < chess::data_tables::kLsb.size(); i++) {
+        ASSERT_EQ(chess::data_tables::kLsb[i], bitscanForward(i));
+    }
+}
+
+TEST(data_tables, msb) {
+    /*
+     * Bitscan reverse algorithm taken from here:
+     *
+     * https://www.chessprogramming.org/BitScan
+     */
+    constexpr std::int8_t index64[64] = {
+        0, 47,  1, 56, 48, 27,  2, 60,
+       57, 49, 41, 37, 28, 16,  3, 61,
+       54, 58, 35, 52, 50, 42, 21, 44,
+       38, 32, 29, 23, 17, 11,  4, 62,
+       46, 55, 26, 59, 40, 36, 15, 53,
+       34, 51, 20, 43, 31, 22, 10, 45,
+       25, 39, 14, 33, 19, 30,  9, 24,
+       13, 18,  8, 12,  7,  6,  5, 63
+    };
+
+    auto bitscanReverse = [&index64](std::uint64_t bb) {
+        constexpr auto debruijn64 = std::uint64_t(0x03f79d71b4cb0a89);
+        if (bb == 0) return std::int8_t(-1);
+
+        bb |= bb >> 1; 
+        bb |= bb >> 2;
+        bb |= bb >> 4;
+        bb |= bb >> 8;
+        bb |= bb >> 16;
+        bb |= bb >> 32;
+
+       return index64[(bb * debruijn64) >> 58];
+    };
+
+    ASSERT_EQ(chess::data_tables::kMsb.size(),
+              std::size_t(std::numeric_limits<std::uint16_t>::max())+1);
+
+    
+    for (std::size_t i = 0; i < chess::data_tables::kMsb.size(); i++) {
+        ASSERT_EQ(chess::data_tables::kMsb[i], bitscanReverse(i));
+    }
+}
+
+TEST(data_tables, popCnt) {
+    /*
+     * Algorithm taken from here:
+     *
+     * https://www.chessprogramming.org/Population_Count
+     */
+    constexpr auto k1 = std::uint64_t(0x5555555555555555); /*  -1/3   */
+    constexpr auto k2 = std::uint64_t(0x3333333333333333); /*  -1/5   */
+    constexpr auto k4 = std::uint64_t(0x0f0f0f0f0f0f0f0f); /*  -1/17  */
+    constexpr auto kf = std::uint64_t(0x0101010101010101); /*  -1/255 */
+
+    auto popCount = [&](std::uint64_t x) {
+        /* put count of each 2 bits into those 2 bits */
+        x =  x       - ((x >> 1)  & k1);
+
+        /* put count of each 4 bits into those 4 bits */
+        x = (x & k2) + ((x >> 2)  & k2);
+
+        /* put count of each 8 bits into those 8 bits */
+        x = (x       +  (x >> 4)) & k4 ;
+
+         /* 8 most significant bits of x + (x<<8) + (x<<16) + (x<<24) + ...  */
+        x = (x * kf) >> 56;
+
+        return std::int8_t(x);
+    };
+
+    ASSERT_EQ(chess::data_tables::kPop.size(),
+              std::size_t(std::numeric_limits<std::uint16_t>::max())+1);
+
+    for (std::size_t i = 0; i < chess::data_tables::kPop.size(); i++) {
+        ASSERT_EQ(chess::data_tables::kPop[i], popCount(i));
     }
 }
 
