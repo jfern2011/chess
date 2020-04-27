@@ -6,6 +6,8 @@
 
 #include "chess/data_tables.h"
 
+#include <cstdint>
+
 namespace chess {
 namespace data_tables {
 
@@ -47,6 +49,10 @@ public:
  */
 Initializer::Initializer() {
     bishop_attacks = internal::InitAttacksFromDiag();
+
+    for (std::size_t i = 0; i < bishop_attacks.size(); i++) {
+        bishop_mobility[i] = util::BitCount(bishop_attacks[i]);
+    }
 /*
     for (std::uint32_t i = 0; i < internal::kAttacksRookDbSize; i++) {
         rook_attacks[i]  = internal::InitAttacksFromRook(i);

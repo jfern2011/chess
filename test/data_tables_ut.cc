@@ -8,6 +8,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <map>
+#include <string>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -16,6 +18,214 @@
 #include "chess/util.h"
 
 namespace {
+
+/**
+ * Describes how to squares are connected
+ *
+ * @param[in] square1 The 1st square
+ * @param[in] square2 The 2nd square
+ *
+ * @return The direction along with \a square1 and \a square2 are connected
+ */
+chess::Direction AreConnected(int square1, int square2) {
+    auto areConnectedA1H8 = [square1, square2]() {
+        if (square1 == square2) return false;
+
+        for (int i = square1; i < 64; i += 7) {
+            if (i == square2) return true;
+            else if (i % 8 == 0) break;
+        }
+
+        for (int i = square1; i >= 0; i -= 7) {
+            if (i == square2) return true;
+            else if ((i+1) % 8 == 0) break;
+        }
+
+        return false;
+    };
+
+    auto areConnectedH1A8 = [square1, square2]() {
+        if (square1 == square2) return false;
+
+        for (int i = square1; i < 64; i += 9) {
+            if (i == square2) return true;
+            else if ((i+1) % 8 == 0) break;
+        }
+
+        for (int i = square1; i >= 0; i -= 9) {
+            if (i == square2) return true;
+            else if (i % 8 == 0) break;
+        }
+
+        return false;
+    };
+
+    auto areConnectedRank = [square1, square2]() {
+        if (square1 == square2) return false;
+
+        for (int i = square1; i < 64; i++) {
+            if (i == square2) return true;
+            else if ((i+1) % 8 == 0) break;
+        }
+
+        for (int i = square1; i >= 0; i--) {
+            if (i == square2) return true;
+            else if (i % 8 == 0) break;
+        }
+
+        return false;
+    };
+
+    auto areConnectedFile = [square1, square2]() {
+        if (square1 == square2) return false;
+
+        for (int i = square1; i < 64; i += 8) {
+            if (i == square2) return true;
+        }
+
+        for (int i = square1; i >= 0; i -= 8) {
+            if (i == square2) return true;
+        }
+
+        return false;
+    };
+
+    if (areConnectedA1H8()) return chess::Direction::kAlongA1H8;
+    if (areConnectedH1A8()) return chess::Direction::kAlongH1A8;
+    if (areConnectedRank()) return chess::Direction::kAlongRank;
+    if (areConnectedFile()) return chess::Direction::kAlongFile;
+
+    return chess::Direction::kNone;
+}
+
+/**
+ * Bitscan forward algorithm taken from here:
+ *
+ * https://www.chessprogramming.org/BitScan
+ *
+ * @param[in] bb A 64-bit bitboard whose least significant bit (LSB) to return
+ *
+ * @return The LSB of \a bb, or -1 if no bits are set
+ */
+std::int8_t BitscanForward(std::uint64_t bb) {
+    constexpr std::int8_t index64[64] = {
+        0, 47,  1, 56, 48, 27,  2, 60,
+       57, 49, 41, 37, 28, 16,  3, 61,
+       54, 58, 35, 52, 50, 42, 21, 44,
+       38, 32, 29, 23, 17, 11,  4, 62,
+       46, 55, 26, 59, 40, 36, 15, 53,
+       34, 51, 20, 43, 31, 22, 10, 45,
+       25, 39, 14, 33, 19, 30,  9, 24,
+       13, 18,  8, 12,  7,  6,  5, 63
+    };
+
+    constexpr auto debruijn64 = std::uint64_t(0x03f79d71b4cb0a89);
+    if (bb == 0) return std::int8_t(-1);
+    return index64[((bb ^ (bb-1)) * debruijn64) >> 58];
+}
+
+/**
+ * Bitscan reverse algorithm taken from here:
+ *
+ * https://www.chessprogramming.org/BitScan
+ *
+ * @param[in] bb A 64-bit bitboard whose most significant bit (MSB) to return
+ *
+ * @return The MSB of \a bb, or -1 if no bits are set
+ */
+std::int8_t BitscanReverse(std::uint64_t bb) {
+    constexpr std::int8_t index64[64] = {
+        0, 47,  1, 56, 48, 27,  2, 60,
+       57, 49, 41, 37, 28, 16,  3, 61,
+       54, 58, 35, 52, 50, 42, 21, 44,
+       38, 32, 29, 23, 17, 11,  4, 62,
+       46, 55, 26, 59, 40, 36, 15, 53,
+       34, 51, 20, 43, 31, 22, 10, 45,
+       25, 39, 14, 33, 19, 30,  9, 24,
+       13, 18,  8, 12,  7,  6,  5, 63
+    };
+
+    constexpr auto debruijn64 = std::uint64_t(0x03f79d71b4cb0a89);
+    if (bb == 0) return std::int8_t(-1);
+
+    bb |= bb >> 1; 
+    bb |= bb >> 2;
+    bb |= bb >> 4;
+    bb |= bb >> 8;
+    bb |= bb >> 16;
+    bb |= bb >> 32;
+
+   return index64[(bb * debruijn64) >> 58];
+}
+
+/**
+ * Create the mask with which to bitwise AND the occupied squares bitboard to
+ * obtain a key into the bishop "attacks from" database
+ *
+ * @param[in] from The square for which to generate this mask
+ *
+ * @return Bitmask of the occupied squares of interest
+ */
+std::uint64_t CreateDiagOccupancyMask(int from) {
+    const auto one = std::uint64_t(1);
+    std::uint64_t mask = 0;
+
+    for (int square = from; square < 56; square += 7) {
+        if (square % 8 == 0) break;
+        else if (square == from) continue;
+        mask |= one << square;
+    }
+
+    for (int square = from; square >= 8; square -= 9) {
+        if (square % 8 == 0) break;
+        else if (square == from) continue;
+        mask |= one << square;
+    }
+
+    for (int square = from; square < 56; square += 9) {
+        if ((square + 1) % 8 == 0) break;
+        else if (square == from) continue;
+        mask |= one << square;
+    }
+
+    for (int square = from; square >= 8; square -= 7) {
+        if ((square + 1) % 8 == 0) break;
+        else if (square == from) continue;
+        mask |= one << square;
+    }
+
+    return mask;
+}
+
+/**
+ * Algorithm taken from here:
+ *
+ * https://www.chessprogramming.org/Population_Count
+ *
+ * @param[in] x The unsigned 64-bit integer whose 1-bits to count
+ *
+ * @return The number of bits set in \x
+ */
+std::int8_t PopCount(std::uint64_t x) {
+    constexpr auto k1 = std::uint64_t(0x5555555555555555); /*  -1/3   */
+    constexpr auto k2 = std::uint64_t(0x3333333333333333); /*  -1/5   */
+    constexpr auto k4 = std::uint64_t(0x0f0f0f0f0f0f0f0f); /*  -1/17  */
+    constexpr auto kf = std::uint64_t(0x0101010101010101); /*  -1/255 */
+
+    /* put count of each 2 bits into those 2 bits */
+    x =  x       - ((x >> 1)  & k1);
+
+    /* put count of each 4 bits into those 4 bits */
+    x = (x & k2) + ((x >> 2)  & k2);
+
+    /* put count of each 8 bits into those 8 bits */
+    x = (x       +  (x >> 4)) & k4 ;
+
+     /* 8 most significant bits of x + (x<<8) + (x<<16) + (x<<24) + ...  */
+    x = (x * kf) >> 56;
+
+    return std::int8_t(x);
+}
 
 TEST(data_tables, k3rdRank) {
     const std::uint64_t rank3_white = 0x000000ff0000;
@@ -473,66 +683,222 @@ TEST(data_tables, bishop_attacks) {
     }
 }
 
-TEST(data_tables, printDiag) {
-#if 0
+TEST(data_tables, kBishopAttacksMask) {
     for (int i = 0; i < 64; i++) {
-        auto mask = chess::data_tables::internal::NorthEastMask(i);
-        std::printf("0x%016lXULL,", mask);
-        if (i > 0 && i % 2 != 0) {
-            std::printf("\n");
+        const std::uint64_t expected = CreateDiagOccupancyMask(i);
+        const std::uint64_t actual   =
+            chess::data_tables::kBishopAttacksMask[i];
+
+        ASSERT_EQ(actual, expected)
+            << "\nSquare: " << chess::kSquareStr[i] << "\n"
+            << "Expected:"  << chess::debug::PrintBitBoard(expected)
+            << "Actual:"    << chess::debug::PrintBitBoard(actual);
+    }
+}
+
+TEST(data_tables, kBishopDbShifts) {
+    for (int i = 0; i < 64; i++) {
+        const int n_bits = PopCount(CreateDiagOccupancyMask(i));
+        ASSERT_EQ(64-n_bits, chess::data_tables::kBishopDbShifts[i]);
+    }
+}
+
+TEST(data_tables, bishop_mobility) {
+    for (std::size_t i = 0;
+         i < chess::data_tables::internal::kAttacksDiagDbSize; i++) {
+        const int actual = chess::data_tables::bishop_mobility[i];
+        const int expected = PopCount(chess::data_tables::bishop_attacks[i]);
+        ASSERT_EQ(actual, expected);
+    }
+}
+
+TEST(data_tables, kBishopOffsets) {
+    ASSERT_EQ(0, chess::data_tables::kBishopOffsets[0]);
+
+    int runningOffset = 0;
+    for (int i = 1; i < 64; i++) {
+        runningOffset += (1 << PopCount(CreateDiagOccupancyMask(i-1)));
+        ASSERT_EQ(runningOffset,
+                  chess::data_tables::kBishopOffsets[i]);
+    }
+}
+
+TEST(data_tables, kBishopRangeMask) {
+    auto rangeMask = [](int from) {
+        const auto one = std::uint64_t(1);
+        std::uint64_t mask = 0;
+
+        for (int square = from; square < 64; square += 7) {
+            mask |= one << square;
+            if (square % 8 == 0) break;
+        }
+
+        for (int square = from; square >= 0; square -= 9) {
+            mask |= one << square;
+            if (square % 8 == 0) break;
+        }
+
+        for (int square = from; square < 64; square += 9) {
+            mask |= one << square;
+            if ((square + 1) % 8 == 0) break;
+        }
+
+        for (int square = from; square >= 0; square -= 7) {
+            mask |= one << square;
+            if ((square + 1) % 8 == 0) break;
+        }
+
+        return mask;
+    };
+
+    for (int i = 0; i < 64; i++) {
+        ASSERT_EQ(chess::data_tables::kBishopRangeMask[i], rangeMask(i));
+    }
+}
+
+TEST(data_tables, kCastleLongDest) {
+    EXPECT_EQ(chess::util::ToIntType(
+              chess::data_tables::kCastleLongDest<chess::Player::kWhite>),
+                5);
+    EXPECT_EQ(chess::util::ToIntType(
+              chess::data_tables::kCastleLongDest<chess::Player::kBlack>),
+                61);
+}
+
+TEST(data_tables, kCastleLongPath) {
+    EXPECT_EQ(chess::util::ToIntType(
+              chess::data_tables::kCastleLongPath<chess::Player::kWhite>[0]),
+                4);
+    EXPECT_EQ(chess::util::ToIntType(
+              chess::data_tables::kCastleLongPath<chess::Player::kWhite>[1]),
+                5);
+    EXPECT_EQ(chess::util::ToIntType(
+              chess::data_tables::kCastleLongPath<chess::Player::kBlack>[0]),
+                60);
+    EXPECT_EQ(chess::util::ToIntType(
+              chess::data_tables::kCastleLongPath<chess::Player::kBlack>[1]),
+                61);
+}
+
+TEST(data_tables, kCastleShortDest) {
+    EXPECT_EQ(chess::util::ToIntType(
+              chess::data_tables::kCastleShortDest<chess::Player::kWhite>),
+                1);
+    EXPECT_EQ(chess::util::ToIntType(
+              chess::data_tables::kCastleShortDest<chess::Player::kBlack>),
+                57);
+}
+
+TEST(data_tables, kCastleShortPath) {
+    EXPECT_EQ(chess::util::ToIntType(
+              chess::data_tables::kCastleShortPath<chess::Player::kWhite>[0]),
+                2);
+    EXPECT_EQ(chess::util::ToIntType(
+              chess::data_tables::kCastleShortPath<chess::Player::kWhite>[1]),
+                1);
+    EXPECT_EQ(chess::util::ToIntType(
+              chess::data_tables::kCastleShortPath<chess::Player::kBlack>[0]),
+                58);
+    EXPECT_EQ(chess::util::ToIntType(
+              chess::data_tables::kCastleShortPath<chess::Player::kBlack>[1]),
+                57);
+}
+
+TEST(data_tables, kClearMask) {
+    for (int i = 0; i < 64; i++) {
+        EXPECT_EQ(chess::data_tables::kClearMask[i],
+                  (~0) ^ (std::uint64_t(1) << i));
+    }
+}
+
+TEST(data_tables, kDiagMagics) {
+    EXPECT_EQ(chess::data_tables::kDiagMagics.size(), 64);
+}
+
+TEST(data_tables, kDirections) {
+    const std::map<chess::Direction,std::string> dir2str = {
+        {chess::Direction::kAlongRank, "AlongRank"},
+        {chess::Direction::kAlongFile, "AlongFile"},
+        {chess::Direction::kAlongA1H8, "AlongA1H8"},
+        {chess::Direction::kAlongH1A8, "AlongH1A8"},
+        {chess::Direction::kNone,      "None"}
+    };
+
+    for (int i = 0; i < 64; i++) {
+        for (int j = 0; j < 64; j++) {
+            const chess::Direction expected = AreConnected(i, j);
+            const chess::Direction actual   =
+                            chess::data_tables::kDirections[i][j];
+            ASSERT_EQ(expected, actual)
+                << "\nSquare #1: " << chess::kSquareStr[i]
+                << "\nSquare #2: " << chess::kSquareStr[j]
+                << "\nExpected: " << dir2str.at(expected)
+                << "\nActual:   " << dir2str.at(actual);
         }
     }
+}
 
-    std::printf("\n");
+TEST(data_tables, kEastMask) {
+    auto getMask = [](int square) {
+        if (square % 8 == 0)
+            return std::uint64_t(0);
 
+        std::uint64_t mask = 0;
+        const std::uint64_t one = 1;
+        for (int i = square-1; i >= 0; i--) {
+            mask |= one << i;
+            if (i % 8 == 0) break;
+        }
+
+        return mask;
+    };
+    
     for (int i = 0; i < 64; i++) {
-        auto mask = chess::data_tables::internal::NorthWestMask(i);
-        std::printf("0x%016lXULL,", mask);
-        if (i > 0 && i % 2 != 0) {
-            std::printf("\n");
+        EXPECT_EQ(getMask(i), chess::data_tables::kEastMask[i]);
+    }
+}
+
+TEST(data_tables, kExchange) {
+    const std::map<chess::Piece, std::int16_t> piece2value = {
+        {chess::Piece::pawn,   chess::kPawnValue},
+        {chess::Piece::rook,   chess::kRookValue},
+        {chess::Piece::knight, chess::kKnightValue},
+        {chess::Piece::bishop, chess::kBishopValue},
+        {chess::Piece::queen,  chess::kQueenValue},
+        {chess::Piece::king,   chess::kKingValue},
+        {chess::Piece::empty,  chess::kEmptyValue}
+    };
+
+    for (auto captured = piece2value.begin(), end = piece2value.end();
+         captured != end; ++captured) {
+        for (auto moved = piece2value.begin(); moved != end; ++moved) {
+            const int actual   =
+                chess::data_tables::kExchange[captured->first][moved->first];
+            const int expected = captured->second - moved->second;
+            ASSERT_EQ(expected, actual);
         }
     }
+}
 
-    std::printf("\n");
+TEST(data_tables, kFiles64) {
+    auto createMask = [](int square) {
+        std::uint64_t mask = 0;
+        const std::uint64_t one = 1;
+        for (int i = square; i < 64; i += 8) {
+            mask |= one << i;
+        }
+
+        for (int i = square; i >= 0; i -= 8) {
+            mask |= one << i;
+        }
+
+        return mask;
+    };
 
     for (int i = 0; i < 64; i++) {
-        auto mask = chess::data_tables::internal::SouthEastMask(i);
-        std::printf("0x%016lXULL,", mask);
-        if (i > 0 && i % 2 != 0) {
-            std::printf("\n");
-        }
+        ASSERT_EQ(createMask(i), chess::data_tables::kFiles64[i])
+            << "Square: " << chess::kSquareStr[i];
     }
-
-    std::printf("\n");
-
-    for (int i = 0; i < 64; i++) {
-        auto mask = chess::data_tables::internal::SouthWestMask(i);
-        std::printf("0x%016lXULL,", mask);
-        if (i > 0 && i % 2 != 0) {
-            std::printf("\n");
-        }
-    }
-
-    for (int i = 0; i < 64; i++) {
-        auto shift = chess::data_tables::internal::BishopDbShift(i);
-        if (i > 0 && i % 8 == 0) {
-            std::printf("\n");
-        }
-        std::printf("%2d, ", shift);
-    }
-
-    std::printf("\n");
-
-    for (int i = 0; i < 64; i++) {
-        auto offset = chess::data_tables::internal::DiagOffset(i);
-        if (i > 0 && i % 8 == 0) {
-            std::printf("\n");
-        }
-        std::printf("%4d, ", offset);
-    }
-
-    std::printf("\n");
-#endif
 }
 
 TEST(data_tables, kH1A8_64) {
@@ -659,109 +1025,139 @@ TEST(data_tables, kH1A8_64) {
     }
 }
 
+TEST(data_tables, kKingAttacks) {
+    auto kingAttacks = [](int square) {
+        std::uint64_t mask = 0;
+        const std::uint64_t one = 1;
+        if ((square + 1) % 8 != 0) {
+            mask |= one << (square+1);
+        }
+
+        if (square % 8 != 0) {
+            mask |= one << (square-1);
+        }
+
+        if (square + 8 < 64) {
+            mask |= one << (square+8);
+        }
+
+        if (square - 8 >= 0) {
+            mask |= one << (square-8);
+        }
+
+        if ((square + 1) % 8 != 0 && square < 56) {
+            mask |= one << (square+9);
+        }
+
+        if (square % 8 != 0 && square < 56) {
+            mask |= one << (square+7);
+        }
+
+        if ((square + 1) % 8 != 0 && square >= 8) {
+            mask |= one << (square-7);
+        }
+
+        if (square % 8 != 0 && square >= 8) {
+            mask |= one << (square-9);
+        }
+
+        return mask;
+    };
+
+    for (int i = 0; i < 64; i++) {
+        EXPECT_EQ(chess::data_tables::kKingAttacks[i], kingAttacks(i));
+    }
+}
+
+TEST(data_tables, kKingHome) {
+    EXPECT_EQ(chess::util::ToIntType(
+        chess::data_tables::kKingHome<chess::Player::kWhite>), 3);
+    EXPECT_EQ(chess::util::ToIntType(
+        chess::data_tables::kKingHome<chess::Player::kBlack>), 59);
+}
+
+TEST(data_tables, kKingSide) {
+    const std::uint64_t one = 1;
+    const std::uint64_t wKingSide = (one <<  2) | (one <<  1);
+    const std::uint64_t bKingSide = (one << 58) | (one << 57);
+
+    EXPECT_EQ(chess::data_tables::kKingSide<chess::Player::kWhite>,
+              wKingSide);
+    EXPECT_EQ(chess::data_tables::kKingSide<chess::Player::kBlack>,
+              bKingSide);
+}
+
+TEST(data_tables, kKnightAttacks) {
+    auto knightAttacks = [](int square) {
+        std::uint64_t mask = 0;
+        const std::uint64_t one = 1;
+
+        if ((square+1) % 8 != 0 && (square+2) % 8 != 0 && square >= 8) {
+            mask |= one << (square-6);
+        }
+
+        if ((square+1) % 8 != 0 && (square+2) % 8 != 0 && square < 56) {
+            mask |= one << (square+10);
+        }
+
+        if (square % 8 != 0 && square > 16) {
+            mask |= one << (square-17);
+        }
+
+        if (square % 8 != 0 && square < 48) {
+            mask |= one << (square+15);
+        }
+
+        if ((square-1) % 8 != 0 && square % 8 != 0 && square >= 8) {
+            mask |= one << (square-10);
+        }
+
+        if ((square-1) % 8 != 0 && square % 8 != 0 && square < 56) {
+            mask |= one << (square+6);
+        }
+
+        if ((square+1) % 8 != 0 && square > 15) {
+            mask |= one << (square-15);
+        }
+
+        if ((square+1) % 8 != 0 && square < 48) {
+            mask |= one << (square+17);
+        }
+
+        return mask;
+    };
+
+    for (int i = 0; i < 64; i++) {
+        EXPECT_EQ(chess::data_tables::kKnightAttacks[i],
+                  knightAttacks(i));
+    }
+}
+
 TEST(data_tables, lsb) {
-    /*
-     * Bitscan forward algorithm taken from here:
-     *
-     * https://www.chessprogramming.org/BitScan
-     */
-    constexpr std::int8_t index64[64] = {
-        0, 47,  1, 56, 48, 27,  2, 60,
-       57, 49, 41, 37, 28, 16,  3, 61,
-       54, 58, 35, 52, 50, 42, 21, 44,
-       38, 32, 29, 23, 17, 11,  4, 62,
-       46, 55, 26, 59, 40, 36, 15, 53,
-       34, 51, 20, 43, 31, 22, 10, 45,
-       25, 39, 14, 33, 19, 30,  9, 24,
-       13, 18,  8, 12,  7,  6,  5, 63
-    };
-
-    auto bitscanForward = [&index64](std::uint64_t bb) {
-        constexpr auto debruijn64 = std::uint64_t(0x03f79d71b4cb0a89);
-        if (bb == 0) return std::int8_t(-1);
-        return index64[((bb ^ (bb-1)) * debruijn64) >> 58];
-    };
-
     ASSERT_EQ(chess::data_tables::kLsb.size(),
               std::size_t(std::numeric_limits<std::uint16_t>::max())+1);
 
     for (std::size_t i = 0; i < chess::data_tables::kLsb.size(); i++) {
-        ASSERT_EQ(chess::data_tables::kLsb[i], bitscanForward(i));
+        ASSERT_EQ(chess::data_tables::kLsb[i], BitscanForward(i));
     }
 }
 
 TEST(data_tables, msb) {
-    /*
-     * Bitscan reverse algorithm taken from here:
-     *
-     * https://www.chessprogramming.org/BitScan
-     */
-    constexpr std::int8_t index64[64] = {
-        0, 47,  1, 56, 48, 27,  2, 60,
-       57, 49, 41, 37, 28, 16,  3, 61,
-       54, 58, 35, 52, 50, 42, 21, 44,
-       38, 32, 29, 23, 17, 11,  4, 62,
-       46, 55, 26, 59, 40, 36, 15, 53,
-       34, 51, 20, 43, 31, 22, 10, 45,
-       25, 39, 14, 33, 19, 30,  9, 24,
-       13, 18,  8, 12,  7,  6,  5, 63
-    };
-
-    auto bitscanReverse = [&index64](std::uint64_t bb) {
-        constexpr auto debruijn64 = std::uint64_t(0x03f79d71b4cb0a89);
-        if (bb == 0) return std::int8_t(-1);
-
-        bb |= bb >> 1; 
-        bb |= bb >> 2;
-        bb |= bb >> 4;
-        bb |= bb >> 8;
-        bb |= bb >> 16;
-        bb |= bb >> 32;
-
-       return index64[(bb * debruijn64) >> 58];
-    };
-
     ASSERT_EQ(chess::data_tables::kMsb.size(),
               std::size_t(std::numeric_limits<std::uint16_t>::max())+1);
 
     
     for (std::size_t i = 0; i < chess::data_tables::kMsb.size(); i++) {
-        ASSERT_EQ(chess::data_tables::kMsb[i], bitscanReverse(i));
+        ASSERT_EQ(chess::data_tables::kMsb[i], BitscanReverse(i));
     }
 }
 
 TEST(data_tables, popCnt) {
-    /*
-     * Algorithm taken from here:
-     *
-     * https://www.chessprogramming.org/Population_Count
-     */
-    constexpr auto k1 = std::uint64_t(0x5555555555555555); /*  -1/3   */
-    constexpr auto k2 = std::uint64_t(0x3333333333333333); /*  -1/5   */
-    constexpr auto k4 = std::uint64_t(0x0f0f0f0f0f0f0f0f); /*  -1/17  */
-    constexpr auto kf = std::uint64_t(0x0101010101010101); /*  -1/255 */
-
-    auto popCount = [&](std::uint64_t x) {
-        /* put count of each 2 bits into those 2 bits */
-        x =  x       - ((x >> 1)  & k1);
-
-        /* put count of each 4 bits into those 4 bits */
-        x = (x & k2) + ((x >> 2)  & k2);
-
-        /* put count of each 8 bits into those 8 bits */
-        x = (x       +  (x >> 4)) & k4 ;
-
-         /* 8 most significant bits of x + (x<<8) + (x<<16) + (x<<24) + ...  */
-        x = (x * kf) >> 56;
-
-        return std::int8_t(x);
-    };
-
     ASSERT_EQ(chess::data_tables::kPop.size(),
               std::size_t(std::numeric_limits<std::uint16_t>::max())+1);
 
     for (std::size_t i = 0; i < chess::data_tables::kPop.size(); i++) {
-        ASSERT_EQ(chess::data_tables::kPop[i], popCount(i));
+        ASSERT_EQ(chess::data_tables::kPop[i], PopCount(i));
     }
 }
 

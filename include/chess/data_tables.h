@@ -199,6 +199,8 @@ constexpr auto kDiagMagics = internal::CreateTable<64>(internal::DiagMagic);
 /**
  * Describes how two squares are connected (along a file, along a diagonal,
  * etc.)
+ *
+ * @note They are NOT connected if they are the same square
  */
 constexpr auto kDirections =
     internal::CreateTable<64,64>(internal::GetDirection);
