@@ -212,7 +212,7 @@ constexpr auto kEastMask =  internal::CreateTable<64>(internal::EastMask);
 
 /**
  * En-passant target squares. These are invalid except for the 4th and 5th
- * 5th ranks
+ * 5th ranks; e.g. kEpTarget[E4] = E3, kEpTarget[E5] = E6
  */
 constexpr auto kEpTarget = internal::CreateTable<64>(internal::EpTarget);
 
@@ -589,10 +589,10 @@ template <Player P>
 auto kQueenside = std::uint64_t(0);
 
 template<> constexpr auto kQueenside<Player::kWhite> =
-    Square::B1 | Square::C1 | Square::D1;
+    util::CreateBitMask<std::uint64_t, Square::B1, Square::C1, Square::D1>();
 
 template<> constexpr auto kQueenside<Player::kBlack> =
-    Square::B8 | Square::C8 | Square::D8;
+    util::CreateBitMask<std::uint64_t, Square::B8, Square::C8, Square::D8>();
 
 /**
  * @}

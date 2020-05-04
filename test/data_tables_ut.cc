@@ -198,6 +198,152 @@ std::uint64_t CreateDiagOccupancyMask(int from) {
 }
 
 /**
+ * Get a bitmask representing all squares east of a particular square
+ *
+ * @param[in] from Get the squares east of this one
+ *
+ * @return The bitmask representing squares east of \a from
+ */
+std::uint64_t CreateEastMask(int from) {
+    if (from % 8 == 0)
+        return std::uint64_t(0);
+
+    std::uint64_t mask = 0;
+    const std::uint64_t one = 1;
+    for (int i = from - 1; i >= 0; i--) {
+        mask |= one << i;
+        if (i % 8 == 0) break;
+    }
+
+    return mask;
+}
+
+/**
+ * Get a bitmask representing all squares north of a particular square
+ *
+ * @param[in] from Get the squares north of this one
+ *
+ * @return The bitmask representing squares north of \a from
+ */
+std::uint64_t CreateNorthMask(int from) {
+    std::uint64_t mask = 0;
+    for (int i = from + 8; i < 64; i += 8)
+        mask |= std::uint64_t(1) << i;
+    return mask;
+}
+
+/**
+ * Get a bitmask representing all squares northeast of a particular square
+ *
+ * @param[in] from Get the squares northeast of this one
+ *
+ * @return The bitmask representing squares northeast of \a from
+ */
+std::uint64_t CreateNorthEastMask(int from) {
+    std::uint64_t mask = 0;
+
+    if (from % 8 != 0) {
+        for (int i = from + 7; i < 64; i += 7) {
+            mask |= std::uint64_t(1) << i;
+            if (i % 8 == 0) break;
+        }
+    }
+    return mask;
+}
+
+/**
+ * Get a bitmask representing all squares northwest of a particular square
+ *
+ * @param[in] from Get the squares northwest of this one
+ *
+ * @return The bitmask representing squares northwest of \a from
+ */
+std::uint64_t CreateNorthWestMask(int from) {
+    std::uint64_t mask = 0;
+
+    if ((from+1) % 8 != 0) {
+        for (int i = from + 9; i < 64; i += 9) {
+            mask |= std::uint64_t(1) << i;
+            if ((i+1) % 8 == 0) break;
+        }
+    }
+    return mask;
+}
+
+/**
+ * Get a bitmask representing all squares south of a particular square
+ *
+ * @param[in] from Get the squares south of this one
+ *
+ * @return The bitmask representing squares south of \a from
+ */
+std::uint64_t CreateSouthMask(int from) {
+    std::uint64_t mask = 0;
+    for (int i = from - 8; i >= 0; i -= 8)
+        mask |= std::uint64_t(1) << i;
+    return mask;
+}
+
+/**
+ * Get a bitmask representing all squares southeast of a particular square
+ *
+ * @param[in] from Get the squares southeast of this one
+ *
+ * @return The bitmask representing squares southeast of \a from
+ */
+std::uint64_t CreateSouthEastMask(int from) {
+    std::uint64_t mask = 0;
+
+    if (from % 8 != 0) {
+        for (int i = from - 9; i >= 0; i -= 9) {
+            mask |= std::uint64_t(1) << i;
+            if (i % 8 == 0) break;
+        }
+    }
+    return mask;
+}
+
+/**
+ * Get a bitmask representing all squares southwest of a particular square
+ *
+ * @param[in] from Get the squares southwest of this one
+ *
+ * @return The bitmask representing squares southwest of \a from
+ */
+std::uint64_t CreateSouthWestMask(int from) {
+    std::uint64_t mask = 0;
+
+    if ((from+1) % 8 != 0) {
+        for (int i = from - 7; i >= 0; i -= 7) {
+            mask |= std::uint64_t(1) << i;
+            if ((i+1) % 8 == 0) break;
+        }
+    }
+    return mask;
+}
+
+/**
+ * Get a bitmask representing all squares west of a particular square
+ *
+ * @param[in] from Get the squares west of this one
+ *
+ * @return The bitmask representing squares west of \a from
+ */
+std::uint64_t CreateWestMask(int from) {
+    if ((from+1) % 8 == 0)
+        return std::uint64_t(0);
+
+    std::uint64_t mask = 0;
+    const std::uint64_t one = 1;
+    for (int i = from + 1; i < 64; i++) {
+        mask |= one << i;
+        if ((i+1) % 8 == 0) break;
+    }
+
+    return mask;
+}
+
+/**
  * Algorithm taken from here:
  *
  * https://www.chessprogramming.org/Population_Count
@@ -839,22 +985,18 @@ TEST(data_tables, kDirections) {
 }
 
 TEST(data_tables, kEastMask) {
-    auto getMask = [](int square) {
-        if (square % 8 == 0)
-            return std::uint64_t(0);
-
-        std::uint64_t mask = 0;
-        const std::uint64_t one = 1;
-        for (int i = square-1; i >= 0; i--) {
-            mask |= one << i;
-            if (i % 8 == 0) break;
-        }
-
-        return mask;
-    };
-    
     for (int i = 0; i < 64; i++) {
-        EXPECT_EQ(getMask(i), chess::data_tables::kEastMask[i]);
+        ASSERT_EQ(CreateEastMask(i), chess::data_tables::kEastMask[i]);
+    }
+}
+
+TEST(data_tables, kEpTarget) {
+    for (int i = 24; i < 32; i++) {
+        ASSERT_EQ(chess::data_tables::kEpTarget[i], i-8);
+    }
+
+    for (int i = 32; i < 40; i++) {
+        ASSERT_EQ(chess::data_tables::kEpTarget[i], i+8);
     }
 }
 
@@ -1142,6 +1284,58 @@ TEST(data_tables, lsb) {
     }
 }
 
+TEST(data_tables, kMinus16) {
+    for (int i = 16; i < 64; i++) {
+        ASSERT_EQ(chess::data_tables::kMinus16<chess::Player::kWhite>[i],
+                  i-16);
+    }
+
+    for (int i = 0; i < 48; i++) {
+        ASSERT_EQ(chess::data_tables::kMinus16<chess::Player::kBlack>[i],
+                  i+16);
+    }
+}
+
+TEST(data_tables, kMinus7) {
+    for (int i = 7; i < 64; i++) {
+        if ((i+1) % 8 == 0) continue;
+        ASSERT_EQ(chess::data_tables::kMinus7<chess::Player::kWhite>[i],
+                  i-7);
+    }
+
+    for (int i = 0; i < 57; i++) {
+        if ((i+0) % 8 == 0) continue;
+        ASSERT_EQ(chess::data_tables::kMinus7<chess::Player::kBlack>[i],
+                  i+7);
+    }
+}
+
+TEST(data_tables, kMinus8) {
+    for (int i = 8; i < 64; i++) {
+        ASSERT_EQ(chess::data_tables::kMinus8<chess::Player::kWhite>[i],
+                  i-8);
+    }
+
+    for (int i = 0; i < 56; i++) {
+        ASSERT_EQ(chess::data_tables::kMinus8<chess::Player::kBlack>[i],
+                  i+8);
+    }
+}
+
+TEST(data_tables, kMinus9) {
+    for (int i = 9; i < 64; i++) {
+        if ((i+0) % 8 == 0) continue;
+        ASSERT_EQ(chess::data_tables::kMinus9<chess::Player::kWhite>[i],
+                  i-9);
+    }
+
+    for (int i = 0; i < 55; i++) {
+        if ((i+1) % 8 == 0) continue;
+        ASSERT_EQ(chess::data_tables::kMinus9<chess::Player::kBlack>[i],
+                  i+9);
+    }
+}
+
 TEST(data_tables, msb) {
     ASSERT_EQ(chess::data_tables::kMsb.size(),
               std::size_t(std::numeric_limits<std::uint16_t>::max())+1);
@@ -1152,12 +1346,241 @@ TEST(data_tables, msb) {
     }
 }
 
-TEST(data_tables, popCnt) {
+TEST(data_tables, kNorthMask) {
+    for (int i = 0; i < 64; i++) {
+        ASSERT_EQ(CreateNorthMask(i), chess::data_tables::kNorthMask[i]);
+    }
+}
+
+TEST(data_tables, kNorthEastMask) {
+    for (int i = 0; i < 64; i++) {
+        ASSERT_EQ(chess::data_tables::kNorthEastMask[i],
+                  CreateNorthEastMask(i));
+    }
+}
+
+TEST(data_tables, kNorthWestMask) {
+    for (int i = 0; i < 64; i++) {
+        ASSERT_EQ(chess::data_tables::kNorthWestMask[i],
+                  CreateNorthWestMask(i));
+    }
+}
+
+TEST(data_tables, kPawnAdvances) {
+    for (int i = 8; i < 56; i++) {
+        ASSERT_EQ(chess::data_tables::kPawnAdvances<chess::Player::kWhite>[i],
+                  std::uint64_t(1) << (i+8));
+        ASSERT_EQ(chess::data_tables::kPawnAdvances<chess::Player::kBlack>[i],
+                  std::uint64_t(1) << (i-8));
+    }
+}
+
+TEST(data_tables, kPawnAttacks) {
+    for (int i = 0; i < 56; i++) {
+        std::uint64_t mask, one = 1;
+        if (i % 8 == 0) {
+            mask = one << (i+9);
+        } else if ((i+1) % 8 == 0) {
+            mask = one << (i+7);
+        } else {
+            mask = (one << (i+7)) |
+                   (one << (i+9));
+        }
+
+        ASSERT_EQ(chess::data_tables::kPawnAttacks<chess::Player::kWhite>[i],
+                  mask);
+    }
+
+    for (int i = 8; i < 64; i++) {
+        std::uint64_t mask, one = 1;
+        if (i % 8 == 0) {
+            mask = one << (i-7);
+        } else if ((i+1) % 8 == 0) {
+            mask = one << (i-9);
+        } else {
+            mask = (one << (i-7)) |
+                   (one << (i-9));
+        }
+
+        ASSERT_EQ(chess::data_tables::kPawnAttacks<chess::Player::kBlack>[i],
+                  mask);
+    }
+}
+
+TEST(data_tables, kPieceValue) {
+    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::king],
+              chess::kKingValue);
+    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::pawn],
+              chess::kPawnValue);
+    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::rook],
+              chess::kRookValue);
+    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::knight],
+              chess::kKnightValue);
+    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::bishop],
+              chess::kBishopValue);
+    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::queen],
+              chess::kQueenValue);
+    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::empty],
+              chess::kEmptyValue);
+}
+
+TEST(data_tables, kPlus16) {
+    for (int i = 0; i < 48; i++) {
+        ASSERT_EQ(chess::data_tables::kPlus16<chess::Player::kWhite>[i], i+16);
+    }
+
+    for (int i = 16; i < 64; i++) {
+        ASSERT_EQ(chess::data_tables::kPlus16<chess::Player::kBlack>[i], i-16);
+    }
+}
+
+TEST(data_tables, kPlus7) {
+    for (int i = 0; i < 56; i++) {
+        if (i % 8 == 0) continue;
+        ASSERT_EQ(chess::data_tables::kPlus7<chess::Player::kWhite>[i], i+7);
+    }
+
+    for (int i = 8; i < 64; i++) {
+        if ((i+1) % 8 == 0) continue;
+        ASSERT_EQ(chess::data_tables::kPlus7<chess::Player::kBlack>[i], i-7);
+    }
+}
+
+TEST(data_tables, kPlus8) {
+    for (int i = 0; i < 56; i++) {
+        ASSERT_EQ(chess::data_tables::kPlus8<chess::Player::kWhite>[i], i+8);
+    }
+
+    for (int i = 8; i < 64; i++) {
+        ASSERT_EQ(chess::data_tables::kPlus8<chess::Player::kBlack>[i], i-8);
+    }
+}
+
+TEST(data_tables, kPlus9) {
+    for (int i = 0; i < 56; i++) {
+        if ((i+1) % 8 == 0) continue;
+        ASSERT_EQ(chess::data_tables::kPlus9<chess::Player::kWhite>[i], i+9);
+    }
+
+    for (int i = 8; i < 64; i++) {
+        if ((i+0) % 8 == 0) continue;
+        ASSERT_EQ(chess::data_tables::kPlus9<chess::Player::kBlack>[i], i-9);
+    }
+}
+
+TEST(data_tables, kPop) {
     ASSERT_EQ(chess::data_tables::kPop.size(),
               std::size_t(std::numeric_limits<std::uint16_t>::max())+1);
 
     for (std::size_t i = 0; i < chess::data_tables::kPop.size(); i++) {
         ASSERT_EQ(chess::data_tables::kPop[i], PopCount(i));
+    }
+}
+
+TEST(data_tables, kQueenside) {
+    const std::uint64_t one = 1;
+
+    const std::uint64_t queenside_w = (one << 4 ) | (one << 5 ) | (one << 6 );
+    const std::uint64_t queenside_b = (one << 60) | (one << 61) | (one << 62);
+
+    EXPECT_EQ(chess::data_tables::kQueenside<chess::Player::kWhite>,
+              queenside_w);
+    EXPECT_EQ(chess::data_tables::kQueenside<chess::Player::kBlack>,
+              queenside_b);
+}
+
+TEST(data_tables, kRankAdjacent) {
+    for (int i = 0; i < 64; i++) {
+        std::uint64_t mask;
+        if (i % 8 == 0)
+            mask = std::uint64_t(1) << (i+1);
+        else if ((i+1) % 8 == 0) {
+            mask = std::uint64_t(1) << (i-1);
+        } else {
+            mask = (std::uint64_t(1) << (i+1)) |
+                   (std::uint64_t(1) << (i-1));
+        }
+
+        ASSERT_EQ(chess::data_tables::kRankAdjacent[i], mask)
+            << "square: " << chess::kSquareStr[i]
+            << std::endl;
+    }
+}
+
+TEST(data_tables, kRanks64) {
+    for (int i = 0; i < 64; i++) {
+        std::uint64_t mask;
+        if (i >= 0 && i <= 7) {
+            mask = std::uint64_t(0xff) << 0;
+        } else if (i >=  8 && i < 16) {
+            mask = std::uint64_t(0xff) << 8;
+        } else if (i >= 16 && i < 24) {
+            mask = std::uint64_t(0xff) << 16;
+        } else if (i >= 24 && i < 32) {
+            mask = std::uint64_t(0xff) << 24;
+        } else if (i >= 32 && i < 40) {
+            mask = std::uint64_t(0xff) << 32;
+        } else if (i >= 40 && i < 48) {
+            mask = std::uint64_t(0xff) << 40;
+        } else if (i >= 48 && i < 56) {
+            mask = std::uint64_t(0xff) << 48;
+        } else if (i >= 56 && i < 63) {
+            mask = std::uint64_t(0xff) << 56;
+        }
+
+        ASSERT_EQ(chess::data_tables::kRanks64[i],
+                  mask);
+    }
+}
+
+TEST (data_tables, kRay) {
+    const std::uint64_t one = 1;
+    std::uint64_t mask;
+
+    for (int i = 0; i < 64; i++) {
+        for (int j = 0; j < 64; j++) {
+            switch (AreConnected(i,j)) {
+              case chess::Direction::kAlongA1H8:
+                if (i > j) {
+                    mask = (one << i) | CreateSouthWestMask(i);
+                } else {
+                    mask = (one << i) | CreateNorthEastMask(i);
+                }
+                break;
+              case chess::Direction::kAlongRank:
+                if (i > j) {
+                    mask = (one << i) | CreateEastMask(i);
+                } else {
+                    mask = (one << i) | CreateWestMask(i);
+                }
+                break;
+              case chess::Direction::kAlongH1A8:
+                if (i > j) {
+                    mask = (one << i) | CreateSouthEastMask(i);
+                } else {
+                    mask = (one << i) | CreateNorthWestMask(i);
+                }
+                break;
+              case chess::Direction::kAlongFile:
+                if (i > j) {
+                    mask = (one << i) | CreateSouthMask(i);
+                } else {
+                    mask = (one << i) | CreateNorthMask(i);
+                }
+                break;
+              default:
+                mask = 0; // not connected
+            }
+
+            const std::uint64_t actual = chess::data_tables::kRay[i][j];
+
+            ASSERT_EQ(actual, mask)
+                << chess::kSquareStr[i] << " -> "
+                << chess::kSquareStr[j] << "\n"
+                << "Expected:" << chess::debug::PrintBitBoard(mask)
+                << "Actual:"   << chess::debug::PrintBitBoard(actual)
+                << std::endl;
+        }
     }
 }
 

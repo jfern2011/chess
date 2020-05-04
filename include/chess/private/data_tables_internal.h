@@ -1384,21 +1384,21 @@ constexpr std::uint64_t InitRay(int origin, int square) {
             break;
         case Direction::kAlongFile:
             if (origin < square)
-                ans |= NorthMask(square);
+                ans |= NorthMask(origin);
             else
-                ans |= SouthMask(square);
+                ans |= SouthMask(origin);
             break;
         case Direction::kAlongA1H8:
             if (origin < square)
-                ans |= NorthEastMask(square);
+                ans |= NorthEastMask(origin);
             else
-                ans |= SouthWestMask(square);
+                ans |= SouthWestMask(origin);
             break;
         case Direction::kAlongRank:
             if (origin < square)
-                ans |= WestMask(square);
+                ans |= WestMask(origin);
             else
-                ans |= EastMask(square);
+                ans |= EastMask(origin);
             break;
         default:
             // These squares do not connect
