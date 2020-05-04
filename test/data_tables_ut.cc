@@ -1584,4 +1584,106 @@ TEST (data_tables, kRay) {
     }
 }
 
+TEST (data_tables, kRayExtend) {
+    const std::uint64_t one = 1;
+    std::uint64_t mask;
+
+    for (int i = 0; i < 64; i++) {
+        for (int j = 0; j < 64; j++) {
+            switch (AreConnected(i,j)) {
+              case chess::Direction::kAlongA1H8:
+                if (i > j) {
+                    mask = CreateSouthWestMask(i) | CreateNorthEastMask(j);
+                } else {
+                    mask = CreateNorthEastMask(i) | CreateSouthWestMask(j);
+                }
+                break;
+              case chess::Direction::kAlongRank:
+                if (i > j) {
+                    mask = CreateEastMask(i) | CreateWestMask(j);
+                } else {
+                    mask = CreateWestMask(i) | CreateEastMask(j);
+                }
+                break;
+              case chess::Direction::kAlongH1A8:
+                if (i > j) {
+                    mask = CreateSouthEastMask(i) | CreateNorthWestMask(j);
+                } else {
+                    mask = CreateNorthWestMask(i) | CreateSouthEastMask(j);
+                }
+                break;
+              case chess::Direction::kAlongFile:
+                if (i > j) {
+                    mask = CreateSouthMask(i) | CreateNorthMask(j);
+                } else {
+                    mask = CreateNorthMask(i) | CreateSouthMask(j);
+                }
+                break;
+              default:
+                mask = 0; // not connected
+            }
+
+            const std::uint64_t actual = chess::data_tables::kRayExtend[i][j];
+
+            ASSERT_EQ(actual, mask)
+                << chess::kSquareStr[i] << " -> "
+                << chess::kSquareStr[j] << "\n"
+                << "Expected:" << chess::debug::PrintBitBoard(mask)
+                << "Actual:"   << chess::debug::PrintBitBoard(actual)
+                << std::endl;
+        }
+    }
+}
+
+TEST (data_tables, kRaySegment) {
+    const std::uint64_t one = 1;
+    std::uint64_t mask;
+
+    for (int i = 0; i < 64; i++) {
+        for (int j = 0; j < 64; j++) {
+            switch (AreConnected(i,j)) {
+              case chess::Direction::kAlongA1H8:
+                if (i > j) {
+                    mask = CreateSouthWestMask(i) & CreateNorthEastMask(j);
+                } else {
+                    mask = CreateNorthEastMask(i) & CreateSouthWestMask(j);
+                }
+                break;
+              case chess::Direction::kAlongRank:
+                if (i > j) {
+                    mask = CreateEastMask(i) & CreateWestMask(j);
+                } else {
+                    mask = CreateWestMask(i) & CreateEastMask(j);
+                }
+                break;
+              case chess::Direction::kAlongH1A8:
+                if (i > j) {
+                    mask = CreateSouthEastMask(i) & CreateNorthWestMask(j);
+                } else {
+                    mask = CreateNorthWestMask(i) & CreateSouthEastMask(j);
+                }
+                break;
+              case chess::Direction::kAlongFile:
+                if (i > j) {
+                    mask = CreateSouthMask(i) & CreateNorthMask(j);
+                } else {
+                    mask = CreateNorthMask(i) & CreateSouthMask(j);
+                }
+                break;
+              default:
+                mask = 0; // not connected
+            }
+
+            const std::uint64_t actual = chess::data_tables::kRaySegment[i][j];
+
+            ASSERT_EQ(actual, mask)
+                << chess::kSquareStr[i] << " -> "
+                << chess::kSquareStr[j] << "\n"
+                << "Expected:" << chess::debug::PrintBitBoard(mask)
+                << "Actual:"   << chess::debug::PrintBitBoard(actual)
+                << std::endl;
+        }
+    }
+}
+
 }  // namespace
