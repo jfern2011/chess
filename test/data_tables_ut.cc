@@ -893,10 +893,10 @@ TEST(data_tables, kBishopDbShifts) {
     }
 }
 
-TEST(data_tables, bishop_mobility) {
+TEST(data_tables, kBishopMobility) {
     for (std::size_t i = 0;
          i < chess::data_tables::internal::kAttacksDiagDbSize; i++) {
-        const int actual = chess::data_tables::bishop_mobility[i];
+        const int actual = chess::data_tables::kBishopMobility[i];
         const int expected = PopCount(chess::data_tables::kBishopAttacks[i]);
         ASSERT_EQ(actual, expected);
     }
@@ -1937,10 +1937,10 @@ TEST(data_tables, kRookDbShifts) {
     }
 }
 
-TEST(data_tables, rook_mobility) {
+TEST(data_tables, kRookMobility) {
     for (std::size_t i = 0;
          i < chess::data_tables::internal::kAttacksRookDbSize; i++) {
-        const int actual = chess::data_tables::rook_mobility[i];
+        const int actual = chess::data_tables::kRookMobility[i];
         const int expected = PopCount(chess::data_tables::kRookAttacks[i]);
         ASSERT_EQ(actual, expected);
     }

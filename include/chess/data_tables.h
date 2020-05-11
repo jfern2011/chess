@@ -82,13 +82,7 @@ constexpr auto kBishopDbShifts =
  * and occupancy. A higher mobility score indicates the bishop can move to more
  * squares
  */
-#ifdef FAST_COMPILE
-extern std::array<int,internal::kAttacksDiagDbSize> bishop_mobility;
-#else
-constexpr auto bishop_mobility =
-    internal::CreateTable<internal::kAttacksDiagDbSize>(
-        internal::InitMobilityDiag);
-#endif
+constexpr auto kBishopMobility = internal::InitMobilityDiag();
 
 /**
  * Offset into the \ref bishop_attacks database that marks the start of the
@@ -657,13 +651,7 @@ constexpr auto kRookMagics = internal::CreateTable<64>(internal::RookMagic);
  * and occupancy. A higher mobility score indicates the rook can move to more
  * squares
  */
-#ifdef FAST_COMPILE
-extern std::array<int,internal::kAttacksRookDbSize> rook_mobility;
-#else
-constexpr auto rook_mobility =
-    internal::CreateTable<internal::kAttacksRookDbSize>(
-        internal::InitMobilityRook);
-#endif
+constexpr auto kRookMobility = internal::InitMobilityRook();
 
 /**
  * Offset into the \ref rook_attacks database that marks the start of the

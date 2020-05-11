@@ -47,7 +47,6 @@ add_definitions(-DFAST_COMPILE)
 
 add_library(core STATIC
     src/chess.cc
-    src/data_tables.cc
     src/debug.cc
 )
 

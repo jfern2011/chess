@@ -790,7 +790,7 @@ constexpr std::uint64_t RookMagic(int square) {
 /**
  * Get the bishop "attacks from" bitboard at the given table index
  *
- * @param[in] index The index computed by the magic bitboard hashing scheme
+ * @param[in] index The index computed by the magic bitboard hashing algorithm
  *
  * @return The set of squares attacked by a bishop
  */
@@ -816,7 +816,7 @@ constexpr std::array<std::uint64_t,kAttacksDiagDbSize> InitAttacksFromDiag() {
 /**
  * Get the rook "attacks from" bitboard at the given table index
  *
- * @param[in] index The index computed by the magic bitboard hashing scheme
+ * @param[in] index The index computed by the magic bitboard hashing algorithm
  *
  * @return The set of squares attacked by a rook
  */
@@ -1235,10 +1235,31 @@ constexpr int MobilityRook(int square, const std::uint64_t occupied) {
  * Get the number of bits set in the bishop "attacks from" bitboard at the
  * given table index
  *
- * @param[in] index The index computed by the magic bitboard hashing scheme
+ * @param[in] index The index computed by the magic bitboard hashing algorithm
  *
  * @return The number of squares attacked by a bishop
  */
+#ifdef FAST_COMPILE
+constexpr std::array<std::uint8_t,kAttacksDiagDbSize> InitMobilityDiag() {
+    std::array<std::uint8_t,kAttacksDiagDbSize> table = {0};
+
+    // Element access member functions aren't constexpr until C++17
+    std::uint8_t* baseAddr = &std::get<0>(table);
+
+    for (int from = 0; from < 64; from++) {
+        const OccupancySet<512> set = GenDiagOccupancies(from);
+        for (std::size_t i = 0; i < set.size; i++) {
+            const std::uint32_t ind = DiagOffset(from) +
+                ((DiagMagic(from) * set.table[i]) >> BishopDbShift(from));
+
+            *(baseAddr + ind) = util::BitCount(AttacksFromDiag(
+                from, set.table[i]));
+        }
+    }
+
+    return table;
+}
+#else
 constexpr int InitMobilityDiag(std::uint32_t index) {
 
     // 1. Determine the square of the attacking bishop
@@ -1267,15 +1288,37 @@ constexpr int InitMobilityDiag(std::uint32_t index) {
 
     return 0;
 }
+#endif
 
 /**
  * Get the number of bits set in the rook "attacks from" bitboard at the given
  * table index
  *
- * @param[in] index The index computed by the magic bitboard hashing scheme
+ * @param[in] index The index computed by the magic bitboard hashing algorithm
  *
  * @return The number of squares attacked by a rook
  */
+#ifdef FAST_COMPILE
+constexpr std::array<std::uint8_t,kAttacksRookDbSize> InitMobilityRook() {
+    std::array<std::uint8_t,kAttacksRookDbSize> table = {0};
+
+    // Element access member functions aren't constexpr until C++17
+    std::uint8_t* baseAddr = &std::get<0>(table);
+
+    for (int from = 0; from < 64; from++) {
+        const OccupancySet<4096> set = GenRookOccupancies(from);
+        for (std::size_t i = 0; i < set.size; i++) {
+            const std::uint32_t ind = RookOffset(from) +
+                ((RookMagic(from) * set.table[i]) >> RookDbShift(from));
+
+            *(baseAddr + ind) = util::BitCount(AttacksFromRook(
+                from, set.table[i]));
+        }
+    }
+
+    return table;
+}
+#else
 constexpr int InitMobilityRook(std::uint32_t index) {
 
     // 1. Determine the square of the attacking rook
@@ -1304,6 +1347,7 @@ constexpr int InitMobilityRook(std::uint32_t index) {
 
     return 0;
 }
+#endif
 
 /**
  * Get the squares adjacent to and on the same rank as the given square
