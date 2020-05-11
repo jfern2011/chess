@@ -1239,7 +1239,6 @@ constexpr int MobilityRook(int square, const std::uint64_t occupied) {
  *
  * @return The number of squares attacked by a bishop
  */
-#ifdef FAST_COMPILE
 constexpr std::array<std::uint8_t,kAttacksDiagDbSize> InitMobilityDiag() {
     std::array<std::uint8_t,kAttacksDiagDbSize> table = {0};
 
@@ -1259,36 +1258,6 @@ constexpr std::array<std::uint8_t,kAttacksDiagDbSize> InitMobilityDiag() {
 
     return table;
 }
-#else
-constexpr int InitMobilityDiag(std::uint32_t index) {
-
-    // 1. Determine the square of the attacking bishop
-
-    int from = 63;
-    for (int i = 1; i < 64; i++) {
-        if (DiagOffset(i) > index) {
-            from = i-1; break;
-        }
-    }
-
-    // 2. Find an occupancy board for which the hashing algorithm would yield
-    //    the index passed to us
-
-    const OccupancySet<512> set = GenDiagOccupancies(from);
-
-    for (std::size_t i = 0; i < set.size; i++) {
-        const std::uint32_t ind = DiagOffset(from) +
-            ((DiagMagic(from) * set.table[i]) >> BishopDbShift(from));
-
-        if (ind == index) return MobilityDiag(
-            from, set.table[i]);
-    }
-
-    // This index is not used
-
-    return 0;
-}
-#endif
 
 /**
  * Get the number of bits set in the rook "attacks from" bitboard at the given
@@ -1298,7 +1267,6 @@ constexpr int InitMobilityDiag(std::uint32_t index) {
  *
  * @return The number of squares attacked by a rook
  */
-#ifdef FAST_COMPILE
 constexpr std::array<std::uint8_t,kAttacksRookDbSize> InitMobilityRook() {
     std::array<std::uint8_t,kAttacksRookDbSize> table = {0};
 
@@ -1318,36 +1286,6 @@ constexpr std::array<std::uint8_t,kAttacksRookDbSize> InitMobilityRook() {
 
     return table;
 }
-#else
-constexpr int InitMobilityRook(std::uint32_t index) {
-
-    // 1. Determine the square of the attacking rook
-
-    int from = 63;
-    for (int i = 1; i < 64; i++) {
-        if (RookOffset(i) > index) {
-            from = i-1; break;
-        }
-    }
-
-    // 2. Find an occupancy board for which the hashing algorithm would yield
-    //    the index passed to us
-
-    const OccupancySet<4096> set = GenRookOccupancies(from);
-
-    for (std::size_t i = 0; i < set.size; i++) {
-        const std::uint32_t ind = RookOffset(from) +
-            ((RookMagic(from) * set.table[i]) >> RookDbShift(from));
-
-        if (ind == index) return MobilityRook(
-            from, set.table[i]);
-    }
-
-    // This index is not used
-
-    return 0;
-}
-#endif
 
 /**
  * Get the squares adjacent to and on the same rank as the given square

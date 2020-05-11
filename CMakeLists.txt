@@ -43,8 +43,6 @@ execute_process(
 set(TABLES_GENERATED TRUE CACHE BOOL "Are lookup tables generated?" FORCE)
 endif()
 
-add_definitions(-DFAST_COMPILE)
-
 add_library(core STATIC
     src/chess.cc
     src/debug.cc
