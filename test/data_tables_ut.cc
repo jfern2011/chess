@@ -159,6 +159,18 @@ std::int8_t BitscanReverse(std::uint64_t bb) {
 }
 
 /**
+ * Clear the specified bit within a word. Note this is an alternative of \ref
+ * ClearBit()
+ *
+ * @param [in]     bit  The bit to clear
+ * @param [in,out] word An n-bit word
+ */
+template <typename T>
+void ClearBit(int bit, T* word) {
+    *word &= ~(T(1) << bit);
+}
+
+/**
  * Create the mask with which to bitwise AND the occupied squares bitboard to
  * obtain a key into the bishop "attacks from" database
  *
@@ -344,6 +356,43 @@ std::uint64_t CreateWestMask(int from) {
 }
 
 /**
+ * Create the mask with which to bitwise AND the occupied squares bitboard to
+ * obtain a key into the rook "attacks from" database
+ *
+ * @param[in] from The square for which to generate this mask
+ *
+ * @return Bitmask of the occupied squares of interest
+ */
+std::uint64_t CreateRookOccupancyMask(int from) {
+    const auto one = std::uint64_t(1);
+    std::uint64_t mask = 0;
+
+    for (int square = from; square < 56; square += 8) {
+        if (square == from) continue;
+        mask |= one << square;
+    }
+
+    for (int square = from; square >= 8; square -= 8) {
+        if (square == from) continue;
+        mask |= one << square;
+    }
+
+    for (int square = from; square < 64; square += 1) {
+        if ((square+1) % 8 == 0) break;
+        else if (square == from) continue;
+        mask |= one << square;
+    }
+
+    for (int square = from; square >= 0; square -= 1) {
+        if (square % 8 == 0) break;
+        else if (square == from) continue;
+        mask |= one << square;
+    }
+
+    return mask;
+}
+
+/**
  * Algorithm taken from here:
  *
  * https://www.chessprogramming.org/Population_Count
@@ -515,7 +564,7 @@ TEST(data_tables, kBackRank) {
               chess::data_tables::kBackRank<chess::Player::kBlack>);
 }
 
-TEST(data_tables, bishop_attacks) {
+TEST(data_tables, kBishopAttacks) {
     const int diag_size_a1h8[] = {
         1, 2, 3, 4, 5, 6, 7, 8,
         2, 3, 4, 5, 6, 7, 8, 7,
@@ -706,9 +755,9 @@ TEST(data_tables, bishop_attacks) {
             // Now, rotate back to the unrotated frame
             std::uint64_t mask64 = 0;
             while (mask64R) {
-                const std::int8_t bitIndex = chess::util::GetLsb(mask64R);
+                const std::int8_t bitIndex = BitscanForward(mask64R);
                 mask64 |= std::uint64_t(1) << rotate45r[bitIndex];
-                chess::util::ClearBit(bitIndex, &mask64R);
+                ClearBit(bitIndex, &mask64R);
             }
             occupancies.push_back(mask64);
         }
@@ -727,9 +776,9 @@ TEST(data_tables, bishop_attacks) {
             // Now, rotate back to the unrotated frame
             std::uint64_t mask64 = 0;
             while (mask64R) {
-                const std::int8_t bitIndex = chess::util::GetLsb(mask64R);
+                const std::int8_t bitIndex = BitscanForward(mask64R);
                 mask64 |= std::uint64_t(1) << rotate45l[bitIndex];
-                chess::util::ClearBit(bitIndex, &mask64R);
+                ClearBit(bitIndex, &mask64R);
             }
             occupancies.push_back(mask64);
         }
@@ -739,45 +788,40 @@ TEST(data_tables, bishop_attacks) {
     auto gen_attacks_from_diag =
             [](chess::Square square, std::uint64_t occupied) {
         std::uint64_t attacks = 0;
-        chess::util::ClearBit(square, &occupied);
+        ClearBit(square, &occupied);
         for (int sq = chess::util::ToIntType(square); true; sq += 7) {
-            const auto bit64 = chess::util::GetBit<std::uint64_t>(sq);
+            const auto bit64 = std::uint64_t(1) << sq;
             attacks |= bit64;
-            if (chess::util::GetFile(sq) == 0 ||
-                chess::util::GetRank(sq) == 7 ||
-                (bit64 & occupied)) break;
+            if (sq % 8 == 0 || sq > 55 || (bit64 & occupied))
+                break;
         }
 
-        chess::util::ClearBit(square, &occupied);
+        ClearBit(square, &occupied);
         for (int sq = chess::util::ToIntType(square); true; sq += 9) {
-            const auto bit64 = chess::util::GetBit<std::uint64_t>(sq);
+            const auto bit64 = std::uint64_t(1) << sq;
             attacks |= bit64;
-            if (chess::util::GetFile(sq) == 7 ||
-                chess::util::GetRank(sq) == 7 ||
-                (bit64 & occupied)) break;
+            if (sq % 8 == 7 || sq > 55 || (bit64 & occupied))
+                break;
         }
 
-        chess::util::ClearBit(square, &occupied);
+        ClearBit(square, &occupied);
         for (int sq = chess::util::ToIntType(square); true; sq -= 9) {
-            const auto bit64 = chess::util::GetBit<std::uint64_t>(sq);
+            const auto bit64 = std::uint64_t(1) << sq;
             attacks |= bit64;
-            if (chess::util::GetFile(sq) == 0 ||
-                chess::util::GetRank(sq) == 0 ||
-                (bit64 & occupied)) break;
+            if (sq % 8 == 0 || sq <= 7 || (bit64 & occupied))
+                break;
         }
 
-        chess::util::ClearBit(square, &occupied);
-        for (int sq = chess::util::ToIntType(square); true;
-             sq -= 7) {
-            const auto bit64 = chess::util::GetBit<std::uint64_t>(sq);
+        ClearBit(square, &occupied);
+        for (int sq = chess::util::ToIntType(square); true; sq -= 7) {
+            const auto bit64 = std::uint64_t(1) << sq;
             attacks |= bit64;
-            if (chess::util::GetFile(sq) == 7 ||
-                chess::util::GetRank(sq) == 0 ||
-                (bit64 & occupied)) break;
+            if (sq % 8 == 7 || sq <= 7 || (bit64 & occupied))
+                break;
         }
 
         // The bishop doesn't attack the square it's on:
-        chess::util::ClearBit(square, &attacks);
+        ClearBit(square, &attacks);
 
         return attacks;
     };
@@ -811,7 +855,7 @@ TEST(data_tables, bishop_attacks) {
                             chess::data_tables::kBishopDbShifts[square]);
 
                 const std::uint64_t attacks =
-                    chess::data_tables::bishop_attacks[index];
+                    chess::data_tables::kBishopAttacks[index];
 
                 // Assert since chances are if one check fails, many others
                 // will also
@@ -853,7 +897,7 @@ TEST(data_tables, bishop_mobility) {
     for (std::size_t i = 0;
          i < chess::data_tables::internal::kAttacksDiagDbSize; i++) {
         const int actual = chess::data_tables::bishop_mobility[i];
-        const int expected = PopCount(chess::data_tables::bishop_attacks[i]);
+        const int expected = PopCount(chess::data_tables::kBishopAttacks[i]);
         ASSERT_EQ(actual, expected);
     }
 }
@@ -1626,7 +1670,7 @@ TEST (data_tables, kRayExtend) {
             const std::uint64_t actual = chess::data_tables::kRayExtend[i][j];
 
             ASSERT_EQ(actual, mask)
-                << chess::kSquareStr[i] << " -> "
+                << chess::kSquareStr[i] << " <-> "
                 << chess::kSquareStr[j] << "\n"
                 << "Expected:" << chess::debug::PrintBitBoard(mask)
                 << "Actual:"   << chess::debug::PrintBitBoard(actual)
@@ -1677,12 +1721,296 @@ TEST (data_tables, kRaySegment) {
             const std::uint64_t actual = chess::data_tables::kRaySegment[i][j];
 
             ASSERT_EQ(actual, mask)
-                << chess::kSquareStr[i] << " -> "
+                << chess::kSquareStr[i] << " <-> "
                 << chess::kSquareStr[j] << "\n"
                 << "Expected:" << chess::debug::PrintBitBoard(mask)
                 << "Actual:"   << chess::debug::PrintBitBoard(actual)
                 << std::endl;
         }
+    }
+}
+
+TEST(data_tables, kRookAttacks) {
+    const int rank_shift[] = {
+         0,  0,  0,  0,  0,  0,  0,  0,
+         8,  8,  8,  8,  8,  8,  8,  8,
+        16, 16, 16, 16, 16, 16, 16, 16,
+        24, 24, 24, 24, 24, 24, 24, 24,
+        32, 32, 32, 32, 32, 32, 32, 32,
+        40, 40, 40, 40, 40, 40, 40, 40,
+        48, 48, 48, 48, 48, 48, 48, 48,
+        56, 56, 56, 56, 56, 56, 56, 56
+    };
+
+    const int file_shift[] = {
+        0, 8, 16, 24, 32, 40, 48, 56,
+        0, 8, 16, 24, 32, 40, 48, 56,
+        0, 8, 16, 24, 32, 40, 48, 56,
+        0, 8, 16, 24, 32, 40, 48, 56,
+        0, 8, 16, 24, 32, 40, 48, 56,
+        0, 8, 16, 24, 32, 40, 48, 56,
+        0, 8, 16, 24, 32, 40, 48, 56,
+        0, 8, 16, 24, 32, 40, 48, 56
+    };
+
+    const chess::Square rotate90r[] = {
+        chess::Square::H8, chess::Square::H7,
+            chess::Square::H6, chess::Square::H5,
+                chess::Square::H4, chess::Square::H3,
+                    chess::Square::H2, chess::Square::H1,
+        chess::Square::G8, chess::Square::G7,
+            chess::Square::G6, chess::Square::G5,
+                chess::Square::G4, chess::Square::G3,
+                    chess::Square::G2, chess::Square::G1,
+        chess::Square::F8, chess::Square::F7,
+            chess::Square::F6, chess::Square::F5,
+                chess::Square::F4, chess::Square::F3,
+                    chess::Square::F2, chess::Square::F1,
+        chess::Square::E8, chess::Square::E7,
+            chess::Square::E6, chess::Square::E5,
+                chess::Square::E4, chess::Square::E3,
+                    chess::Square::E2, chess::Square::E1,
+        chess::Square::D8, chess::Square::D7,
+            chess::Square::D6, chess::Square::D5,
+                chess::Square::D4, chess::Square::D3,
+                    chess::Square::D2, chess::Square::D1,
+        chess::Square::C8, chess::Square::C7,
+            chess::Square::C6, chess::Square::C5,
+                chess::Square::C4, chess::Square::C3,
+                    chess::Square::C2, chess::Square::C1,
+        chess::Square::B8, chess::Square::B7,
+            chess::Square::B6, chess::Square::B5,
+                chess::Square::B4, chess::Square::B3,
+                    chess::Square::B2, chess::Square::B1,
+        chess::Square::A8, chess::Square::A7,
+            chess::Square::A6, chess::Square::A5,
+                chess::Square::A4, chess::Square::A3,
+                    chess::Square::A2, chess::Square::A1
+    };
+
+    auto gen_file_occupancies = [&](chess::Square square) {
+        std::vector<std::uint64_t> occupancies;
+        for (int mask = 0; mask < (1 << 8); mask++) {
+
+            // First, produce a mask in the 90-degree clockwise-rotated frame:
+            auto mask64R = std::uint64_t(mask) << file_shift[square];
+
+            // Now, rotate back to the unrotated frame
+            std::uint64_t mask64 = 0;
+            while (mask64R) {
+                const std::int8_t bitIndex = BitscanForward(mask64R);
+                mask64 |= std::uint64_t(1) << rotate90r[bitIndex];
+                ClearBit(bitIndex, &mask64R);
+            }
+            occupancies.push_back(mask64);
+        }
+        return occupancies;
+    };
+
+    auto gen_rank_occupancies = [&](chess::Square square) {
+        std::vector<std::uint64_t> occupancies;
+        for (int mask = 0; mask < (1 << 8); mask++) {
+
+            auto mask64 = std::uint64_t(mask) << rank_shift[square];
+            occupancies.push_back(mask64);
+        }
+        return occupancies;
+    };
+
+    auto gen_attacks_from_rook =
+            [](chess::Square square, std::uint64_t occupied) {
+        std::uint64_t attacks = 0;
+        ClearBit(square, &occupied);
+        for (int sq = chess::util::ToIntType(square); true; sq += 1) {
+            const auto bit64 = std::uint64_t(1) << sq;
+            attacks |= bit64;
+            if ((sq+1) % 8 == 0 || (bit64 & occupied)) break;
+        }
+
+        ClearBit(square, &occupied);
+        for (int sq = chess::util::ToIntType(square); true; sq += 8) {
+            const auto bit64 = std::uint64_t(1) << sq;
+            attacks |= bit64;
+            if (sq > 55 || (bit64 & occupied)) break;
+        }
+
+        ClearBit(square, &occupied);
+        for (int sq = chess::util::ToIntType(square); true; sq -= 1) {
+            const auto bit64 = std::uint64_t(1) << sq;
+            attacks |= bit64;
+            if (sq % 8 == 0 || (bit64 & occupied)) break;
+        }
+
+        ClearBit(square, &occupied);
+        for (int sq = chess::util::ToIntType(square); true; sq -= 8) {
+            const auto bit64 = std::uint64_t(1) << sq;
+            attacks |= bit64;
+            if (sq < 8 || (bit64 & occupied)) break;
+        }
+
+        // The rook doesn't attack the square it's on:
+        ClearBit(square, &attacks);
+
+        return attacks;
+    };
+
+    for (auto square = chess::Square::H1; square <= chess::Square::A8;
+         square = static_cast<chess::Square>(square+1)) {
+        std::vector<std::uint64_t> occupancies_file =
+            gen_file_occupancies(square);
+        std::vector<std::uint64_t> occupancies_rank =
+            gen_rank_occupancies(square);
+
+        for (auto occupancy_file : occupancies_file) {
+            for (auto occupancy_rank : occupancies_rank) {
+                const std::uint64_t occupied = occupancy_file | occupancy_rank;
+
+                // Get the squares attacked by a bishop on this square
+                const std::uint64_t expected_attacks =
+                    gen_attacks_from_rook(square, occupied);
+
+                // Now, get the same thing by table lookup and compare:
+                std::uint64_t except = std::uint64_t(1) << square;
+                switch (square % 8) {
+                  case 0:
+                    except |= (std::uint64_t(1) << chess::Square::H8) |
+                              (std::uint64_t(1) << chess::Square::H1) |
+                              chess::kFileA;
+                    break;
+                  case 7:
+                    except |= (std::uint64_t(1) << chess::Square::A8) |
+                              (std::uint64_t(1) << chess::Square::A1) |
+                              chess::kFileH;
+                    break;
+                  default:
+                    except |= chess::kFileA | chess::kFileH;
+                }
+
+                if (square <= 7) {
+                    except |= (std::uint64_t(1) << chess::Square::A1) |
+                              (std::uint64_t(1) << chess::Square::H1) |
+                              chess::kRank8;
+                } else if (square > 55) {
+                    except |= (std::uint64_t(1) << chess::Square::A8) |
+                              (std::uint64_t(1) << chess::Square::H8) |
+                              chess::kRank1;
+                } else {
+                    except |= chess::kRank8 | chess::kRank1;
+                }
+
+                const std::uint64_t occupancy = occupied ^ (occupied & except);
+                const std::uint32_t index =
+                    chess::data_tables::kRookOffsets[square] +
+                        ((occupancy*chess::data_tables::kRookMagics[square]) >>
+                            chess::data_tables::kRookDbShifts[square]);
+
+                const std::uint64_t attacks =
+                    chess::data_tables::kRookAttacks[index];
+
+                // Assert since chances are if one check fails, many others
+                // will also
+
+                ASSERT_EQ(attacks, expected_attacks)
+                    << "\nOccupied[" << chess::kSquareStr[square] << "]:"
+                    << chess::debug::PrintBitBoard(occupied)
+                    << "Expected:"
+                    << chess::debug::PrintBitBoard(expected_attacks)
+                    << "Actual:"
+                    << chess::debug::PrintBitBoard(
+                        attacks);
+            }
+        }
+    }
+}
+
+TEST(data_tables, kRookAttacksMask) {
+    for (int i = 0; i < 64; i++) {
+        ASSERT_EQ(CreateRookOccupancyMask(i),
+                  chess::data_tables::kRookAttacksMask[i]);
+    }
+}
+
+TEST(data_tables, kRookDbShifts) {
+    for (int i = 0; i < 64; i++) {
+        const int n_bits = PopCount(CreateRookOccupancyMask(i));
+        ASSERT_EQ(64-n_bits, chess::data_tables::kRookDbShifts[i]);
+    }
+}
+
+TEST(data_tables, rook_mobility) {
+    for (std::size_t i = 0;
+         i < chess::data_tables::internal::kAttacksRookDbSize; i++) {
+        const int actual = chess::data_tables::rook_mobility[i];
+        const int expected = PopCount(chess::data_tables::kRookAttacks[i]);
+        ASSERT_EQ(actual, expected);
+    }
+}
+
+TEST(data_tables, kRookOffsets) {
+    ASSERT_EQ(0, chess::data_tables::kRookOffsets[0]);
+
+    int runningOffset = 0;
+    for (int i = 1; i < 64; i++) {
+        runningOffset += (1 << PopCount(CreateRookOccupancyMask(i-1)));
+        ASSERT_EQ(runningOffset,
+                  chess::data_tables::kRookOffsets[i]);
+    }
+}
+
+TEST(data_tables, kRookRangeMask) {
+    auto rangeMask = [](int from) {
+        const auto one = std::uint64_t(1);
+        std::uint64_t mask = 0;
+
+        for (int square = from; square < 64; square += 8) {
+            mask |= one << square;
+        }
+
+        for (int square = from; square >= 0; square -= 8) {
+            mask |= one << square;
+        }
+
+        for (int square = from; square < 64; square += 1) {
+            mask |= one << square;
+            if ((square + 1) % 8 == 0) break;
+        }
+
+        for (int square = from; square >= 0; square -= 1) {
+            mask |= one << square;
+            if (square % 8 == 0) break;
+        }
+
+        return mask;
+    };
+
+    for (int i = 0; i < 64; i++) {
+        ASSERT_EQ(chess::data_tables::kRookRangeMask[i], rangeMask(i));
+    }
+}
+
+TEST(data_tables, kSouthMask) {
+    for (int i = 0; i < 64; i++) {
+        ASSERT_EQ(CreateSouthMask(i), chess::data_tables::kSouthMask[i]);
+    }
+}
+
+TEST(data_tables, kSouthEastMask) {
+    for (int i = 0; i < 64; i++) {
+        ASSERT_EQ(chess::data_tables::kSouthEastMask[i],
+                  CreateSouthEastMask(i));
+    }
+}
+
+TEST(data_tables, kSouthWestMask) {
+    for (int i = 0; i < 64; i++) {
+        ASSERT_EQ(chess::data_tables::kSouthWestMask[i],
+                  CreateSouthWestMask(i));
+    }
+}
+
+TEST(data_tables, kWestMask) {
+    for (int i = 0; i < 64; i++) {
+        ASSERT_EQ(chess::data_tables::kWestMask[i], CreateWestMask(i));
     }
 }
 

@@ -794,10 +794,11 @@ constexpr std::uint64_t RookMagic(int square) {
  *
  * @return The set of squares attacked by a bishop
  */
-#ifdef FAST_COMPILE
-inline
-std::array<std::uint64_t,kAttacksDiagDbSize> InitAttacksFromDiag() {
+constexpr std::array<std::uint64_t,kAttacksDiagDbSize> InitAttacksFromDiag() {
     std::array<std::uint64_t,kAttacksDiagDbSize> table = {0};
+
+    // Element access member functions aren't constexpr until C++17
+    std::uint64_t* baseAddr = &std::get<0>(table);
 
     for (int from = 0; from < 64; from++) {
         const OccupancySet<512> set = GenDiagOccupancies(from);
@@ -805,42 +806,12 @@ std::array<std::uint64_t,kAttacksDiagDbSize> InitAttacksFromDiag() {
             const std::uint32_t ind = DiagOffset(from) +
                 ((DiagMagic(from) * set.table[i]) >> BishopDbShift(from));
 
-            table[ind] = AttacksFromDiag(from, set.table[i]);
+            *(baseAddr + ind) = AttacksFromDiag(from, set.table[i]);
         }
     }
 
     return table;
 }
-#else
-constexpr std::uint64_t InitAttacksFromDiag(std::uint32_t index) {
-
-    // 1. Determine the square of the attacking bishop
-
-    int from = 63;
-    for (int i = 1; i < 64; i++) {
-        if (DiagOffset(i) > index) {
-            from = i-1; break;
-        }
-    }
-
-    // 2. Find an occupancy board for which the hashing algorithm would yield
-    //    the index passed to us
-
-    const OccupancySet<512> set = GenDiagOccupancies(from);
-
-    for (std::size_t i = 0; i < set.size; i++) {
-        const std::uint32_t ind = DiagOffset(from) +
-            ((DiagMagic(from) * set.table[i]) >> BishopDbShift(from));
-
-        if (ind == index) return AttacksFromDiag(
-            from, set.table[i]);
-    }
-
-    // This index is not used
-
-    return 0;
-}
-#endif
 
 /**
  * Get the rook "attacks from" bitboard at the given table index
@@ -849,33 +820,23 @@ constexpr std::uint64_t InitAttacksFromDiag(std::uint32_t index) {
  *
  * @return The set of squares attacked by a rook
  */
-constexpr std::uint64_t InitAttacksFromRook(std::uint32_t index) {
+constexpr std::array<std::uint64_t,kAttacksRookDbSize> InitAttacksFromRook() {
+    std::array<std::uint64_t,kAttacksRookDbSize> table = {0};
 
-    // 1. Determine the square of the attacking rook
+    // Element access member functions aren't constexpr until C++17
+    std::uint64_t* baseAddr = &std::get<0>(table);
 
-    int from = 63;
-    for (int i = 1; i < 64; i++) {
-        if (RookOffset(i) > index) {
-            from = i-1; break;
+    for (int from = 0; from < 64; from++) {
+        const OccupancySet<4096> set = GenRookOccupancies(from);
+        for (std::size_t i = 0; i < set.size; i++) {
+            const std::uint32_t ind = RookOffset(from) +
+                ((RookMagic(from) * set.table[i]) >> RookDbShift(from));
+
+            *(baseAddr + ind) = AttacksFromRook(from, set.table[i]);
         }
     }
 
-    // 2. Find an occupancy board for which the hashing algorithm would yield
-    //    the index passed to us
-
-    const OccupancySet<4096> set = GenRookOccupancies(from);
-
-    for (std::size_t i = 0; i < set.size; i++) {
-        const std::uint32_t ind = RookOffset(from) +
-            ((RookMagic(from) * set.table[i]) >> RookDbShift(from));
-
-        if (ind == index) return AttacksFromRook(
-            from, set.table[i]);
-    }
-
-    // This index is not used
-
-    return 0;
+    return table;
 }
 
 /**

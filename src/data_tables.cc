@@ -19,9 +19,9 @@ namespace data_tables {
  * @{
  */
 
-std::array<std::uint64_t,internal::kAttacksDiagDbSize> bishop_attacks;
+//std::array<std::uint64_t,internal::kAttacksDiagDbSize> bishop_attacks;
 std::array<int,internal::kAttacksDiagDbSize>           bishop_mobility;
-std::array<std::uint64_t,internal::kAttacksRookDbSize> rook_attacks;
+//std::array<std::uint64_t,internal::kAttacksRookDbSize> rook_attacks;
 std::array<int,internal::kAttacksRookDbSize>           rook_mobility;
 
 /**
@@ -48,17 +48,18 @@ public:
  * Initialize tables not created during compile time
  */
 Initializer::Initializer() {
-    bishop_attacks = internal::InitAttacksFromDiag();
+    //bishop_attacks = internal::InitAttacksFromDiag();
 
-    for (std::size_t i = 0; i < bishop_attacks.size(); i++) {
-        bishop_mobility[i] = util::BitCount(bishop_attacks[i]);
+    for (std::size_t i = 0; i < kBishopAttacks.size(); i++) {
+        bishop_mobility[i] = util::BitCount(kBishopAttacks[i]);
     }
-/*
+#if 1
+    //rook_attacks = internal::InitAttacksFromRook();
+
     for (std::uint32_t i = 0; i < internal::kAttacksRookDbSize; i++) {
-        rook_attacks[i]  = internal::InitAttacksFromRook(i);
-        rook_mobility[i] = internal::InitMobilityRook(i);
+        rook_mobility[i] = util::BitCount(kRookAttacks[i]);
     }
- */
+#endif
 }
 
 /**

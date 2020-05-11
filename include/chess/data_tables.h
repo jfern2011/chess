@@ -61,13 +61,7 @@ template<> constexpr auto kBackRank<Player::kWhite> = kRank1;
 /**
  * A database containing the "attacks from" bitboards for a bishop
  */
-#ifdef FAST_COMPILE
-extern std::array<std::uint64_t,internal::kAttacksDiagDbSize> bishop_attacks;
-#else
-constexpr auto bishop_attacks =
-    internal::CreateTable<internal::kAttacksDiagDbSize>(
-        internal::InitAttacksFromDiag);
-#endif
+constexpr auto kBishopAttacks = internal::InitAttacksFromDiag();
 
 /**
  * The occupancy squares we mask the occupied squares bitboard with to obtain
@@ -636,13 +630,7 @@ constexpr auto kRaySegment =
 /**
  * A database containing the "attacks from" bitboards for a rook
  */
-#ifdef FAST_COMPILE
-extern std::array<std::uint64_t,internal::kAttacksRookDbSize> rook_attacks;
-#else
-constexpr auto rook_attacks =
-    internal::CreateTable<internal::kAttacksRookDbSize>(
-        internal::InitAttacksFromRook);
-#endif
+constexpr auto kRookAttacks = internal::InitAttacksFromRook();
 
 /**
  * The occupancy squares we mask the occupied squares bitboard with to obtain
