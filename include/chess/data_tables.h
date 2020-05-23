@@ -12,9 +12,6 @@
 
 #include "chess/chess.h"
 #include "chess/private/data_tables_internal.h"
-#include "generated/lsb.h"
-#include "generated/msb.h"
-#include "generated/popcnt.h"
 
 namespace chess {
 namespace data_tables {
@@ -330,7 +327,8 @@ constexpr auto kKnightAttacks =
 /**
  * Returns the LSB for every possible unsigned 16-bit value
  */
-constexpr auto kLsb = internal::lsb;
+constexpr auto kLsb =
+    internal::CreateTable<65536>(util::GetLsb<std::uint16_t>);
 
 /**
  * The square arrived at by retreating 2 pawn steps
@@ -411,7 +409,8 @@ template<> constexpr auto kMinus9<Player::kBlack> =
 /**
  * Returns the MSB for every possible unsigned 16-bit value
  */
-constexpr auto kMsb = internal::msb;
+constexpr auto kMsb =
+    internal::CreateTable<65536>(util::GetMsb<std::uint16_t>);
 
 /**
  * All squares "north" of a particular square, from white's perspective
@@ -565,7 +564,8 @@ template<> constexpr auto kPlus9<Player::kBlack> =
 /**
  * Returns the population count for every possible unsigned 16-bit value
  */
-constexpr auto kPop = internal::pop;
+constexpr auto kPop =
+    internal::CreateTable<65536>(util::BitCount<std::uint16_t>);
 
 /**
  * Bitmasks representing the queenside
