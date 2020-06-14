@@ -24,24 +24,37 @@ endif()
 # settings on Windows
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
-# Add googletest directly to our build. This defines
-# the gtest and gtest_main targets.
-add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
-                 ${CMAKE_CURRENT_BINARY_DIR}/googletest-build
-                 EXCLUDE_FROM_ALL)
+if (NOT TARGET gtest_main)
+    # Add googletest directly to our build. This defines
+    # the gtest and gtest_main targets.
+    add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
+                     ${CMAKE_CURRENT_BINARY_DIR}/googletest-build
+                     EXCLUDE_FROM_ALL)
+endif()
+
+# Utilities submodule
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/utility EXCLUDE_FROM_ALL)
+
+# -----------------------------------------------------------------------------
 
 add_library(core STATIC
     src/chess.cc
     src/debug.cc
+    #src/position.cc
 )
 
 target_include_directories(core PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
+target_link_libraries(core bitops)
+
+# -----------------------------------------------------------------------------
+
 add_executable(chess-ut
     test/data_tables_ut.cc
     test/main.cc
+    #test/position_ut.cc
 )
 
 target_link_libraries(chess-ut

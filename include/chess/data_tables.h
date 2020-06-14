@@ -4,8 +4,8 @@
  *  \date   11/02/2019
  */
 
-#ifndef DATA_TABLES_H_
-#define DATA_TABLES_H_
+#ifndef CHESS_DATA_TABLES_H_
+#define CHESS_DATA_TABLES_H_
 
 #include <array>
 #include <cstdint>
@@ -309,10 +309,10 @@ template <Player P>
 std::uint64_t kKingSide = 0;
 
 template<> constexpr auto kKingSide<Player::kWhite> =
-    util::CreateBitMask<std::uint64_t, Square::F1, Square::G1>();
+    jfern::bitops::create_mask<std::uint64_t, Square::F1, Square::G1>();
 
 template<> constexpr auto kKingSide<Player::kBlack> =
-    util::CreateBitMask<std::uint64_t, Square::F8, Square::G8>();
+    jfern::bitops::create_mask<std::uint64_t, Square::F8, Square::G8>();
 
 /**
  * @}
@@ -328,7 +328,7 @@ constexpr auto kKnightAttacks =
  * Returns the LSB for every possible unsigned 16-bit value
  */
 constexpr auto kLsb =
-    internal::CreateTable<65536>(util::GetLsb<std::uint16_t>);
+    internal::CreateTable<65536>(jfern::bitops::lsb<std::uint16_t>);
 
 /**
  * The square arrived at by retreating 2 pawn steps
@@ -410,7 +410,7 @@ template<> constexpr auto kMinus9<Player::kBlack> =
  * Returns the MSB for every possible unsigned 16-bit value
  */
 constexpr auto kMsb =
-    internal::CreateTable<65536>(util::GetMsb<std::uint16_t>);
+    internal::CreateTable<65536>(jfern::bitops::msb<std::uint16_t>);
 
 /**
  * All squares "north" of a particular square, from white's perspective
@@ -565,7 +565,7 @@ template<> constexpr auto kPlus9<Player::kBlack> =
  * Returns the population count for every possible unsigned 16-bit value
  */
 constexpr auto kPop =
-    internal::CreateTable<65536>(util::BitCount<std::uint16_t>);
+    internal::CreateTable<65536>(jfern::bitops::count<std::uint16_t>);
 
 /**
  * Bitmasks representing the queenside
@@ -577,10 +577,14 @@ template <Player P>
 auto kQueenside = std::uint64_t(0);
 
 template<> constexpr auto kQueenside<Player::kWhite> =
-    util::CreateBitMask<std::uint64_t, Square::B1, Square::C1, Square::D1>();
+    jfern::bitops::create_mask<std::uint64_t, Square::B1,
+                                              Square::C1,
+                                              Square::D1>();
 
 template<> constexpr auto kQueenside<Player::kBlack> =
-    util::CreateBitMask<std::uint64_t, Square::B8, Square::C8, Square::D8>();
+    jfern::bitops::create_mask<std::uint64_t, Square::B8,
+                                              Square::C8,
+                                              Square::D8>();
 
 /**
  * @}
@@ -692,4 +696,4 @@ constexpr auto kWestMask = internal::CreateTable<64>(internal::WestMask);
 }  // namespace data_tables
 }  // namespace chess
 
-#endif  // DATA_TABLES_H_
+#endif  // CHESS_DATA_TABLES_H_

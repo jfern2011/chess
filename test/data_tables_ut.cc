@@ -1046,13 +1046,13 @@ TEST(data_tables, kEpTarget) {
 
 TEST(data_tables, kExchange) {
     const std::map<chess::Piece, std::int16_t> piece2value = {
-        {chess::Piece::pawn,   chess::kPawnValue},
-        {chess::Piece::rook,   chess::kRookValue},
-        {chess::Piece::knight, chess::kKnightValue},
-        {chess::Piece::bishop, chess::kBishopValue},
-        {chess::Piece::queen,  chess::kQueenValue},
-        {chess::Piece::king,   chess::kKingValue},
-        {chess::Piece::empty,  chess::kEmptyValue}
+        {chess::Piece::PAWN,   chess::kPawnValue},
+        {chess::Piece::ROOK,   chess::kRookValue},
+        {chess::Piece::KNIGHT, chess::kKnightValue},
+        {chess::Piece::BISHOP, chess::kBishopValue},
+        {chess::Piece::QUEEN,  chess::kQueenValue},
+        {chess::Piece::KING,   chess::kKingValue},
+        {chess::Piece::EMPTY,  chess::kEmptyValue}
     };
 
     for (auto captured = piece2value.begin(), end = piece2value.end();
@@ -1452,19 +1452,19 @@ TEST(data_tables, kPawnAttacks) {
 }
 
 TEST(data_tables, kPieceValue) {
-    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::king],
+    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::KING],
               chess::kKingValue);
-    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::pawn],
+    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::PAWN],
               chess::kPawnValue);
-    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::rook],
+    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::ROOK],
               chess::kRookValue);
-    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::knight],
+    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::KNIGHT],
               chess::kKnightValue);
-    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::bishop],
+    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::BISHOP],
               chess::kBishopValue);
-    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::queen],
+    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::QUEEN],
               chess::kQueenValue);
-    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::empty],
+    EXPECT_EQ(chess::data_tables::kPieceValue[chess::Piece::EMPTY],
               chess::kEmptyValue);
 }
 

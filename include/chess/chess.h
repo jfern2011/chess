@@ -63,13 +63,13 @@ enum class Player {
 
 struct PieceEnum {
     enum Type {
-        pawn,
-        rook,
-        knight,
-        bishop,
-        queen,
-        king,
-        empty
+        PAWN,
+        ROOK,
+        KNIGHT,
+        BISHOP,
+        QUEEN,
+        KING,
+        EMPTY
     };
 };
 

@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <utility>
 
+#include "bitops/bitops.h"
 #include "chess/chess.h"
 #include "chess/util.h"
 
@@ -310,28 +311,28 @@ constexpr std::uint64_t SouthWestMask(int square) {
 constexpr std::uint64_t AttacksFromDiag(int square,
                                         std::uint64_t occupied) {
     std::uint64_t attacks =
-        BishopRangeMask(square) ^ util::GetBit<std::uint64_t>(square);
+      BishopRangeMask(square) ^ jfern::bitops::get_bit<std::uint64_t>(square);
 
     int blocker =
-        util::GetLsb(occupied & NorthEastMask(square));
+        jfern::bitops::lsb(occupied & NorthEastMask(square));
 
     if (blocker != -1)
         attacks ^= NorthEastMask(blocker);
 
     blocker =
-        util::GetMsb(occupied & SouthEastMask(square));
+        jfern::bitops::msb(occupied & SouthEastMask(square));
 
     if (blocker != -1)
         attacks ^= SouthEastMask(blocker);
 
     blocker =
-        util::GetLsb(occupied & NorthWestMask(square));
+        jfern::bitops::lsb(occupied & NorthWestMask(square));
 
     if (blocker != -1)
         attacks ^= NorthWestMask(blocker);
 
     blocker =
-        util::GetMsb(occupied & SouthWestMask(square));
+        jfern::bitops::msb(occupied & SouthWestMask(square));
 
     if (blocker != -1)
         attacks ^= SouthWestMask(blocker);
@@ -432,28 +433,28 @@ constexpr std::uint64_t WestMask(int square) {
 constexpr std::uint64_t AttacksFromRook(int square,
                                         std::uint64_t occupied) {
     std::uint64_t attacks =
-        RookRangeMask(square) ^ util::GetBit< std::uint64_t >(square);
+        RookRangeMask(square) ^ jfern::bitops::get_bit<std::uint64_t>(square);
 
     int blocker =
-        util::GetLsb(occupied & NorthMask(square));
+        jfern::bitops::lsb(occupied & NorthMask(square));
 
     if (blocker != -1)
         attacks ^= NorthMask(blocker);
 
     blocker =
-        util::GetLsb(occupied & WestMask(square));
+        jfern::bitops::lsb(occupied & WestMask(square));
 
     if (blocker != -1)
         attacks ^= WestMask(blocker);
 
     blocker =
-        util::GetMsb(occupied & EastMask(square));
+        jfern::bitops::msb(occupied & EastMask(square));
 
     if (blocker != -1)
         attacks ^= EastMask(blocker);
 
     blocker =
-        util::GetMsb(occupied & SouthMask(square));
+        jfern::bitops::msb(occupied & SouthMask(square));
 
     if (blocker != -1)
         attacks ^= SouthMask(blocker);
@@ -474,7 +475,7 @@ constexpr std::uint64_t BishopOccupancyMask(int square) {
 
     std::uint64_t scope = GetDiagA1H8(square) | GetDiagH1A8(square);
 
-    scope ^= scope & (frame | util::GetBit<std::uint64_t>(square));
+    scope ^= scope & (frame | jfern::bitops::get_bit<std::uint64_t>(square));
 
     return scope;
 }
@@ -519,7 +520,7 @@ constexpr std::uint64_t RookOccupancyMask(int square) {
  * @return The size of the bit shift
  */
 constexpr int BishopDbShift(int square) {
-    return 64 - util::BitCount(BishopOccupancyMask(square));
+    return 64 - jfern::bitops::count(BishopOccupancyMask(square));
 }
 
 /**
@@ -531,7 +532,7 @@ constexpr int BishopDbShift(int square) {
  * @return The size of the bit shift
  */
 constexpr int RookDbShift(int square) {
-    return 64 - util::BitCount(RookOccupancyMask(square));
+    return 64 - jfern::bitops::count(RookOccupancyMask(square));
 }
 
 /**
@@ -547,7 +548,7 @@ constexpr std::uint32_t DiagOffset(int square) {
     
     for (int i = 1; i <= square; i++)
         prev_offset +=
-            std::uint64_t(1) << util::BitCount(BishopOccupancyMask(i-1));
+            std::uint64_t(1) << jfern::bitops::count(BishopOccupancyMask(i-1));
 
     return prev_offset;
 }
@@ -565,32 +566,9 @@ constexpr std::uint32_t RookOffset(int square) {
     
     for (int i = 1; i <= square; i++)
         prev_offset +=
-            std::uint64_t(1) << util::BitCount(RookOccupancyMask(i-1));
+            std::uint64_t(1) << jfern::bitops::count(RookOccupancyMask(i-1));
 
     return prev_offset;
-}
-
-/**
- * Returns the indexes of all bits set in a word
- *
- * @note Used as a fast compile-time alternative to \ref util::GetSetBits()
- *
- * @param [in]  word    The word to parse
- * @param [out] indexes A list of bit indexes set
- *
- * @return The number of bits set
- */
-template<typename T>
-constexpr std::size_t GetSetBits(T word, int* indexes) {
-    std::size_t count = 0;
-
-    while (word) {
-        const std::int8_t lsb = util::GetLsb<T>(word);
-        util::ClearBit( lsb, &word );
-        indexes[count++] = lsb;
-    }
-
-    return count;
 }
 
 /**
@@ -618,16 +596,16 @@ constexpr OccupancySet<512> GenDiagOccupancies(int square) {
     std::uint64_t bit_masks[64] = {};
 
     int set_bits[64] = {};
-    const std::size_t nbits = GetSetBits(diags, set_bits);
+    const std::size_t nbits = jfern::bitops::get_1bits(diags, set_bits);
 
     for (std::size_t i = 0; i < nbits; i++) {
         bit_masks[i] =
-            util::GetBit< std::uint64_t >(set_bits[i]);
+            jfern::bitops::get_bit<std::uint64_t>(set_bits[i]);
     }
 
     for (int i = 0; i < (1 << nbits); i++) {
         int i_bits[64] = {};
-        const std::size_t n_ibits = GetSetBits(i, i_bits);
+        const std::size_t n_ibits = jfern::bitops::get_1bits(i, i_bits);
         std::uint64_t mask = 0;
 
         for (std::size_t j = 0; j < n_ibits; j++) {
@@ -665,16 +643,16 @@ constexpr OccupancySet<4096> GenRookOccupancies(int square) {
     std::uint64_t bit_masks[64] = {};
 
     int set_bits[64] = {};
-    const std::size_t nbits = util::GetSetBits(range, set_bits);
+    const std::size_t nbits = jfern::bitops::get_1bits(range, set_bits);
 
     for (std::size_t i = 0; i < nbits; i++) {
         bit_masks[i] =
-            util::GetBit< std::uint64_t >(set_bits[i]);
+            jfern::bitops::get_bit<std::uint64_t>(set_bits[i]);
     }
 
     for (int i = 0; i < (1 << nbits); i++) {
         int i_bits[64] = {};
-        const std::size_t n_ibits = util::GetSetBits(i, i_bits);
+        const std::size_t n_ibits = jfern::bitops::get_1bits(i, i_bits);
         std::uint64_t mask = 0;
 
         for (std::size_t j = 0; j < n_ibits; j++) {
@@ -850,24 +828,24 @@ constexpr std::uint64_t InitAttacksFromKing(int square) {
     std::uint64_t attacks = 0;
 
     if (util::GetFile(square) < 7) {
-        attacks |= util::GetBit<std::uint64_t>(square+1);
+        attacks |= jfern::bitops::get_bit<std::uint64_t>(square+1);
         if (util::GetRank(square) < 7)
-            attacks |= util::GetBit<std::uint64_t>(square+9);
+            attacks |= jfern::bitops::get_bit<std::uint64_t>(square+9);
         if (util::GetRank(square) > 0)
-            attacks |= util::GetBit<std::uint64_t>(square-7);
+            attacks |= jfern::bitops::get_bit<std::uint64_t>(square-7);
     }
 
     if (util::GetRank(square) < 7)
-        attacks |= util::GetBit<std::uint64_t>(square+8);
+        attacks |= jfern::bitops::get_bit<std::uint64_t>(square+8);
     if (util::GetRank(square) > 0)
-        attacks |= util::GetBit<std::uint64_t>(square-8);
+        attacks |= jfern::bitops::get_bit<std::uint64_t>(square-8);
 
     if (util::GetFile(square) > 0) {
-        attacks |= util::GetBit<std::uint64_t>(square-1);
+        attacks |= jfern::bitops::get_bit<std::uint64_t>(square-1);
         if (util::GetRank(square) > 0)
-            attacks |= util::GetBit<std::uint64_t>(square-9);
+            attacks |= jfern::bitops::get_bit<std::uint64_t>(square-9);
         if (util::GetRank(square) < 7)
-            attacks |= util::GetBit<std::uint64_t>(square+7);
+            attacks |= jfern::bitops::get_bit<std::uint64_t>(square+7);
     }
 
     return attacks;
@@ -885,37 +863,37 @@ constexpr std::uint64_t InitAttacksFromKnight(int square) {
 
     if (util::GetFile(square) < 7) {
         if (util::GetRank(square) < 6)
-            attacks |= util::GetBit<std::uint64_t>(
+            attacks |= jfern::bitops::get_bit<std::uint64_t>(
                 square+17);
         if (util::GetRank(square) > 1)
-            attacks |= util::GetBit<std::uint64_t>(
+            attacks |= jfern::bitops::get_bit<std::uint64_t>(
                 square-15);
     }
 
     if (util::GetFile(square) < 6) {
         if (util::GetRank(square) < 7)
-            attacks |= util::GetBit<std::uint64_t>(
+            attacks |= jfern::bitops::get_bit<std::uint64_t>(
                 square+10);
         if (util::GetRank(square) > 0)
-            attacks |= util::GetBit<std::uint64_t>(
+            attacks |= jfern::bitops::get_bit<std::uint64_t>(
                 square- 6);
     }
 
     if (util::GetFile(square) > 0) {
         if (util::GetRank(square) < 6)
-            attacks |= util::GetBit<std::uint64_t>(
+            attacks |= jfern::bitops::get_bit<std::uint64_t>(
                 square+15);
         if (util::GetRank(square) > 1)
-            attacks |= util::GetBit<std::uint64_t>(
+            attacks |= jfern::bitops::get_bit<std::uint64_t>(
                 square-17);
     }
 
     if (util::GetFile(square) > 1) {
         if (util::GetRank(square) < 7)
-            attacks |= util::GetBit<std::uint64_t>(
+            attacks |= jfern::bitops::get_bit<std::uint64_t>(
                 square+ 6);
         if (util::GetRank(square) > 0)
-            attacks |= util::GetBit<std::uint64_t>(
+            attacks |= jfern::bitops::get_bit<std::uint64_t>(
                 square-10);
     }
 
@@ -1216,7 +1194,7 @@ constexpr Square InitPlus9<Player::kBlack>(int square) {
  * @return The number of squares attacked by the bishop
  */
 constexpr int MobilityDiag(int square, const std::uint64_t occupied) {
-    return util::BitCount(AttacksFromDiag(square, occupied));
+    return jfern::bitops::count(AttacksFromDiag(square, occupied));
 }
 
 /**
@@ -1228,7 +1206,7 @@ constexpr int MobilityDiag(int square, const std::uint64_t occupied) {
  * @return The number of squares attacked by the rook
  */
 constexpr int MobilityRook(int square, const std::uint64_t occupied) {
-    return util::BitCount(AttacksFromRook(square, occupied));
+    return jfern::bitops::count(AttacksFromRook(square, occupied));
 }
 
 /**
@@ -1251,7 +1229,7 @@ constexpr std::array<std::uint8_t,kAttacksDiagDbSize> InitMobilityDiag() {
             const std::uint32_t ind = DiagOffset(from) +
                 ((DiagMagic(from) * set.table[i]) >> BishopDbShift(from));
 
-            *(baseAddr + ind) = util::BitCount(AttacksFromDiag(
+            *(baseAddr + ind) = jfern::bitops::count(AttacksFromDiag(
                 from, set.table[i]));
         }
     }
@@ -1279,7 +1257,7 @@ constexpr std::array<std::uint8_t,kAttacksRookDbSize> InitMobilityRook() {
             const std::uint32_t ind = RookOffset(from) +
                 ((RookMagic(from) * set.table[i]) >> RookDbShift(from));
 
-            *(baseAddr + ind) = util::BitCount(AttacksFromRook(
+            *(baseAddr + ind) = jfern::bitops::count(AttacksFromRook(
                 from, set.table[i]));
         }
     }

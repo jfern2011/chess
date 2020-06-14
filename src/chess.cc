@@ -1,11 +1,10 @@
 /**
- *  \file   chess.h
+ *  \file   chess.cc
  *  \author Jason Fernandez
  *  \date   11/09/2019
  */
 
-namespace chess
-{
+namespace chess {
 
 const char* kSquareStr[65] = {
     "h1","g1","f1","e1","d1","c1","b1","a1",
