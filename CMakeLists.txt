@@ -35,26 +35,36 @@ endif()
 # Utilities submodule
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/utility EXCLUDE_FROM_ALL)
 
+# Add flags to support the heavy use of constexpr (GNU compiler only)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    SET(CXX_CUSTOM_COMPILE_FLAGS "-fconstexpr-ops-limit=1000000000")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_CUSTOM_COMPILE_FLAGS}")
+endif()
+
 # -----------------------------------------------------------------------------
 
 add_library(core STATIC
     src/chess.cc
     src/debug.cc
-    #src/position.cc
+    src/position.cc
+    src/util.cc
 )
 
 target_include_directories(core PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
-target_link_libraries(core bitops)
+target_link_libraries(core
+    bitops
+    superstring
+)
 
 # -----------------------------------------------------------------------------
 
 add_executable(chess-ut
     test/data_tables_ut.cc
     test/main.cc
-    #test/position_ut.cc
+    test/position_ut.cc
 )
 
 target_link_libraries(chess-ut

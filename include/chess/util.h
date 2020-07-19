@@ -7,6 +7,7 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
+#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
@@ -116,6 +117,24 @@ constexpr std::uint64_t GetRankMask(int square) noexcept {
 }
 
 /**
+ * Get a consistent array index as a function of player
+ *
+ * @{
+ */
+template <Player P> constexpr int index() noexcept(P != Player::kBoth) {
+    throw std::logic_error(__func__);
+}
+template <> constexpr int index<Player::kBlack>() noexcept {
+    return 0;
+}
+template <> constexpr int index<Player::kWhite>() noexcept {
+    return 1;
+}
+/**
+ * @}
+ */
+
+/**
  * Get the opposing side
  *
  * @{
@@ -132,6 +151,10 @@ template <> constexpr Player opponent<Player::kWhite>() noexcept {
 /**
  * @}
  */
+
+Piece  CharToPiece(char piece);
+char   PieceToChar(Piece piece, bool to_lower = false);
+Square StrToSquare(const std::string& str);
 
 }  // namespace util
 }  // namespace chess

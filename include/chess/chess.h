@@ -61,15 +61,16 @@ enum class Player {
     kBoth
 };
 
+/** @note Used for array indexing. Do NOT modify */
 struct PieceEnum {
     enum Type {
-        PAWN,
-        ROOK,
-        KNIGHT,
-        BISHOP,
-        QUEEN,
-        KING,
-        EMPTY
+        PAWN   = 0,
+        ROOK   = 1,
+        KNIGHT = 2,
+        BISHOP = 3,
+        QUEEN  = 4,
+        KING   = 5,
+        EMPTY  = 6
     };
 };
 
@@ -102,6 +103,20 @@ struct SquareEnum {
 };
 
 using Square = SquareEnum::Type;
+
+/**
+ * Postfix increment for \ref Square
+ */
+constexpr Square operator++(Square& square, int) noexcept {
+    return square = static_cast<Square>(square+1);
+}
+
+/**
+ * Postfix decrement for \ref Square
+ */
+constexpr Square operator--(Square& square, int) noexcept {
+    return square = static_cast<Square>(square-1);
+}
 
 }  // namespace chess
 

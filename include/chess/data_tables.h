@@ -672,6 +672,13 @@ constexpr auto kRookRangeMask =
     internal::CreateTable<64>(internal::RookRangeMask);
 
 /**
+ * Bitmasks used to set a single bit. All bits are clear except at the
+ * corresponding index (i.e. these are powers of two)
+ */
+constexpr auto kSetMask =
+    internal::CreateTable<64>(jfern::bitops::get_bit<std::uint64_t>);
+
+/**
  * All squares "south" of a particular square, from white's perspective
  */
 constexpr auto kSouthMask = internal::CreateTable<64>(internal::SouthMask);
