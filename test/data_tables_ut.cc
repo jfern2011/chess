@@ -1988,6 +1988,13 @@ TEST(data_tables, kRookRangeMask) {
     }
 }
 
+TEST(data_tables, kSetMask) {
+    ASSERT_EQ(chess::data_tables::kSetMask.size(), 64u);
+    for (std::size_t i = 0; i < chess::data_tables::kSetMask.size(); i++) {
+        ASSERT_EQ(chess::data_tables::kSetMask[i], std::uint64_t(1) << i);
+    }
+}
+
 TEST(data_tables, kSouthMask) {
     for (int i = 0; i < 64; i++) {
         ASSERT_EQ(CreateSouthMask(i), chess::data_tables::kSouthMask[i]);
