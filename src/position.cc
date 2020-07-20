@@ -220,8 +220,14 @@ auto Position::Reset(const std::string& fen_) -> FenError {
         // returning an error
       case 6u:
         pos.full_move_number_ = std::stol(tokens[5]);
+        if (pos.full_move_number_ < 1) {
+            return FenError::kFullMoveNumber;
+        }
       case 5u:
         pos.half_move_number_ = std::stol(tokens[4]);
+        if (pos.half_move_number_ < 0) {
+            return FenError::kHalfMoveClock;
+        }
       case 4u:
         if (tokens[3] != "-") {
             if ((pos.en_passant_target_ = util::StrToSquare(tokens[3]))
