@@ -80,35 +80,36 @@ public:
     public:
         PlayerInfo();
 
-        PlayerInfo(const PlayerInfo& info) = default;
-        PlayerInfo(PlayerInfo&& info) = default;
+        PlayerInfo(const PlayerInfo& info)            = default;
+        PlayerInfo(PlayerInfo&& info)                 = default;
         PlayerInfo& operator=(const PlayerInfo& info) = default;
-        PlayerInfo& operator=(PlayerInfo&& info) = default;
-        ~PlayerInfo() = default;
+        PlayerInfo& operator=(PlayerInfo&& info)      = default;
+        ~PlayerInfo()                                 = default;
 
         constexpr std::uint64_t AttacksTo(Square square) const noexcept;
 
         constexpr std::uint64_t Bishops() const noexcept;
-        constexpr std::uint64_t King() const noexcept;
+        constexpr std::uint64_t King()    const noexcept;
         constexpr std::uint64_t Knights() const noexcept;
-        constexpr std::uint64_t Pawns() const noexcept;
-        constexpr std::uint64_t Rooks() const noexcept;
-        constexpr std::uint64_t Queens() const noexcept;
+        constexpr std::uint64_t Pawns()   const noexcept;
+        constexpr std::uint64_t Rooks()   const noexcept;
+        constexpr std::uint64_t Queens()  const noexcept;
 
-        constexpr bool CanCastleLong() const noexcept;
-        bool& CanCastleLong() noexcept;
-        constexpr bool CanCastleShort() const noexcept;
-        bool& CanCastleShort() noexcept;
+        constexpr bool  CanCastleLong()  const noexcept;
+                  bool& CanCastleLong()  noexcept;
+        constexpr bool  CanCastleShort() const noexcept;
+                  bool& CanCastleShort() noexcept;
 
-        template <Piece piece> void Drop(Square square) noexcept;
-        template <Piece piece> void Lift(Square square) noexcept;
-
+        template <Piece piece>
+        void Drop(Square square) noexcept;
         void Drop(Piece piece, Square square) noexcept;
+
+        template <Piece piece>
+        void Lift(Square square) noexcept;
         void Lift(Piece piece, Square square) noexcept;
 
-        constexpr Square KingSquare() const noexcept;
-
-        constexpr std::uint64_t Occupied() const noexcept;
+        constexpr Square        KingSquare() const noexcept;
+        constexpr std::uint64_t Occupied()   const noexcept;
 
     private:
         /** True if this player can castle long */
@@ -130,11 +131,11 @@ public:
 
     Position();
 
-    Position(const Position& position) = default;
-    Position(Position&& position) = default;
+    Position(const Position& position)            = default;
+    Position(Position&& position)                 = default;
     Position& operator=(const Position& position) = default;
-    Position& operator=(Position&& position) = default;
-    ~Position() = default;
+    Position& operator=(Position&& position)      = default;
+    ~Position()                                   = default;
 
     void Display(std::ostream& stream) const;
 
@@ -220,10 +221,68 @@ constexpr int Position::FullMoveNumber() const noexcept {
 }
 
 /**
+ * Get the \ref PlayerInfo object for the specified player
+ *
+ * @{
+ */
+template <Player player>
+constexpr auto Position::GetPlayerInfo()
+    const noexcept(player != Player::kBoth) -> const PlayerInfo<player>& {
+    throw std::logic_error(__func__);
+}
+template <>
+constexpr auto Position::GetPlayerInfo<Player::kWhite>() const noexcept
+    -> const PlayerInfo<Player::kWhite>& {
+    return white_;
+}
+template <>
+constexpr auto Position::GetPlayerInfo<Player::kBlack>() const noexcept
+    -> const PlayerInfo<Player::kBlack>& {
+    return black_;
+}
+/**
+ * @}
+ */
+
+/**
+ * Get the \ref PlayerInfo object for the specified player
+ *
+ * @{
+ */
+template <Player player>
+constexpr auto Position::GetPlayerInfo()
+    noexcept(player != Player::kBoth)
+    -> PlayerInfo<player>& {
+    throw std::logic_error(__func__);
+}
+template <>
+constexpr auto Position::GetPlayerInfo<Player::kWhite>() noexcept
+    -> PlayerInfo<Player::kWhite>& {
+    return white_;
+}
+template <>
+constexpr auto Position::GetPlayerInfo<Player::kBlack>() noexcept
+    -> PlayerInfo<Player::kBlack>& {
+    return black_;
+}
+/**
+ * @}
+ */
+
+/**
  * @return The position's current half-move number
  */
 constexpr int Position::HalfMoveNumber() const noexcept {
     return half_move_number_;
+}
+
+/**
+ * @return True if the given player is currently in check
+ */
+template <Player player>
+constexpr bool Position::InCheck() const noexcept {
+    return UnderAttack<util::opponent<player>()>(
+            GetPlayerInfo<player>().KingSquare());
 }
 
 /**
@@ -302,64 +361,6 @@ constexpr bool Position::UnderAttack(Square square) const noexcept {
 }
 
 /**
- * Get the \ref PlayerInfo object for the specified player
- *
- * @{
- */
-template <Player player>
-constexpr auto Position::GetPlayerInfo()
-    const noexcept(player != Player::kBoth) -> const PlayerInfo<player>& {
-    throw std::logic_error(__func__);
-}
-template <>
-constexpr auto Position::GetPlayerInfo<Player::kWhite>() const noexcept
-    -> const PlayerInfo<Player::kWhite>& {
-    return white_;
-}
-template <>
-constexpr auto Position::GetPlayerInfo<Player::kBlack>() const noexcept
-    -> const PlayerInfo<Player::kBlack>& {
-    return black_;
-}
-/**
- * @}
- */
-
-/**
- * Get the \ref PlayerInfo object for the specified player
- *
- * @{
- */
-template <Player player>
-constexpr auto Position::GetPlayerInfo()
-    noexcept(player != Player::kBoth)
-    -> PlayerInfo<player>& {
-    throw std::logic_error(__func__);
-}
-template <>
-constexpr auto Position::GetPlayerInfo<Player::kWhite>() noexcept
-    -> PlayerInfo<Player::kWhite>& {
-    return white_;
-}
-template <>
-constexpr auto Position::GetPlayerInfo<Player::kBlack>() noexcept
-    -> PlayerInfo<Player::kBlack>& {
-    return black_;
-}
-/**
- * @}
- */
-
-/**
- * @return True if the given player is currently in check
- */
-template <Player player>
-constexpr bool Position::InCheck() const noexcept {
-    return UnderAttack<util::opponent<player>()>(
-            GetPlayerInfo<player>().KingSquare());
-}
-
-/**
  * Constructor
  */
 template <Player player>
@@ -397,71 +398,6 @@ constexpr std::uint64_t Position::PlayerInfo<player>::AttacksTo(Square square)
     out |= data_tables::kKingAttacks[square] & King();
 
     return out;
-}
-
-/**
- * Drop a piece onto the given square
- *
- * @note No checks are performed regarding the legality of having the piece
- *       on this square
- *
- * @param[in] square The square onto which to drop the piece
- */
-template <Player player>
-template <Piece piece>
-void Position::PlayerInfo<player>::Drop(Square square) noexcept {
-    occupied_ |= std::uint64_t(1) << square;
-
-    pieces_.Put<piece>(square);
-}
-
-/**
- * Lift (remove) a piece from the given square
- *
- * @note No checks are performed regarding the legality of removing the piece
- *       from this square
- *
- * @param[in] square The square from which to remove the piece
- */
-template <Player player>
-template <Piece piece>
-void Position::PlayerInfo<player>::Lift(Square square) noexcept {
-    occupied_ &= data_tables::kClearMask[square];
-
-    pieces_.Get<piece>() &= data_tables::kClearMask[square];
-}
-
-/**
- * Drop a piece onto the given square
- *
- * @note No checks are performed regarding the legality of having the piece
- *       on this square
- *
- * @param[in] piece  The piece to drop
- * @param[in] square The square onto which to drop the piece
- */
-template <Player player>
-void Position::PlayerInfo<player>::Drop(Piece piece, Square square) noexcept {
-    const auto mask = std::uint64_t(1) << square;
-
-    pieces_.pieces64[piece] |= mask;
-    occupied_               |= mask;
-}
-
-/**
- * Lift (remove) a piece from the given square
- *
- * @note No checks are performed regarding the legality of removing the piece
- *       from this square
- *
- * @param[in] piece  The piece to remove
- * @param[in] square The square from which to remove the piece
- */
-template <Player player>
-void Position::PlayerInfo<player>::Lift(Piece piece, Square square) noexcept {
-    occupied_ &= data_tables::kClearMask[square];
-
-    pieces_.pieces64[piece] &= data_tables::kClearMask[square];
 }
 
 /**
@@ -515,15 +451,6 @@ constexpr std::uint64_t Position::PlayerInfo<player>::Queens() const noexcept {
 }
 
 /**
- * @return A bitboard representing all squares occupied by the specified player
- */
-template <Player player>
-constexpr
-std::uint64_t Position::PlayerInfo<player>::Occupied() const noexcept {
-    return occupied_;
-}
-
-/**
  * @return True if the specified player can castle long
  */
 template <Player player>
@@ -560,11 +487,85 @@ bool& Position::PlayerInfo<player>::CanCastleShort() noexcept {
 }
 
 /**
+ * Drop a piece onto the given square
+ *
+ * @note No checks are performed regarding the legality of having the piece
+ *       on this square
+ *
+ * @param[in] square The square onto which to drop the piece
+ */
+template <Player player>
+template <Piece piece>
+void Position::PlayerInfo<player>::Drop(Square square) noexcept {
+    occupied_ |= std::uint64_t(1) << square;
+
+    pieces_.Put<piece>(square);
+}
+
+/**
+ * Drop a piece onto the given square
+ *
+ * @note No checks are performed regarding the legality of having the piece
+ *       on this square
+ *
+ * @param[in] piece  The piece to drop
+ * @param[in] square The square onto which to drop the piece
+ */
+template <Player player>
+void Position::PlayerInfo<player>::Drop(Piece piece, Square square) noexcept {
+    const auto mask = std::uint64_t(1) << square;
+
+    pieces_.pieces64[piece] |= mask;
+    occupied_               |= mask;
+}
+
+/**
+ * Lift (remove) a piece from the given square
+ *
+ * @note No checks are performed regarding the legality of removing the piece
+ *       from this square
+ *
+ * @param[in] square The square from which to remove the piece
+ */
+template <Player player>
+template <Piece piece>
+void Position::PlayerInfo<player>::Lift(Square square) noexcept {
+    occupied_ &= data_tables::kClearMask[square];
+
+    pieces_.Get<piece>() &= data_tables::kClearMask[square];
+}
+
+/**
+ * Lift (remove) a piece from the given square
+ *
+ * @note No checks are performed regarding the legality of removing the piece
+ *       from this square
+ *
+ * @param[in] piece  The piece to remove
+ * @param[in] square The square from which to remove the piece
+ */
+template <Player player>
+void Position::PlayerInfo<player>::Lift(Piece piece, Square square) noexcept {
+    occupied_ &= data_tables::kClearMask[square];
+
+    pieces_.pieces64[piece] &= data_tables::kClearMask[square];
+}
+
+/**
  * @return The \ref Square on which this player's king is standing
  */
 template <Player player>
 constexpr Square Position::PlayerInfo<player>::KingSquare() const noexcept {
     return pieces_.king_square;
+}
+
+/**
+ * @return A bitboard representing all squares occupied by the specified player
+ */
+template <Player player>
+constexpr
+std::uint64_t Position::PlayerInfo<player>::Occupied() const noexcept {
+    return occupied_;
 }
 
 /**
