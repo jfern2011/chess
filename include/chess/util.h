@@ -36,6 +36,40 @@ ToIntType(E value) noexcept {
 }
 
 /**
+ * Extract bit-packed move information. Moves are packed into 21 bits:
+ *
+ * 20...18: promotion piece
+ * 17...15: captured piece
+ * 14...12: piece moved
+ * 11... 6: destination square
+ *  5... 0: origin square
+ *
+ * @{
+ */
+constexpr Piece ExtractCaptured(std::int32_t move) noexcept {
+    return (move >> 15) & 0x7;
+}
+
+constexpr Square ExtractFrom(std::int32_t move) noexcept {
+    return move & 0x3F;
+}
+
+constexpr Piece ExtractMoved(std::int32_t move) noexcept {
+    return (move >> 12) & 0x7;
+}
+
+constexpr Piece ExtractPromoted(std::int32_t move) noexcept {
+    return (move >> 18) & 0x7;
+}
+
+constexpr Square ExtractTo(std::int32_t move) noexcept {
+    return (move >> 6)  & 0x3F;
+}
+/**
+ * @}
+ */
+
+/**
  * Retrieve a 64-bit mask with only 1 bit set to represent a square
  *
  * @param [in] square The desired square
@@ -151,6 +185,29 @@ template <> constexpr Player opponent<Player::kWhite>() noexcept {
 /**
  * @}
  */
+
+/**
+ * Pack a move into its 21-bit encoded form
+ *
+ * @param[in] captured The piece captured
+ * @param[in] from     The origin square
+ * @param[in] moved    The piece that was moved
+ * @param[in] promoted The piece promoted to
+ * @param[in] to       The destination square
+ *
+ * @return The bit-packed move
+ */
+constexpr std::int32_t PackMove(int captured,
+                                int from,
+                                int moved,
+                                int promoted,
+                                int to) noexcept {
+    return (captured << 15) |
+           (from) |
+           (moved << 12) |
+           (promoted << 18) |
+           (to << 6);
+}
 
 Piece  CharToPiece(char piece);
 char   PieceToChar(Piece piece, bool to_lower = false);

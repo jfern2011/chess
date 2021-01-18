@@ -1865,7 +1865,7 @@ TEST(data_tables, kRookAttacks) {
             for (auto occupancy_rank : occupancies_rank) {
                 const std::uint64_t occupied = occupancy_file | occupancy_rank;
 
-                // Get the squares attacked by a bishop on this square
+                // Get the squares attacked by a rook on this square
                 const std::uint64_t expected_attacks =
                     gen_attacks_from_rook(square, occupied);
 

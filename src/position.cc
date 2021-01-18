@@ -8,6 +8,7 @@
 
 #include <cctype>
 #include <cstddef>
+#include <map>
 #include <string>
 
 #include "bitops/bitops.h"
@@ -15,6 +16,61 @@
 #include "chess/util.h"
 
 namespace chess {
+
+/** The starting position */
+constexpr char Position::kDefaultFen[];
+
+/** Mapping from FEN error code to description */
+static const std::map<Position::FenError, std::string> kFenErrorToString {
+    { Position::FenError::kNumberOfRanks,
+        "Number of ranks must be 8"            },
+    { Position::FenError::kInvalidCharacter,
+        "Invalid character in sequence"        },
+    { Position::FenError::kSizeOfRank,
+        "Number of squares per rank must be 8" },
+    { Position::FenError::kFullMoveNumber,
+        "Minimum fullmove number is 1"         },
+    { Position::FenError::kHalfMoveClock,
+        "Minimum halfmove clock is 0"          },
+    { Position::FenError::kEnPassantSquare,
+        "Invalid en passant target square"     },
+    { Position::FenError::kCastlingRights,
+        "Unrecognized castling specification"  },
+    { Position::FenError::kInvalidColor,
+        "Invalid color"                        },
+    { Position::FenError::kMissingColor,
+        "Player 'w' or 'b' must be specified"  },
+    { Position::FenError::kPawnsOnBackRank,
+        "Back rank pawns are not allowed"      },
+    { Position::FenError::kNumberOfKings,
+        "Expected one king per side"           },
+    { Position::FenError::kKingCanBeCaptured,
+        "Player in check is not on move"       },
+    { Position::FenError::kWhiteMayNotCastle,
+        "White may not castle"                 },
+    { Position::FenError::kBlackMayNotCastle,
+        "Black may not castle"                 },
+    { Position::FenError::kWhiteMayNotCastleLong,
+        "White may not castle long"            },
+    { Position::FenError::kBlackMayNotCastleLong,
+        "Black may not castle long"            },
+    { Position::FenError::kWhiteMayNotCastleShort,
+        "White may not castle short"           },
+    { Position::FenError::kBlackMayNotCastleShort,
+        "Black may not castle short"           },
+    { Position::FenError::kTooManyPawns,
+        "Player has too many pawns"            },
+    { Position::FenError::kTooManyRooks,
+        "Player has too many rooks"            },
+    { Position::FenError::kTooManyKnights,
+        "Player has too many knights"          },
+    { Position::FenError::kTooManyBishops,
+        "Player has too many bishops"          },
+    { Position::FenError::kTooManyQueens,
+        "Player has too many queens"           },
+    { Position::FenError::kSuccess,
+        "Position is OK"                       }
+};
 
 /**
  * Constructor
@@ -25,6 +81,7 @@ Position::Position() :
     en_passant_target_(Square::Overflow),
     full_move_number_(0),
     half_move_number_(0),
+    history_(),
     pieces_(),
     to_move_(Player::kBoth) {
 }
@@ -76,27 +133,26 @@ std::string Position::GetFen() const {
             if (empty_count != 0) {
                 fen += std::to_string(empty_count);
                 empty_count = 0;
-
-                switch (pieces_[square]) {
-                  case Piece::PAWN:
-                    fen += is_white ? "P" : "p";
-                    break;
-                  case Piece::KNIGHT:
-                    fen += is_white ? "K" : "k";
-                    break;
-                  case Piece::BISHOP:
-                    fen += is_white ? "B" : "b";
-                    break;
-                  case Piece::ROOK:
-                    fen += is_white ? "R" : "r";
-                    break;
-                  case Piece::QUEEN:
-                    fen += is_white ? "Q" : "q";
-                    break;
-                  default:
-                    fen += is_white ? "K" : "k";
-                    break;
-                }
+            }
+            switch (pieces_[square]) {
+              case Piece::PAWN:
+                fen += is_white ? "P" : "p";
+                break;
+              case Piece::KNIGHT:
+                fen += is_white ? "N" : "n";
+                break;
+              case Piece::BISHOP:
+                fen += is_white ? "B" : "b";
+                break;
+              case Piece::ROOK:
+                fen += is_white ? "R" : "r";
+                break;
+              case Piece::QUEEN:
+                fen += is_white ? "Q" : "q";
+                break;
+              default:
+                fen += is_white ? "K" : "k";
+                break;
             }
         } else {
             empty_count++;
@@ -147,20 +203,10 @@ std::string Position::GetFen() const {
     fen += en_passant_target_ != Square::Overflow ?
         kSquareStr[en_passant_target_] : "-";
     
-    fen += " " + std::to_string(full_move_number_) +
-           " " + std::to_string(half_move_number_);
+    fen += " " + std::to_string(half_move_number_) +
+           " " + std::to_string(full_move_number_);
 
     return fen;
-}
-
-/**
- * Make a move
- *
- * @param[in] move The move to make
- */
-void Position::MakeMove(std::uint32_t move) noexcept {
-#ifdef DEBUG_MAKE_UNMAKE
-#endif
 }
 
 /**
@@ -182,6 +228,7 @@ auto Position::Reset(const std::string& fen_) -> FenError {
 
     auto square = 63;
     for (std::size_t i = 0; i < tokens.size(); i++) {
+        int squares_on_rank = 0;
         for (std::size_t j = 0; j < tokens[i].size(); j++) {
             const char c = tokens[i][j];
             const Piece piece = util::CharToPiece(c);
@@ -194,18 +241,25 @@ auto Position::Reset(const std::string& fen_) -> FenError {
                     pos.GetPlayerInfo<Player::kWhite>().Drop(piece, squareE);
                 }
 
+                squares_on_rank++;
                 square--;
             } else if (std::isdigit(c)) {
-                square -= std::stol(std::string(&c,1));
+                const long n_squares = std::stol(std::string(&c,1));
+                squares_on_rank += n_squares;
+                for (long i = 1; i <= n_squares; i++) {
+                    pos.pieces_[square--] = piece;
+                }
+            } else if (std::isspace(c)) {
+                break;  // Move onto whose turn
             } else {
                 return FenError::kInvalidCharacter;
             }
+        }
 
-            if ((square < -1) || (square == -1 && i != 7u)) {
-                return FenError::kNumberOfSquares;
-            } else if (square < 0) {
-                break;  // Move onto whose turn
-            }
+        // Verify 8 squares accounted for between consecutive forward
+        // slashes
+        if (squares_on_rank != 8) {
+            return FenError::kSizeOfRank;
         }
     }
 
@@ -219,19 +273,31 @@ auto Position::Reset(const std::string& fen_) -> FenError {
         // Ignore anything beyond the 6th token instead of
         // returning an error
       case 6u:
-        pos.full_move_number_ = std::stol(tokens[5]);
+        try {
+            pos.full_move_number_ = std::stol(tokens[5]);
+        } catch (...) {
+            return FenError::kFullMoveNumber;
+        }
         if (pos.full_move_number_ < 1) {
             return FenError::kFullMoveNumber;
         }
       case 5u:
-        pos.half_move_number_ = std::stol(tokens[4]);
+        try {
+            pos.half_move_number_ = std::stol(tokens[4]);
+        } catch (...) {
+            return FenError::kHalfMoveClock;
+        }
         if (pos.half_move_number_ < 0) {
             return FenError::kHalfMoveClock;
         }
       case 4u:
         if (tokens[3] != "-") {
-            if ((pos.en_passant_target_ = util::StrToSquare(tokens[3]))
-                == Square::Overflow) {
+            const std::string ep_target =
+                jfern::superstring(tokens[3]).to_lower();
+
+            pos.en_passant_target_ = util::StrToSquare(ep_target);
+
+            if (pos.en_passant_target_ == Square::Overflow) {
                 return FenError::kEnPassantSquare;
             }
         }
@@ -252,14 +318,18 @@ auto Position::Reset(const std::string& fen_) -> FenError {
                 }
             }
         }
-      case 2u:
-        if (tokens[1] != "w" && tokens[1] != "b") {
+      case 2u: {
+        const std::string color =
+            jfern::superstring(tokens[1]).to_lower();
+
+        if (color != "w" && color != "b") {
             return FenError::kInvalidColor;
         } else {
             pos.to_move_ =
-                tokens[1] == "w" ? Player::kWhite : Player::kBlack;
-        }
+                color == "w" ? Player::kWhite : Player::kBlack;
+        }  // case 2u
         break;
+      }
       case 1u:
         return FenError::kMissingColor;
     }
@@ -273,23 +343,13 @@ auto Position::Reset(const std::string& fen_) -> FenError {
 }
 
 /**
- * Make a move
- *
- * @param[in] move The move to make
- */
-void Position::UnMakeMove(std::uint32_t move) noexcept {
-#ifdef DEBUG_MAKE_UNMAKE
-#endif
-}
-
-/**
  *
  * @param[in] error A \ref FenError code
  *
  * @return The 
  */
 std::string Position::ErrorToString(FenError error) {
-    return "";
+    return kFenErrorToString.at(error);
 }
 
 /**
@@ -382,13 +442,11 @@ auto Position::Validate(const Position& pos) -> FenError {
         ep_target != Square::Underflow) {
         if (pos.ToMove() == Player::kWhite) {
             if (util::GetRank(ep_target) != 5 ||
-                !(black_pawns & (ep_target64 >> 8)) ||
                 (pos.Occupied() & ep_target64)) {
                 return FenError::kEnPassantSquare;
             }
         } else {
             if (util::GetRank(ep_target) != 2 ||
-                !(black_pawns & (ep_target64 << 8)) ||
                 (pos.Occupied() & ep_target64)) {
                 return FenError::kEnPassantSquare;
             }
@@ -421,6 +479,13 @@ auto Position::Validate(const Position& pos) -> FenError {
     }
 
     return FenError::kSuccess;
+}
+
+/**
+ * Clear this struct. Invalidates the origin/target squares
+ */
+void Position::EnPassantInfo::clear() {
+    from[0] = from[1] = target = Square::Overflow;
 }
 
 }  // namespace chess

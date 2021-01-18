@@ -33,9 +33,12 @@ std::uint64_t AttacksFrom(Square square, std::uint64_t occupied) {
 template <>
 constexpr std::uint64_t AttacksFrom<Piece::BISHOP>(Square square,
                                                    std::uint64_t occupied) {
+    const std::uint64_t occupied_ =
+        data_tables::kBishopAttacksMask[square] & occupied;
+
     const std::uint32_t index =
         chess::data_tables::kBishopOffsets[square] +
-            ((occupied * chess::data_tables::kDiagMagics[square]) >>
+            ((occupied_ * chess::data_tables::kDiagMagics[square]) >>
                 chess::data_tables::kBishopDbShifts[square]);
 
     return chess::data_tables::kBishopAttacks[index];
@@ -44,9 +47,12 @@ constexpr std::uint64_t AttacksFrom<Piece::BISHOP>(Square square,
 template <>
 constexpr std::uint64_t AttacksFrom<Piece::ROOK>(Square square,
                                                  std::uint64_t occupied) {
+    const std::uint64_t occupied_ =
+        data_tables::kRookAttacksMask[square] & occupied;
+
     const std::uint32_t index =
         chess::data_tables::kRookOffsets[square] +
-            ((occupied * chess::data_tables::kRookMagics[square]) >>
+            ((occupied_ * chess::data_tables::kRookMagics[square]) >>
                 chess::data_tables::kRookDbShifts[square]);
 
     return chess::data_tables::kRookAttacks[index];

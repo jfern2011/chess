@@ -8,6 +8,7 @@
 #define CHESS_POSITION_H_
 
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <ostream>
 #include <stdexcept>
@@ -18,7 +19,6 @@
 #include "chess/data_tables.h"
 
 namespace chess {
-
 /**
  * Represents a chess position
  */
@@ -28,7 +28,7 @@ public:
     enum class FenError {
         kNumberOfRanks,
         kInvalidCharacter,
-        kNumberOfSquares,
+        kSizeOfRank,
         kFullMoveNumber,
         kHalfMoveClock,
         kEnPassantSquare,
@@ -52,16 +52,29 @@ public:
         kSuccess
     };
 
-    /** Pieces belonging to a single player */
+    /** A simple aggregate holding pieces belonging to a single player */
     struct PieceSet {
+        /** Default constructor */
+        PieceSet() : king_square(), pieces64({0}) {
+            king_square[0] = Square::Overflow;
+            king_square[1] = Square::Overflow;
+            king_square[2] = Square::Overflow;
+            king_square[3] = Square::Overflow;
+            king_square[4] = Square::Overflow;
+            king_square[5] = Square::Overflow;
+        }
+
         template <Piece piece>
-        std::uint64_t& Get() noexcept(piece != Piece::EMPTY);
+        std::uint64_t Get()  noexcept(piece != Piece::EMPTY);
 
         template <Piece piece>
         void Put(Square sqr) noexcept(piece != Piece::EMPTY);
 
-        /** The location of this player's king */
-        Square king_square;
+        /**
+         * The location of the player's king is Piece::KING. The other
+         * indexes exist simply to avoid branching on piece type
+         */
+        Square king_square[6];
 
         /**
          * This player's pieces. Each index is a bitboard representing
@@ -95,6 +108,7 @@ public:
         constexpr std::uint64_t Rooks()   const noexcept;
         constexpr std::uint64_t Queens()  const noexcept;
 
+        constexpr bool  CanCastle()      const noexcept;
         constexpr bool  CanCastleLong()  const noexcept;
                   bool& CanCastleLong()  noexcept;
         constexpr bool  CanCastleShort() const noexcept;
@@ -108,8 +122,15 @@ public:
         void Lift(Square square) noexcept;
         void Lift(Piece piece, Square square) noexcept;
 
+        template <Piece piece>
+        void Move(Square square) noexcept;
+        void Move(Piece piece, Square square) noexcept;
+
         constexpr Square        KingSquare() const noexcept;
+        constexpr std::int16_t  Material()   const noexcept;
         constexpr std::uint64_t Occupied()   const noexcept;
+
+        void MayNotCastle() noexcept;
 
     private:
         /** True if this player can castle long */
@@ -117,6 +138,9 @@ public:
 
         /** True if this player can castle short */
         bool can_castle_short_;
+
+        /** The sum of this player's material */
+        std::int16_t material_;
 
         /** The squares occupied by the player */
         std::uint64_t occupied_;
@@ -158,7 +182,8 @@ public:
     template <Player player>
     constexpr bool InCheck() const noexcept;
 
-    void MakeMove(std::uint32_t move) noexcept;
+    template<Player player>
+    void MakeMove(std::int32_t move, std::uint32_t ply) noexcept;
 
     constexpr std::uint64_t Occupied() const noexcept;
 
@@ -174,12 +199,50 @@ public:
     template<Player player>
     constexpr bool UnderAttack(Square square) const noexcept;
 
-    void UnMakeMove(std::uint32_t move) noexcept;
+    template<Player player>
+    void UnMakeMove(std::int32_t move, std::uint32_t ply) noexcept;
 
     static std::string ErrorToString(FenError error);
     static FenError Validate(const Position& pos);
 
 private:
+    /**
+     * En-passant move information
+     */
+    struct EnPassantInfo {
+        void clear();
+
+        /**
+         * The square(s) from which the capture can be made
+         */
+        Square from[2];
+
+        /**
+         * The capture destination square
+         */
+        Square target;
+    };
+
+    /**
+     * Maintains a record of select information over multiple plies
+     */
+    struct History {
+        /**
+         * Stored long castle rights info
+         */
+        bool can_castle_long[2][kMaxPly];
+
+        /**
+         * Stored short castle rights info
+         */
+        bool can_castle_short[2][kMaxPly];
+
+        /**
+         * Stored en passant info
+         */
+        EnPassantInfo ep_info[kMaxPly];
+    };
+
     /** The side playing as Black */
     PlayerInfo<Player::kBlack> black_;
 
@@ -191,12 +254,15 @@ private:
      * on each pawn double advancement)
      */
     Square en_passant_target_;
-   
+
     /** The position's full move number */
     int full_move_number_;
 
     /** The position's half move number */
     int half_move_number_;
+
+    /** Position history across multiple plies */
+    History history_;
 
     /** All pieces currently on board (for both sides) */
     Piece pieces_[65];
@@ -286,6 +352,139 @@ constexpr bool Position::InCheck() const noexcept {
 }
 
 /**
+ * Make a move
+ *
+ * @param[in] move The move to make
+ * @param[in] ply  The current search ply
+ */
+template<Player player>
+inline void MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
+    /*
+     * Extract player/opponent info
+     */
+    auto& player = GetPlayerInfo<player>();
+    auto& opponent = GetPlayerInfo<util::opponent<player>()>();
+
+    /*
+     * Back up castling rights. Later, when we UnMakeMove(), we'll have
+     * a record of what this was prior to making the move
+     */
+    ply++;
+    history_.can_castle_long [util::index<Player::kBlack>()][ply] =
+        black_.CanCastleLong();
+    history_.can_castle_long [util::index<Player::kWhite>()][ply] =
+        white_.CanCastleLong();
+
+    history_.can_castle_short[util::index<Player::kBlack>()][ply] =
+        black_.CanCastleShort();
+    history_.can_castle_short[util::index<Player::kWhite>()][ply] =
+        white_.CanCastleShort();
+
+    /*
+     * Extract move information
+     */
+    Piece captured = util::ExtractCaptured(move);
+    Square from = util::ExtractFrom(move);
+    Piece moved = util::ExtractMoved(move);
+    Piece promoted = util::ExtractPromoted(move);
+    Square to = util::ExtractTo(move);
+
+    /*
+     * Update common position information
+     */
+    pieces_[from] = Piece::EMPTY;
+
+    /*
+     * Clear the en passant info as it is no longer valid
+     */
+    history_.ep_info[ply].clear();
+
+    /*
+     * Update the player-specific info for the player who moved
+     */
+    if (moved != Piece::PAWN) {
+        pieces_[to] = moved;
+        player.Move(moved, from, to);
+    }
+
+    switch (moved) {
+      case Piece::PAWN:
+        player.Lift<Piece::PAWN>(from);
+
+        /*
+         * Note the promotion piece will be a pawn if this was
+         * not actually a pawn promotion
+         */
+        pieces_[to] = promoted;
+        player.Drop(promoted, to);
+
+        /*
+         * If this was a double advance, set the en passant info
+         */
+        if (std::abs(from - to) == 16) {
+            const std::uint64_t src
+                = opponent.Pawns() & data_tables::kRankAdjacent[to];
+
+            history_.ep_info[ply].target = data_tables::kMinus8[to];
+
+            if (src & data_tables::kSetMask[to+1])
+                history_.ep_info[ply].from[0] = to + 1;
+            if (src & data_tables::kSetMask[to-1])
+                history_.ep_info[ply].from[1] = to - 1;
+
+        }
+        break;
+      case Piece::ROOK:
+        if (player.CanCastle()) {
+            const int file = util::GetFile(from);
+            if (file == 7) {
+                player.CanCastleLong() = false;
+            } else if (file == 0) {
+                player.CanCastleShort() = false;
+            }
+        }
+        break;
+      case Piece::KING:
+        if (std::abs(from - to) == 2) {
+            /*
+             * This was a castling move - update the rook data
+             */
+            if (util::GetFile(to) == 1) {
+                pieces_[to - 1] = Piece::EMPTY;
+                pieces_[to + 1] = Piece::ROOK;
+
+                player.Move<Piece::ROOK>(to - 1, to + 1);
+            } else {
+                pieces_[to + 2] = Piece::EMPTY;
+                pieces_[to - 1] = Piece::ROOK;
+
+                player.Move<Piece::ROOK>(to + 2, to - 1);
+            }
+        }
+
+        /*
+         * Clear all castling rights for this player
+         */
+        player.MayNotCastle();
+        break;
+      default:
+        break;
+    }
+
+    /*
+     * Set the en passant target based on the move just made
+     */
+    en_passant_target_ = history_.ep_info[ply].target;
+
+    /*
+     * Update opponent info if we captured a piece
+     */
+    switch (captured) {
+        
+    }
+}
+
+/**
  * @return A bitboard representing the squares occupied by both players
  */
 constexpr std::uint64_t Position::Occupied() const noexcept {
@@ -322,7 +521,7 @@ constexpr Player Position::ToMove() const noexcept {
 
 /**
  * Check if the given square is being directly attacked by the specified
- * player, i.e. it could be moved to immediately
+ * player (as if ready to capture on that square)
  *
  * @param[in] square The square of interest
  *
@@ -451,6 +650,14 @@ constexpr std::uint64_t Position::PlayerInfo<player>::Queens() const noexcept {
 }
 
 /**
+ * @return True if the specified player can castle
+ */
+template <Player player>
+constexpr bool Position::PlayerInfo<player>::CanCastle() const noexcept {
+    return can_castle_long_ || can_castle_short_;
+}
+
+/**
  * @return True if the specified player can castle long
  */
 template <Player player>
@@ -500,6 +707,8 @@ void Position::PlayerInfo<player>::Drop(Square square) noexcept {
     occupied_ |= std::uint64_t(1) << square;
 
     pieces_.Put<piece>(square);
+
+    material_ += data_tables::kPieceValue[piece];
 }
 
 /**
@@ -517,6 +726,10 @@ void Position::PlayerInfo<player>::Drop(Piece piece, Square square) noexcept {
 
     pieces_.pieces64[piece] |= mask;
     occupied_               |= mask;
+
+    pieces_.king_square[piece] = square;
+
+    material_ += data_tables::kPieceValue[piece];
 }
 
 /**
@@ -532,7 +745,9 @@ template <Piece piece>
 void Position::PlayerInfo<player>::Lift(Square square) noexcept {
     occupied_ &= data_tables::kClearMask[square];
 
-    pieces_.Get<piece>() &= data_tables::kClearMask[square];
+    pieces_.pieces64[piece] &= data_tables::kClearMask[square];
+
+    material_ -= data_tables::kPieceValue[piece];
 }
 
 /**
@@ -549,6 +764,47 @@ void Position::PlayerInfo<player>::Lift(Piece piece, Square square) noexcept {
     occupied_ &= data_tables::kClearMask[square];
 
     pieces_.pieces64[piece] &= data_tables::kClearMask[square];
+
+    material_ -= data_tables::kPieceValue[piece];
+}
+
+/**
+ * Move a piece from one square to another
+ *
+ * @note No checks are performed regarding the legality of removing the piece
+ *       from this square
+ *
+ * @param[in] from The origin square of the piece
+ * @param[in] to   The destination square
+ */
+template <Player player>
+template <Piece piece>
+void Position::PlayerInfo<player>::Move(Square from, Square to) noexcept {
+    const std::uint64_t clear_set = data_tables::kSetMask[from] |
+                                    data_tables::kSetMask[to];
+
+    pieces_.pieces64[piece] ^= clear_set;
+    occupied_ ^= clear_set;
+}
+
+/**
+ * Move a piece from one square to another
+ *
+ * @note No checks are performed regarding the legality of removing the piece
+ *       from this square
+ *
+ * @param[in] piece The piece to move
+ * @param[in] from  The origin square of the piece
+ * @param[in] to    The destination square
+ */
+template <Player player>
+void Position::PlayerInfo<player>::Move(Piece piece, Square from, Square to)
+    noexcept {
+    const std::uint64_t clear_set = data_tables::kSetMask[from] |
+                                    data_tables::kSetMask[to];
+
+    pieces_.pieces64[piece] ^= clear_set;
+    occupied_ ^= clear_set;
 }
 
 /**
@@ -556,7 +812,24 @@ void Position::PlayerInfo<player>::Lift(Piece piece, Square square) noexcept {
  */
 template <Player player>
 constexpr Square Position::PlayerInfo<player>::KingSquare() const noexcept {
-    return pieces_.king_square;
+    return pieces_.king_square[Piece::KING];
+}
+
+/**
+ * @return The sum of the values of all of this player's pieces
+ */
+template <Player player>
+constexpr std::int16_t Position::PlayerInfo<player>::Material() const
+    noexcept {
+    return material_;
+}
+
+/**
+ * Forbid this player from castling in the future
+ */
+template <Player player>
+void Position::PlayerInfo<player>::MayNotCastle() noexcept {
+    can_castle_short_ = can_castle_long_ = false;
 }
 
 /**
@@ -574,31 +847,31 @@ std::uint64_t Position::PlayerInfo<player>::Occupied() const noexcept {
  * @{
  */
 template <Piece piece>
-std::uint64_t& Position::PieceSet::Get() noexcept(piece != Piece::EMPTY) {
+std::uint64_t Position::PieceSet::Get() noexcept(piece != Piece::EMPTY) {
     throw std::logic_error(__func__);
 }
 template <>
-inline std::uint64_t& Position::PieceSet::Get<Piece::QUEEN>() noexcept {
+inline std::uint64_t Position::PieceSet::Get<Piece::QUEEN>() noexcept {
     return pieces64[Piece::QUEEN];
 }
 template <>
-inline std::uint64_t& Position::PieceSet::Get<Piece::PAWN>() noexcept {
+inline std::uint64_t Position::PieceSet::Get<Piece::PAWN>() noexcept {
     return pieces64[Piece::PAWN];
 }
 template <>
-inline std::uint64_t& Position::PieceSet::Get<Piece::ROOK>() noexcept {
+inline std::uint64_t Position::PieceSet::Get<Piece::ROOK>() noexcept {
     return pieces64[Piece::ROOK];
 }
 template <>
-inline std::uint64_t& Position::PieceSet::Get<Piece::KNIGHT>() noexcept {
+inline std::uint64_t Position::PieceSet::Get<Piece::KNIGHT>() noexcept {
     return pieces64[Piece::KNIGHT];
 }
 template <>
-inline std::uint64_t& Position::PieceSet::Get<Piece::BISHOP>() noexcept {
+inline std::uint64_t Position::PieceSet::Get<Piece::BISHOP>() noexcept {
     return pieces64[Piece::BISHOP];
 }
 template <>
-inline std::uint64_t& Position::PieceSet::Get<Piece::KING>() noexcept {
+inline std::uint64_t Position::PieceSet::Get<Piece::KING>() noexcept {
     return pieces64[Piece::KING];
 }
 /**
@@ -638,7 +911,7 @@ template <>
 inline void Position::PieceSet::Put<Piece::KING>(Square sqr) noexcept {
     pieces64[Piece::KING] |= std::uint64_t(1) << sqr;
 
-    king_square = sqr;
+    king_square[Piece::KING] = sqr;
 }
 /**
  * @}
