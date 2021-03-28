@@ -17,6 +17,7 @@
 #include "chess/attacks.h"
 #include "chess/chess.h"
 #include "chess/data_tables.h"
+#include "chess/util.h"
 
 namespace chess {
 /**
@@ -123,8 +124,8 @@ public:
         void Lift(Piece piece, Square square) noexcept;
 
         template <Piece piece>
-        void Move(Square square) noexcept;
-        void Move(Piece piece, Square square) noexcept;
+        void Move(Square from, Square to) noexcept;
+        void Move(Piece piece, Square from, Square to) noexcept;
 
         constexpr Square        KingSquare() const noexcept;
         constexpr std::int16_t  Material()   const noexcept;
@@ -238,9 +239,9 @@ private:
         bool can_castle_short[2][kMaxPly];
 
         /**
-         * Stored en passant info
+         * Stored en passant target
          */
-        EnPassantInfo ep_info[kMaxPly];
+        Square ep_target[kMaxPly];
     };
 
     /** The side playing as Black */
@@ -357,19 +358,18 @@ constexpr bool Position::InCheck() const noexcept {
  * @param[in] move The move to make
  * @param[in] ply  The current search ply
  */
-template<Player player>
-inline void MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
+template<Player who>
+inline void Position::MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
     /*
      * Extract player/opponent info
      */
-    auto& player = GetPlayerInfo<player>();
-    auto& opponent = GetPlayerInfo<util::opponent<player>()>();
+    auto& player = GetPlayerInfo<who>();
+    auto& opponent = GetPlayerInfo<util::opponent<who>()>();
 
     /*
-     * Back up castling rights. Later, when we UnMakeMove(), we'll have
-     * a record of what this was prior to making the move
+     * Back up castling rights and en passant target. Later, when we
+     * UnMakeMove(), we will have a record of what these were
      */
-    ply++;
     history_.can_castle_long [util::index<Player::kBlack>()][ply] =
         black_.CanCastleLong();
     history_.can_castle_long [util::index<Player::kWhite>()][ply] =
@@ -379,6 +379,8 @@ inline void MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
         black_.CanCastleShort();
     history_.can_castle_short[util::index<Player::kWhite>()][ply] =
         white_.CanCastleShort();
+
+    history_.ep_target[ply] = en_passant_target_;
 
     /*
      * Extract move information
@@ -397,7 +399,7 @@ inline void MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
     /*
      * Clear the en passant info as it is no longer valid
      */
-    history_.ep_info[ply].clear();
+    en_passant_target_ = Square::Overflow;
 
     /*
      * Update the player-specific info for the player who moved
@@ -419,19 +421,10 @@ inline void MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
         player.Drop(promoted, to);
 
         /*
-         * If this was a double advance, set the en passant info
+         * If this was a double advance, set the en passant target
          */
         if (std::abs(from - to) == 16) {
-            const std::uint64_t src
-                = opponent.Pawns() & data_tables::kRankAdjacent[to];
-
-            history_.ep_info[ply].target = data_tables::kMinus8[to];
-
-            if (src & data_tables::kSetMask[to+1])
-                history_.ep_info[ply].from[0] = to + 1;
-            if (src & data_tables::kSetMask[to-1])
-                history_.ep_info[ply].from[1] = to - 1;
-
+            en_passant_target_ = data_tables::kMinus8<who>[to];
         }
         break;
       case Piece::ROOK:
@@ -472,16 +465,47 @@ inline void MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
     }
 
     /*
-     * Set the en passant target based on the move just made
-     */
-    en_passant_target_ = history_.ep_info[ply].target;
-
-    /*
      * Update opponent info if we captured a piece
      */
-    switch (captured) {
-        
+    if (captured != Piece::EMPTY) {
+        switch (captured) {
+          case Piece::PAWN:
+            if (opponent.Occupied() & data_tables::kSetMask[to]) {
+                opponent.Lift<Piece::PAWN>(to);
+            } else {
+                const Square minus8 = data_tables::kMinus8<who>[to];
+                pieces_[minus8] = Piece::EMPTY;
+                opponent.Lift<Piece::PAWN>(minus8);
+            }
+            break;
+          case Piece::ROOK:
+            opponent.Lift<Piece::ROOK>(to);
+
+            /*
+             * Update the opponent's castling rights if he could have castled
+             * with this rook
+             */
+            if (opponent.CanCastle()) {
+                const int file = util::GetFile(to);
+                if (file == 7) {
+                    opponent.CanCastleLong() = false;
+                } else if (file == 0) {
+                    opponent.CanCastleShort() = false;
+                }
+            }
+            break;
+          default:
+            opponent.Lift(captured, to);
+            break;
+        }
+    } else if (moved != Piece::PAWN) {
+        half_move_number_++;
     }
+
+    full_move_number_ =
+        util::IncrementIfBlack<who>(full_move_number_);
+
+    to_move_ = util::opponent<who>();
 }
 
 /**
@@ -557,6 +581,118 @@ constexpr bool Position::UnderAttack(Square square) const noexcept {
     }
 
     return false;
+}
+
+/**
+ * Undo a move
+ *
+ * @param[in] move The move to undo
+ * @param[in] ply  The current search ply
+ */
+template<Player who> inline
+void Position::UnMakeMove(std::int32_t move, std::uint32_t ply) noexcept {
+    /*
+     * Extract player/opponent info
+     */
+    auto& player = GetPlayerInfo<who>();
+    auto& opponent = GetPlayerInfo<util::opponent<who>()>();
+
+    /*
+     * Restore castling rights and en passant target
+     */
+    black_.CanCastleLong() =
+        history_.can_castle_long [util::index<Player::kBlack>()][ply];
+    white_.CanCastleLong() =
+        history_.can_castle_long [util::index<Player::kWhite>()][ply];
+
+    black_.CanCastleShort() =
+        history_.can_castle_short[util::index<Player::kBlack>()][ply];
+    white_.CanCastleShort() =
+        history_.can_castle_short[util::index<Player::kWhite>()][ply];
+
+    en_passant_target_ = history_.ep_target[ply];
+
+    /*
+     * Extract move information
+     */
+    Piece captured = util::ExtractCaptured(move);
+    Square from = util::ExtractFrom(move);
+    Piece moved = util::ExtractMoved(move);
+    Piece promoted = util::ExtractPromoted(move);
+    Square to = util::ExtractTo(move);
+
+    /*
+     * Revert common position information
+     */
+    pieces_[from] = moved;
+
+    /*
+     * Revert the player-specific info for the player who moved
+     */
+    if (moved != Piece::PAWN) {
+        pieces_[to] = captured;
+        player.Move(moved, to, from);
+    }
+
+    switch (moved) {
+      case Piece::PAWN:
+        player.Drop<Piece::PAWN>(from);
+
+        /*
+         * Note the promotion piece will be a pawn if this was not actually
+         * a pawn promotion
+         */
+        player.Lift(promoted, to);
+        break;
+      case Piece::KING:
+        if (std::abs(from - to) == 2) {
+            /*
+             * This was a castling move - update the rook data
+             */
+            if (util::GetFile(to) == 1) {
+                pieces_[to - 1] = Piece::ROOK;
+                pieces_[to + 1] = Piece::EMPTY;
+
+                player.Move<Piece::ROOK>(to + 1, to - 1);
+            } else {
+                pieces_[to + 2] = Piece::ROOK;
+                pieces_[to - 1] = Piece::EMPTY;
+
+                player.Move<Piece::ROOK>(to - 1, to + 2);
+            }
+        }
+        break;
+      default:
+        break;
+    }
+
+    /*
+     * Update opponent info if we captured a piece
+     */
+    if (captured != Piece::EMPTY) {
+        switch (captured) {
+          case Piece::PAWN:
+            if (to != en_passant_target_) {
+                opponent.Drop<Piece::PAWN>(to);
+            } else {
+                const Square minus8 = data_tables::kMinus8<who>[to];
+                pieces_[minus8] = Piece::PAWN;
+                opponent.Drop<Piece::PAWN>(minus8);
+                pieces_[to] = Piece::EMPTY;
+            }
+            break;
+          default:
+            opponent.Drop(captured, to);
+            break;
+        }
+    } else if (moved != Piece::PAWN) {
+        half_move_number_--;
+    }
+
+    full_move_number_ =
+        util::DecrementIfBlack<who>(full_move_number_);
+
+    to_move_ = who;
 }
 
 /**

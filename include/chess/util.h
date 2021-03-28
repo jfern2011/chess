@@ -36,6 +36,25 @@ ToIntType(E value) noexcept {
 }
 
 /**
+ * Decrement a value by 1 if black
+ *
+ * @{
+ */
+template <Player P>
+constexpr int DecrementIfBlack(int i) noexcept(P != Player::kBoth) {
+    throw std::logic_error(__func__);
+}
+template <> constexpr int DecrementIfBlack<Player::kWhite>(int i) noexcept {
+    return i;
+}
+template <> constexpr int DecrementIfBlack<Player::kBlack>(int i) noexcept {
+    return i-1;
+}
+/**
+ * @}
+ */
+
+/**
  * Extract bit-packed move information. Moves are packed into 21 bits:
  *
  * 20...18: promotion piece
@@ -47,23 +66,23 @@ ToIntType(E value) noexcept {
  * @{
  */
 constexpr Piece ExtractCaptured(std::int32_t move) noexcept {
-    return (move >> 15) & 0x7;
+    return static_cast<Piece>((move >> 15) & 0x7);
 }
 
 constexpr Square ExtractFrom(std::int32_t move) noexcept {
-    return move & 0x3F;
+    return static_cast<Square>(move & 0x3F);
 }
 
 constexpr Piece ExtractMoved(std::int32_t move) noexcept {
-    return (move >> 12) & 0x7;
+    return static_cast<Piece>((move >> 12) & 0x7);
 }
 
 constexpr Piece ExtractPromoted(std::int32_t move) noexcept {
-    return (move >> 18) & 0x7;
+    return static_cast<Piece>((move >> 18) & 0x7);
 }
 
 constexpr Square ExtractTo(std::int32_t move) noexcept {
-    return (move >> 6)  & 0x3F;
+    return static_cast<Square>((move >> 6)  & 0x3F);
 }
 /**
  * @}
@@ -149,6 +168,25 @@ constexpr std::uint64_t GetRankMask(int square) noexcept {
 
     return arr[square];
 }
+
+/**
+ * Increment a value by 1 if black
+ *
+ * @{
+ */
+template <Player P>
+constexpr int IncrementIfBlack(int i) noexcept(P != Player::kBoth) {
+    throw std::logic_error(__func__);
+}
+template <> constexpr int IncrementIfBlack<Player::kWhite>(int i) noexcept {
+    return i;
+}
+template <> constexpr int IncrementIfBlack<Player::kBlack>(int i) noexcept {
+    return i+1;
+}
+/**
+ * @}
+ */
 
 /**
  * Get a consistent array index as a function of player
