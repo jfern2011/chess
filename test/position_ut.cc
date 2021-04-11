@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <map>
 #include <ostream>
 #include <sstream>
@@ -37,6 +38,101 @@ void GivePieces(chess::Position::PlayerInfo<player>& info) {
 /**
  * @}
  */
+
+/**
+ * Verify a position is properly updated following a move
+ *
+ * @return True on success
+ */
+template <chess::Player who>
+void CheckMove(chess::Position* pos, std::int32_t move) {
+    constexpr chess::Player opp = chess::util::opponent<who>();
+
+    const chess::Piece captured = chess::util::ExtractCaptured(move);
+    const chess::Square from    = chess::util::ExtractFrom(move);
+    const chess::Piece moved    = chess::util::ExtractMoved(move);
+    const chess::Piece promoted = chess::util::ExtractPromoted(move);
+    const chess::Square to      = chess::util::ExtractTo(move);
+
+    const chess::Position orig = *pos;
+    const auto& orig_player   = orig.GetPlayerInfo<who>();
+    const auto& orig_opponent = orig.GetPlayerInfo<opp>();
+
+    auto get_pieces64 =
+        [](chess::Piece piece, const auto& info) -> std::uint64_t {
+        if (piece == chess::Piece::PAWN)
+            return info.Pawns();
+        if (piece == chess::Piece::ROOK)
+            return info.Rooks();
+        if (piece == chess::Piece::KING)
+            return info.King();
+        if (piece == chess::Piece::KNIGHT)
+            return info.Knights();
+        if (piece == chess::Piece::BISHOP)
+            return info.Bishops();
+        if (piece == chess::Piece::QUEEN)
+            return info.Queens();
+        return 0;
+    };
+
+    pos->MakeMove<who>(move, 0);
+
+    const auto& post_player   = pos->GetPlayerInfo<who>();
+    const auto& post_opponent = pos->GetPlayerInfo<opp>();
+
+    if (moved == chess::Piece::PAWN) {
+        if (to == orig.EnPassantTarget()) {
+            std::uint64_t expected_pawns = orig_opponent.Pawns();
+            std::uint64_t expected_occupied = orig_opponent.Occupied();
+
+            jfern::bitops::clear(chess::data_tables::kMinus8<who>[to],
+                                 &expected_pawns);
+            jfern::bitops::clear(chess::data_tables::kMinus8<who>[to],
+                                 &expected_occupied);
+
+            EXPECT_EQ(expected_occupied, post_opponent.Occupied());
+            EXPECT_EQ(expected_pawns, post_opponent.Pawns());
+
+            EXPECT_EQ(pos->EnPassantTarget(), chess::Square::Overflow);
+        } else if (promoted != chess::Piece::EMPTY) {
+            std::uint64_t expected_pawns = orig_player.Pawns();
+            std::uint64_t expected_pieces =
+                get_pieces64(promoted, orig_player);
+
+            jfern::bitops::clear(from, &expected_pawns);
+            jfern::bitops::set(to, &expected_pieces);
+
+            EXPECT_EQ(expected_pieces, get_pieces64(promoted, post_player));
+            EXPECT_EQ(expected_pawns, post_player.Pawns());
+        } else if (std::abs(to - from) == 16) {
+            EXPECT_EQ(chess::data_tables::kMinus8<who>[to],
+                      post_player.EnPassantTarget());
+        }
+    }
+
+    if (captured != chess::Piece::EMPTY) {
+        EXPECT_EQ(orig_opponent.Material()
+                    - chess::data_tables::kPieceValue[captured],
+                  post_opponent.Material());
+    }
+
+    if (captured == chess::Piece::ROOK) {
+        /*
+         * If the opponent could have used this rook for casting, he may
+         * no longer castle with it
+         */
+        if (orig_opponent.CanCastleLong() && chess::util::GetFile(to) == 7) {
+            EXPECT_FALSE(post_opponent.CanCastleLong());
+        } else if (orig_opponent.CanCastleShort() && chess::util::GetFile(to)
+                    == 0) {
+            EXPECT_FALSE(post_opponent.CanCastleShort());
+        }
+    }
+
+    pos->UnMakeMove<who>(move, 0);
+
+    EXPECT_EQ(*pos, orig);
+}
 
 TEST(Position, PieceSet_Get) {
     auto set = chess::Position::PieceSet();
@@ -808,6 +904,555 @@ TEST(Position, Validate) {
             << chess::Position::ErrorToString(code)
             << std::endl;
     }
+}
+
+TEST(Position, MakeUndoMove) {
+    SCOPED_TRACE("MakeUndoMove");
+
+    auto pos = chess::Position();
+
+    auto get_pieces64_b = [](const chess::Position& psn, chess::Piece piece) {
+        switch (piece) {
+          case chess::Piece::PAWN:
+            return psn.GetPlayerInfo<chess::Player::kBlack>().Pawns();
+          case chess::Piece::ROOK:
+            return psn.GetPlayerInfo<chess::Player::kBlack>().Rooks();
+          case chess::Piece::KNIGHT:
+            return psn.GetPlayerInfo<chess::Player::kBlack>().Knights();
+          case chess::Piece::BISHOP:
+            return psn.GetPlayerInfo<chess::Player::kBlack>().Bishops();
+          case chess::Piece::QUEEN:
+            return psn.GetPlayerInfo<chess::Player::kBlack>().Queens();
+          case chess::Piece::KING:
+            return psn.GetPlayerInfo<chess::Player::kBlack>().King();
+          default:
+            return std::uint64_t(0);
+        }
+    };
+
+    auto get_pieces64_w = [](const chess::Position& psn, chess::Piece piece) {
+        switch (piece) {
+          case chess::Piece::PAWN:
+            return psn.GetPlayerInfo<chess::Player::kWhite>().Pawns();
+          case chess::Piece::ROOK:
+            return psn.GetPlayerInfo<chess::Player::kWhite>().Rooks();
+          case chess::Piece::KNIGHT:
+            return psn.GetPlayerInfo<chess::Player::kWhite>().Knights();
+          case chess::Piece::BISHOP:
+            return psn.GetPlayerInfo<chess::Player::kWhite>().Bishops();
+          case chess::Piece::QUEEN:
+            return psn.GetPlayerInfo<chess::Player::kWhite>().Queens();
+          case chess::Piece::KING:
+            return psn.GetPlayerInfo<chess::Player::kWhite>().King();
+          default:
+            return std::uint64_t(0);
+        }
+    };
+
+    std::string fen = "1n1n2k1/2P5/8/1pPp4/8/1p1p4/2P5/6K1 w - - 0 1";
+    ASSERT_EQ(pos.Reset(fen), chess::Position::FenError::kSuccess);
+
+    auto orig = pos;
+
+    pos.MakeMove<chess::Player::kWhite>(
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::C2,
+                              chess::Piece::PAWN,
+                              chess::Piece::PAWN,
+                              chess::Square::C3),
+            0 /* ply */);
+
+    EXPECT_EQ(pos.PieceOn(chess::Square::C2), chess::Piece::EMPTY);
+    EXPECT_EQ(pos.PieceOn(chess::Square::C3), chess::Piece::PAWN);
+    EXPECT_EQ(pos.ToMove(), chess::Player::kBlack);
+    EXPECT_EQ(pos.HalfMoveNumber(), 0u);
+    EXPECT_EQ(pos.FullMoveNumber(), orig.FullMoveNumber());
+
+    EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kWhite>().Pawns(),
+              (jfern::bitops::create_mask<std::uint64_t,
+                                          chess::Square::C3,
+                                          chess::Square::C5,
+                                          chess::Square::C7>()));
+
+    EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kWhite>().Occupied(),
+              (jfern::bitops::create_mask<std::uint64_t,
+                                          chess::Square::C3,
+                                          chess::Square::C5,
+                                          chess::Square::C7,
+                                          chess::Square::G1>()));
+
+    pos.UnMakeMove<chess::Player::kWhite>(
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::C2,
+                              chess::Piece::PAWN,
+                              chess::Piece::PAWN,
+                              chess::Square::C3),
+            0 /* ply */);
+
+    EXPECT_EQ(pos, orig);
+
+    pos.MakeMove<chess::Player::kWhite>(
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::C2,
+                              chess::Piece::PAWN,
+                              chess::Piece::PAWN,
+                              chess::Square::C4),
+            0 /* ply */);
+
+    EXPECT_EQ(pos.PieceOn(chess::Square::C2), chess::Piece::EMPTY);
+    EXPECT_EQ(pos.PieceOn(chess::Square::C4), chess::Piece::PAWN);
+    EXPECT_EQ(pos.ToMove(), chess::Player::kBlack);
+    EXPECT_EQ(pos.HalfMoveNumber(), 0u);
+    EXPECT_EQ(pos.FullMoveNumber(), orig.FullMoveNumber());
+
+    EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kWhite>().Pawns(),
+              (jfern::bitops::create_mask<std::uint64_t,
+                                          chess::Square::C4,
+                                          chess::Square::C5,
+                                          chess::Square::C7>()));
+
+    EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kWhite>().Occupied(),
+              (jfern::bitops::create_mask<std::uint64_t,
+                                          chess::Square::C4,
+                                          chess::Square::C5,
+                                          chess::Square::C7,
+                                          chess::Square::G1>()));
+
+    EXPECT_EQ(pos.EnPassantTarget(), chess::Square::C3);
+
+    pos.UnMakeMove<chess::Player::kWhite>(
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::C2,
+                              chess::Piece::PAWN,
+                              chess::Piece::PAWN,
+                              chess::Square::C4),
+            0 /* ply */);
+
+    EXPECT_EQ(pos, orig);
+
+    // Pawn captures
+    for (auto captured : { chess::Piece::PAWN,
+                           chess::Piece::ROOK,
+                           chess::Piece::KNIGHT,
+                           chess::Piece::BISHOP,
+                           chess::Piece::QUEEN
+                         }) {
+        std::int16_t delta_material = 0;
+
+        switch (captured) {
+          case chess::Piece::PAWN:
+            fen = "6k1/2P5/8/2P5/8/1p1p4/2P5/6K1 w - - 0 1";
+            delta_material = chess::kPawnValue;
+            break;
+          case chess::Piece::ROOK:
+            fen = "6k1/2P5/8/2P5/8/1r1r4/2P5/6K1 w - - 0 1";
+            delta_material = chess::kRookValue;
+            break;
+          case chess::Piece::KNIGHT:
+            fen = "6k1/2P5/8/2P5/8/1n1n4/2P5/6K1 w - - 0 1";
+            delta_material = chess::kKnightValue;
+            break;
+          case chess::Piece::BISHOP:
+            fen = "6k1/2P5/8/2P5/8/1b1b4/2P5/6K1 w - - 0 1";
+            delta_material = chess::kBishopValue;
+            break;
+          case chess::Piece::QUEEN:
+            fen = "6k1/2P5/8/2P5/8/1q1q4/2P5/6K1 w - - 0 1";
+            delta_material = chess::kQueenValue;
+            break;
+          default:
+            FAIL() << "Invalid piece";
+        }
+
+        ASSERT_EQ(pos.Reset(fen), chess::Position::FenError::kSuccess);
+        orig = pos;
+
+        const std::uint64_t orig_pieces64 = get_pieces64_b(pos, captured);
+
+        pos.MakeMove<chess::Player::kWhite>(
+            chess::util::PackMove(captured,
+                                  chess::Square::C2,
+                                  chess::Piece::PAWN,
+                                  chess::Piece::PAWN,
+                                  chess::Square::B3),
+                0 /* ply */);
+
+        EXPECT_EQ(pos.PieceOn(chess::Square::C2), chess::Piece::EMPTY);
+        EXPECT_EQ(pos.PieceOn(chess::Square::B3), chess::Piece::PAWN);
+        EXPECT_EQ(pos.ToMove(), chess::Player::kBlack);
+        EXPECT_EQ(pos.HalfMoveNumber(), 0u);
+        EXPECT_EQ(pos.FullMoveNumber(), orig.FullMoveNumber());
+
+        EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kWhite>().Pawns(),
+                  (jfern::bitops::create_mask<std::uint64_t,
+                                              chess::Square::B3,
+                                              chess::Square::C5,
+                                              chess::Square::C7>()));
+
+        EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kWhite>().Occupied(),
+                  (jfern::bitops::create_mask<std::uint64_t,
+                                              chess::Square::B3,
+                                              chess::Square::C5,
+                                              chess::Square::C7,
+                                              chess::Square::G1>()));
+
+        const std::uint64_t expected_pieces64 =
+            orig_pieces64 ^ jfern::bitops::create_mask<std::uint64_t,
+                                                       chess::Square::B3>();
+
+        EXPECT_EQ(expected_pieces64, get_pieces64_b(pos, captured))
+            << "FEN = " << fen << "\n"
+            << chess::debug::PrintBitBoard(expected_pieces64);
+
+        EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kBlack>().Occupied(),
+                  (jfern::bitops::create_mask<std::uint64_t,
+                                              chess::Square::D3,
+                                              chess::Square::G8>()));
+
+        EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kBlack>().Material(),
+                  orig.GetPlayerInfo<chess::Player::kBlack>().Material()
+                    - delta_material);
+
+        pos.UnMakeMove<chess::Player::kWhite>(
+            chess::util::PackMove(captured,
+                                  chess::Square::C2,
+                                  chess::Piece::PAWN,
+                                  chess::Piece::PAWN,
+                                  chess::Square::B3),
+                0 /* ply */);
+
+        ASSERT_EQ(pos, orig);
+    }
+
+    // Test en passant captures
+    fen = "1n1n2k1/2P5/8/1pPp4/8/1p1p4/2P5/6K1 w - b6 0 1";
+    ASSERT_EQ(pos.Reset(fen), chess::Position::FenError::kSuccess);
+    orig = pos;
+
+    pos.MakeMove<chess::Player::kWhite>(
+        chess::util::PackMove(chess::Piece::PAWN,
+                              chess::Square::C5,
+                              chess::Piece::PAWN,
+                              chess::Piece::PAWN,
+                              chess::Square::B6),
+            0 /* ply */);
+
+    EXPECT_EQ(pos.PieceOn(chess::Square::C5), chess::Piece::EMPTY);
+    EXPECT_EQ(pos.PieceOn(chess::Square::B6), chess::Piece::PAWN);
+    EXPECT_EQ(pos.PieceOn(chess::Square::B5), chess::Piece::EMPTY);
+    EXPECT_EQ(pos.ToMove(), chess::Player::kBlack);
+    EXPECT_EQ(pos.HalfMoveNumber(), 0u);
+    EXPECT_EQ(pos.FullMoveNumber(), orig.FullMoveNumber());
+
+    EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kWhite>().Pawns(),
+              (jfern::bitops::create_mask<std::uint64_t,
+                                          chess::Square::C2,
+                                          chess::Square::B6,
+                                          chess::Square::C7>()));
+
+    EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kWhite>().Occupied(),
+              (jfern::bitops::create_mask<std::uint64_t,
+                                          chess::Square::C2,
+                                          chess::Square::B6,
+                                          chess::Square::C7,
+                                          chess::Square::G1>()));
+
+    EXPECT_EQ(pos.EnPassantTarget(), chess::Square::Overflow);
+    EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kBlack>().Material(),
+                  orig.GetPlayerInfo<chess::Player::kBlack>().Material()
+                    - chess::kPawnValue);
+
+    EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kBlack>().Pawns(),
+              (jfern::bitops::create_mask<std::uint64_t,
+                                          chess::Square::B3,
+                                          chess::Square::D3,
+                                          chess::Square::D5>()));
+
+    EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kBlack>().Occupied(),
+              (jfern::bitops::create_mask<std::uint64_t,
+                                          chess::Square::B3,
+                                          chess::Square::D3,
+                                          chess::Square::D5,
+                                          chess::Square::B8,
+                                          chess::Square::D8,
+                                          chess::Square::G8>()));
+
+    pos.UnMakeMove<chess::Player::kWhite>(
+        chess::util::PackMove(chess::Piece::PAWN,
+                              chess::Square::C5,
+                              chess::Piece::PAWN,
+                              chess::Piece::PAWN,
+                              chess::Square::B6),
+            0 /* ply */);
+
+    EXPECT_EQ(pos, orig);
+
+    fen = "1n1n2k1/2P5/8/1pPp4/8/1p1p4/2P5/6K1 w - d6 0 1";
+    ASSERT_EQ(pos.Reset(fen), chess::Position::FenError::kSuccess);
+    orig = pos;
+
+    pos.MakeMove<chess::Player::kWhite>(
+        chess::util::PackMove(chess::Piece::PAWN,
+                              chess::Square::C5,
+                              chess::Piece::PAWN,
+                              chess::Piece::PAWN,
+                              chess::Square::D6),
+            0 /* ply */);
+
+    EXPECT_EQ(pos.PieceOn(chess::Square::C5), chess::Piece::EMPTY);
+    EXPECT_EQ(pos.PieceOn(chess::Square::D6), chess::Piece::PAWN);
+    EXPECT_EQ(pos.PieceOn(chess::Square::D5), chess::Piece::EMPTY);
+    EXPECT_EQ(pos.ToMove(), chess::Player::kBlack);
+    EXPECT_EQ(pos.HalfMoveNumber(), 0u);
+    EXPECT_EQ(pos.FullMoveNumber(), orig.FullMoveNumber());
+
+    EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kWhite>().Pawns(),
+              (jfern::bitops::create_mask<std::uint64_t,
+                                          chess::Square::C2,
+                                          chess::Square::D6,
+                                          chess::Square::C7>()));
+
+    EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kWhite>().Occupied(),
+              (jfern::bitops::create_mask<std::uint64_t,
+                                          chess::Square::C2,
+                                          chess::Square::D6,
+                                          chess::Square::C7,
+                                          chess::Square::G1>()));
+
+    EXPECT_EQ(pos.EnPassantTarget(), chess::Square::Overflow);
+    EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kBlack>().Material(),
+                  orig.GetPlayerInfo<chess::Player::kBlack>().Material()
+                    - chess::kPawnValue);
+
+    EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kBlack>().Pawns(),
+              (jfern::bitops::create_mask<std::uint64_t,
+                                          chess::Square::B3,
+                                          chess::Square::D3,
+                                          chess::Square::B5>()));
+
+    EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kBlack>().Occupied(),
+              (jfern::bitops::create_mask<std::uint64_t,
+                                          chess::Square::B3,
+                                          chess::Square::D3,
+                                          chess::Square::B5,
+                                          chess::Square::B8,
+                                          chess::Square::D8,
+                                          chess::Square::G8>()));
+
+    pos.UnMakeMove<chess::Player::kWhite>(
+        chess::util::PackMove(chess::Piece::PAWN,
+                              chess::Square::C5,
+                              chess::Piece::PAWN,
+                              chess::Piece::PAWN,
+                              chess::Square::D6),
+            0 /* ply */);
+
+    EXPECT_EQ(pos, orig);
+
+    // Pawn captures and promotes
+    for (auto captured : { chess::Piece::ROOK,
+                           chess::Piece::KNIGHT,
+                           chess::Piece::BISHOP,
+                           chess::Piece::QUEEN
+                         }) {
+        for (auto promoted : { chess::Piece::ROOK,
+                              chess::Piece::KNIGHT,
+                              chess::Piece::BISHOP,
+                              chess::Piece::QUEEN
+                            }) {
+            std::int16_t delta_material_w = -chess::kPawnValue;
+            std::int16_t delta_material_b = 0;
+
+            switch (captured) {
+              case chess::Piece::ROOK:
+                fen = "1r1r2k1/2P5/8/2P5/8/8/2P5/6K1 w - - 0 1";
+                delta_material_b = chess::kRookValue;
+                break;
+              case chess::Piece::KNIGHT:
+                fen = "1n1n2k1/2P5/8/2P5/8/8/2P5/6K1 w - - 0 1";
+                delta_material_b = chess::kKnightValue;
+                break;
+              case chess::Piece::BISHOP:
+                fen = "1b1b2k1/2P5/8/2P5/8/8/2P5/6K1 w - - 0 1";
+                delta_material_b = chess::kBishopValue;
+                break;
+              case chess::Piece::QUEEN:
+                fen = "1q1q2k1/2P5/8/2P5/8/8/2P5/6K1 w - - 0 1";
+                delta_material_b = chess::kQueenValue;
+                break;
+              default:
+                FAIL() << "Invalid piece";
+            }
+
+            switch (promoted) {
+              case chess::Piece::ROOK:
+                delta_material_w += chess::kRookValue;
+                break;
+              case chess::Piece::KNIGHT:
+                delta_material_w += chess::kKnightValue;
+                break;
+              case chess::Piece::BISHOP:
+                delta_material_w += chess::kBishopValue;
+                break;
+              case chess::Piece::QUEEN:
+                delta_material_w += chess::kQueenValue;
+                break;
+              default:
+                FAIL() << "Invalid piece";
+            }
+
+            ASSERT_EQ(pos.Reset(fen), chess::Position::FenError::kSuccess);
+            orig = pos;
+
+            const std::uint64_t orig_pieces64_b =
+                get_pieces64_b(pos, captured);
+
+            const std::uint64_t orig_pieces64_w =
+                get_pieces64_w(pos, promoted);
+
+            pos.MakeMove<chess::Player::kWhite>(
+                chess::util::PackMove(captured,
+                                      chess::Square::C7,
+                                      chess::Piece::PAWN,
+                                      promoted,
+                                      chess::Square::D8),
+                    0 /* ply */);
+
+            EXPECT_EQ(pos.PieceOn(chess::Square::C7), chess::Piece::EMPTY);
+            EXPECT_EQ(pos.PieceOn(chess::Square::D8), promoted);
+            EXPECT_EQ(pos.ToMove(), chess::Player::kBlack);
+            EXPECT_EQ(pos.HalfMoveNumber(), 0u);
+            EXPECT_EQ(pos.FullMoveNumber(), orig.FullMoveNumber());
+
+            EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kWhite>().Pawns(),
+                      (jfern::bitops::create_mask<std::uint64_t,
+                                                  chess::Square::C2,
+                                                  chess::Square::C5>()));
+
+            EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kWhite>().Occupied(),
+                      (jfern::bitops::create_mask<std::uint64_t,
+                                                  chess::Square::C2,
+                                                  chess::Square::C5,
+                                                  chess::Square::D8,
+                                                  chess::Square::G1>()));
+
+            const std::uint64_t expected_pieces64_w =
+                orig_pieces64_w |
+                    jfern::bitops::create_mask<std::uint64_t,
+                                               chess::Square::D8>();
+
+            const std::uint64_t expected_pieces64_b =
+                orig_pieces64_b ^
+                    jfern::bitops::create_mask<std::uint64_t,
+                                               chess::Square::D8>();
+
+            EXPECT_EQ(expected_pieces64_w, get_pieces64_w(pos, promoted));
+            EXPECT_EQ(expected_pieces64_b, get_pieces64_b(pos, captured));
+
+            EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kBlack>().Occupied(),
+                      (jfern::bitops::create_mask<std::uint64_t,
+                                                  chess::Square::B8,
+                                                  chess::Square::G8>()));
+
+            EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kBlack>().Material(),
+                      orig.GetPlayerInfo<chess::Player::kBlack>().Material()
+                        - delta_material_b);
+
+            EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kWhite>().Material(),
+                      orig.GetPlayerInfo<chess::Player::kWhite>().Material()
+                        + delta_material_w);
+
+            pos.UnMakeMove<chess::Player::kWhite>(
+                chess::util::PackMove(captured,
+                                      chess::Square::C7,
+                                      chess::Piece::PAWN,
+                                      promoted,
+                                      chess::Square::D8),
+                    0 /* ply */);
+
+            ASSERT_EQ(pos, orig);
+        }
+    }
+
+    // Pawn advances and promotes
+    for (auto promoted : { chess::Piece::ROOK,
+                           chess::Piece::KNIGHT,
+                           chess::Piece::BISHOP,
+                           chess::Piece::QUEEN
+                         }) {
+        std::int16_t delta_material = -chess::kPawnValue;
+
+        switch (promoted) {
+          case chess::Piece::ROOK:
+            delta_material += chess::kRookValue;
+            break;
+          case chess::Piece::KNIGHT:
+            delta_material += chess::kKnightValue;
+            break;
+          case chess::Piece::BISHOP:
+            delta_material += chess::kBishopValue;
+            break;
+          case chess::Piece::QUEEN:
+            delta_material += chess::kQueenValue;
+            break;
+          default:
+            FAIL() << "Invalid piece";
+        }
+
+        fen = "1n1n2k1/2P5/8/2P5/8/8/2P5/6K1 w - - 0 1";
+        ASSERT_EQ(pos.Reset(fen), chess::Position::FenError::kSuccess);
+        orig = pos;
+
+        const std::uint64_t orig_pieces64 = get_pieces64_w(pos, promoted);
+
+        pos.MakeMove<chess::Player::kWhite>(
+            chess::util::PackMove(chess::Piece::EMPTY,
+                                  chess::Square::C7,
+                                  chess::Piece::PAWN,
+                                  promoted,
+                                  chess::Square::C8),
+                0 /* ply */);
+
+        EXPECT_EQ(pos.PieceOn(chess::Square::C7), chess::Piece::EMPTY);
+        EXPECT_EQ(pos.PieceOn(chess::Square::C8), promoted);
+        EXPECT_EQ(pos.ToMove(), chess::Player::kBlack);
+        EXPECT_EQ(pos.HalfMoveNumber(), 0u);
+        EXPECT_EQ(pos.FullMoveNumber(), orig.FullMoveNumber());
+
+        EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kWhite>().Pawns(),
+                  (jfern::bitops::create_mask<std::uint64_t,
+                                              chess::Square::C2,
+                                              chess::Square::C5>()));
+
+        EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kWhite>().Occupied(),
+                  (jfern::bitops::create_mask<std::uint64_t,
+                                              chess::Square::C2,
+                                              chess::Square::C5,
+                                              chess::Square::C8,
+                                              chess::Square::G1>()));
+
+        const std::uint64_t expected_pieces64 =
+            orig_pieces64 | jfern::bitops::create_mask<std::uint64_t,
+                                                       chess::Square::C8>();
+
+        EXPECT_EQ(expected_pieces64, get_pieces64_w(pos, promoted));
+
+        EXPECT_EQ(pos.GetPlayerInfo<chess::Player::kWhite>().Material(),
+                  orig.GetPlayerInfo<chess::Player::kWhite>().Material()
+                    + delta_material);
+
+        pos.UnMakeMove<chess::Player::kWhite>(
+            chess::util::PackMove(chess::Piece::EMPTY,
+                                  chess::Square::C7,
+                                  chess::Piece::PAWN,
+                                  promoted,
+                                  chess::Square::C8),
+                0 /* ply */);
+
+        ASSERT_EQ(pos, orig);
+    }
+
+    CheckMove<chess::Player::kWhite>(&pos, 0);
 }
 
 }  // namespace

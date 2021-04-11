@@ -9,7 +9,6 @@
 #include <cctype>
 #include <cstddef>
 #include <map>
-#include <string>
 
 #include "bitops/bitops.h"
 #include "superstring/superstring.h"
@@ -71,6 +70,18 @@ static const std::map<Position::FenError, std::string> kFenErrorToString {
     { Position::FenError::kSuccess,
         "Position is OK"                       }
 };
+
+/**
+ * Compare this object to another
+ *
+ * @param[in] other The object to compare against
+ *
+ * @return True if the two are the same
+ */
+bool Position::PieceSet::operator==(const PieceSet& other) const noexcept {
+    return pieces64 == other.pieces64 &&
+            king_square[Piece::KING] == other.king_square[Piece::KING];
+}
 
 /**
  * Constructor
@@ -340,6 +351,30 @@ auto Position::Reset(const std::string& fen_) -> FenError {
     }
 
     return error_code;
+}
+
+/**
+ * Compare this object to another
+ *
+ * @param[in] other The object to compare against
+ *
+ * @return True if the two are the same
+ */
+bool Position::operator==(const Position& other) const noexcept {
+    bool same =
+        black_ == other.black_ &&
+        white_ == other.white_ &&
+        full_move_number_ == other.full_move_number_ &&
+        half_move_number_ == other.half_move_number_ &&
+        to_move_ == other.to_move_;
+
+    same = same && en_passant_target_ == other.en_passant_target_;
+
+    for (int i = 0; i < 65; i++) {
+        same = same && pieces_[i] == other.pieces_[i];
+    }
+
+    return same;
 }
 
 /**

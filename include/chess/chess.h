@@ -18,7 +18,7 @@ constexpr std::uint32_t kMaxPly     = 512;
  * Assign the king a large value that still fits within
  * 16 bits (signed)
  */
-constexpr std::int16_t kKingValue   = 32000;
+constexpr std::int16_t kKingValue   = 12000;
 
 constexpr std::int16_t kKnightValue = 325;
 constexpr std::int16_t kPawnValue   = 100;
@@ -116,6 +116,34 @@ constexpr Square operator++(Square& square, int) noexcept {
  */
 constexpr Square operator--(Square& square, int) noexcept {
     return square = static_cast<Square>(square-1);
+}
+
+/**
+ * Operator to increment a \ref Square
+ *
+ * @note Does NOT do bounds checking
+ *
+ * @param[in] square The square to increment
+ * @param[in] i      The amount by which to increment \a square
+ *
+ * @return The incremented square
+ */
+constexpr Square operator+(Square square, int i) noexcept {
+    return static_cast<Square>(int(square) + i);
+}
+
+/**
+ * Operator to decrement a \ref Square
+ *
+ * @note Does NOT do bounds checking
+ *
+ * @param[in] square The square to decrement
+ * @param[in] i      The amount by which to decrement \a square
+ *
+ * @return The decremented square
+ */
+constexpr Square operator-(Square square, int i) noexcept {
+    return static_cast<Square>(int(square) - i);
 }
 
 }  // namespace chess

@@ -57,13 +57,10 @@ public:
     struct PieceSet {
         /** Default constructor */
         PieceSet() : king_square(), pieces64({0}) {
-            king_square[0] = Square::Overflow;
-            king_square[1] = Square::Overflow;
-            king_square[2] = Square::Overflow;
-            king_square[3] = Square::Overflow;
-            king_square[4] = Square::Overflow;
-            king_square[5] = Square::Overflow;
+            king_square.fill(Square::Overflow);
         }
+
+        bool operator==(const PieceSet& other) const noexcept;
 
         template <Piece piece>
         std::uint64_t Get()  noexcept(piece != Piece::EMPTY);
@@ -75,7 +72,7 @@ public:
          * The location of the player's king is Piece::KING. The other
          * indexes exist simply to avoid branching on piece type
          */
-        Square king_square[6];
+        std::array<Square, 6> king_square;
 
         /**
          * This player's pieces. Each index is a bitboard representing
@@ -131,7 +128,9 @@ public:
         constexpr std::int16_t  Material()   const noexcept;
         constexpr std::uint64_t Occupied()   const noexcept;
 
-        void MayNotCastle() noexcept;
+        void InhibitCastle() noexcept;
+
+        bool operator==(const PlayerInfo& other) const noexcept;
 
     private:
         /** True if this player can castle long */
@@ -202,6 +201,8 @@ public:
 
     template<Player player>
     void UnMakeMove(std::int32_t move, std::uint32_t ply) noexcept;
+
+    bool operator==(const Position& other) const noexcept;
 
     static std::string ErrorToString(FenError error);
     static FenError Validate(const Position& pos);
@@ -411,7 +412,7 @@ inline void Position::MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
 
     switch (moved) {
       case Piece::PAWN:
-        player.Lift<Piece::PAWN>(from);
+        player.template Lift<Piece::PAWN>(from);
 
         /*
          * Note the promotion piece will be a pawn if this was
@@ -446,19 +447,19 @@ inline void Position::MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
                 pieces_[to - 1] = Piece::EMPTY;
                 pieces_[to + 1] = Piece::ROOK;
 
-                player.Move<Piece::ROOK>(to - 1, to + 1);
+                player.template Move<Piece::ROOK>(to - 1, to + 1);
             } else {
                 pieces_[to + 2] = Piece::EMPTY;
                 pieces_[to - 1] = Piece::ROOK;
 
-                player.Move<Piece::ROOK>(to + 2, to - 1);
+                player.template Move<Piece::ROOK>(to + 2, to - 1);
             }
         }
 
         /*
          * Clear all castling rights for this player
          */
-        player.MayNotCastle();
+        player.InhibitCastle();
         break;
       default:
         break;
@@ -471,15 +472,15 @@ inline void Position::MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
         switch (captured) {
           case Piece::PAWN:
             if (opponent.Occupied() & data_tables::kSetMask[to]) {
-                opponent.Lift<Piece::PAWN>(to);
+                opponent.template Lift<Piece::PAWN>(to);
             } else {
                 const Square minus8 = data_tables::kMinus8<who>[to];
                 pieces_[minus8] = Piece::EMPTY;
-                opponent.Lift<Piece::PAWN>(minus8);
+                opponent.template Lift<Piece::PAWN>(minus8);
             }
             break;
           case Piece::ROOK:
-            opponent.Lift<Piece::ROOK>(to);
+            opponent.template Lift<Piece::ROOK>(to);
 
             /*
              * Update the opponent's castling rights if he could have castled
@@ -625,18 +626,18 @@ void Position::UnMakeMove(std::int32_t move, std::uint32_t ply) noexcept {
      * Revert common position information
      */
     pieces_[from] = moved;
+    pieces_[to] = captured;  // Will correct if en-passant
 
     /*
      * Revert the player-specific info for the player who moved
      */
     if (moved != Piece::PAWN) {
-        pieces_[to] = captured;
         player.Move(moved, to, from);
     }
 
     switch (moved) {
       case Piece::PAWN:
-        player.Drop<Piece::PAWN>(from);
+        player.template Drop<Piece::PAWN>(from);
 
         /*
          * Note the promotion piece will be a pawn if this was not actually
@@ -653,12 +654,12 @@ void Position::UnMakeMove(std::int32_t move, std::uint32_t ply) noexcept {
                 pieces_[to - 1] = Piece::ROOK;
                 pieces_[to + 1] = Piece::EMPTY;
 
-                player.Move<Piece::ROOK>(to + 1, to - 1);
+                player.template Move<Piece::ROOK>(to + 1, to - 1);
             } else {
                 pieces_[to + 2] = Piece::ROOK;
                 pieces_[to - 1] = Piece::EMPTY;
 
-                player.Move<Piece::ROOK>(to - 1, to + 2);
+                player.template Move<Piece::ROOK>(to - 1, to + 2);
             }
         }
         break;
@@ -673,11 +674,11 @@ void Position::UnMakeMove(std::int32_t move, std::uint32_t ply) noexcept {
         switch (captured) {
           case Piece::PAWN:
             if (to != en_passant_target_) {
-                opponent.Drop<Piece::PAWN>(to);
+                opponent.template Drop<Piece::PAWN>(to);
             } else {
                 const Square minus8 = data_tables::kMinus8<who>[to];
                 pieces_[minus8] = Piece::PAWN;
-                opponent.Drop<Piece::PAWN>(minus8);
+                opponent.template Drop<Piece::PAWN>(minus8);
                 pieces_[to] = Piece::EMPTY;
             }
             break;
@@ -702,6 +703,7 @@ template <Player player>
 Position::PlayerInfo<player>::PlayerInfo() :
     can_castle_long_(false),
     can_castle_short_(false),
+    material_(0),
     occupied_(0),
     pieces_() {
 }
@@ -964,8 +966,27 @@ constexpr std::int16_t Position::PlayerInfo<player>::Material() const
  * Forbid this player from castling in the future
  */
 template <Player player>
-void Position::PlayerInfo<player>::MayNotCastle() noexcept {
+void Position::PlayerInfo<player>::InhibitCastle() noexcept {
     can_castle_short_ = can_castle_long_ = false;
+}
+
+/**
+ * Compare this object to another
+ *
+ * @param[in] other The object to compare against
+ *
+ * @return True if the two are the same
+ */
+template <Player player>
+bool Position::PlayerInfo<player>::operator==(const PlayerInfo& other) const
+    noexcept {
+    bool same = material_ == other.material_ &&
+                occupied_ == other.occupied_ &&
+                pieces_ == other.pieces_;
+
+    same = same && can_castle_long_ == other.can_castle_long_ &&
+                   can_castle_short_ == other.can_castle_short_;
+    return same;
 }
 
 /**
