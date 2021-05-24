@@ -243,6 +243,11 @@ private:
          * Stored en passant target
          */
         Square ep_target[kMaxPly];
+
+        /**
+         * Consecutive irreversible moves
+         */
+        int half_move_number[kMaxPly];
     };
 
     /** The side playing as Black */
@@ -367,6 +372,8 @@ inline void Position::MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
     auto& player = GetPlayerInfo<who>();
     auto& opponent = GetPlayerInfo<util::opponent<who>()>();
 
+    history_.half_move_number[ply] = HalfMoveNumber();
+
     /*
      * Back up castling rights and en passant target. Later, when we
      * UnMakeMove(), we will have a record of what these were
@@ -431,15 +438,12 @@ inline void Position::MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
         }
         break;
       case Piece::ROOK:
-        if (player.CanCastle()) {
-            const int file = util::GetFile(from);
-            if (file == 7) {
-                player.CanCastleLong() = false;
-                castling_changed = true;
-            } else if (file == 0) {
-                player.CanCastleShort() = false;
-                castling_changed = true;
-            }
+        if (player.CanCastleLong() && util::GetFile(from) == 7) {
+            player.CanCastleLong() = false;
+            castling_changed = true;
+        } else if (player.CanCastleShort() && util::GetFile(from) == 0) {
+            player.CanCastleShort() = false;
+            castling_changed = true;
         }
         break;
       case Piece::KING:
@@ -606,6 +610,8 @@ void Position::UnMakeMove(std::int32_t move, std::uint32_t ply) noexcept {
     auto& player = GetPlayerInfo<who>();
     auto& opponent = GetPlayerInfo<util::opponent<who>()>();
 
+    half_move_number_ = history_.half_move_number[ply];
+
     /*
      * Restore castling rights and en passant target
      */
@@ -694,8 +700,6 @@ void Position::UnMakeMove(std::int32_t move, std::uint32_t ply) noexcept {
             opponent.Drop(captured, to);
             break;
         }
-    } else if (moved != Piece::PAWN) {
-        half_move_number_--;
     }
 
     full_move_number_ =
