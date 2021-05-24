@@ -14,6 +14,7 @@ namespace chess {
 namespace debug {
 
 std::string PrintBitBoard(std::uint64_t board);
+std::string PrintMove(std::int32_t move);
 
 }  // namespace debug
 }  // namespace chess

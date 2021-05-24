@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <map>
 #include <ostream>
@@ -54,6 +55,9 @@ void CheckMove(chess::Position* pos, std::int32_t move) {
     const chess::Piece promoted = chess::util::ExtractPromoted(move);
     const chess::Square to      = chess::util::ExtractTo(move);
 
+    bool reversible = captured == chess::Piece::EMPTY &&
+                         moved != chess::Piece::PAWN;
+
     const chess::Position orig = *pos;
     const auto& orig_player   = orig.GetPlayerInfo<who>();
     const auto& orig_opponent = orig.GetPlayerInfo<opp>();
@@ -77,9 +81,15 @@ void CheckMove(chess::Position* pos, std::int32_t move) {
 
     pos->MakeMove<who>(move, 0);
 
+    EXPECT_EQ(pos->ToMove(), chess::util::opponent<who>());
+    if (pos->ToMove() == chess::Player::kWhite) {
+        EXPECT_EQ(pos->FullMoveNumber(), orig.FullMoveNumber() + 1);
+    }
+
     const auto& post_player   = pos->GetPlayerInfo<who>();
     const auto& post_opponent = pos->GetPlayerInfo<opp>();
 
+    bool enPassant = false;
     if (moved == chess::Piece::PAWN) {
         if (to == orig.EnPassantTarget()) {
             std::uint64_t expected_pawns = orig_opponent.Pawns();
@@ -94,7 +104,8 @@ void CheckMove(chess::Position* pos, std::int32_t move) {
             EXPECT_EQ(expected_pawns, post_opponent.Pawns());
 
             EXPECT_EQ(pos->EnPassantTarget(), chess::Square::Overflow);
-        } else if (promoted != chess::Piece::EMPTY) {
+            enPassant = true;
+        } else if (promoted != chess::Piece::PAWN) {
             std::uint64_t expected_pawns = orig_player.Pawns();
             std::uint64_t expected_pieces =
                 get_pieces64(promoted, orig_player);
@@ -104,16 +115,77 @@ void CheckMove(chess::Position* pos, std::int32_t move) {
 
             EXPECT_EQ(expected_pieces, get_pieces64(promoted, post_player));
             EXPECT_EQ(expected_pawns, post_player.Pawns());
+
+            const std::int16_t delta_actual =
+                post_player.Material() - orig_player.Material();
+
+            const std::int16_t delta_expected =
+                chess::data_tables::kPieceValue[promoted] -
+                chess::data_tables::kPieceValue[chess::Piece::PAWN];
+
+                EXPECT_EQ(delta_expected, delta_actual);
         } else if (std::abs(to - from) == 16) {
             EXPECT_EQ(chess::data_tables::kMinus8<who>[to],
-                      post_player.EnPassantTarget());
+                      pos->EnPassantTarget());
         }
+    }
+
+    const bool castled_short = (from - 2 == to);
+    const bool castled_long  = (from + 2 == to);
+
+    const bool castled = castled_long | castled_short;
+
+    /*
+     * The origin square should always be empty and the target square should
+     * always be occupied
+     */
+    if (!castled) {
+        std::uint64_t expected_occupied = orig_player.Occupied();
+        jfern::bitops::clear(from, &expected_occupied);
+        jfern::bitops::set(to, &expected_occupied);
+        EXPECT_EQ(expected_occupied, post_player.Occupied());
+    }
+
+    EXPECT_EQ(pos->PieceOn(from), chess::Piece::EMPTY);
+
+    /*
+     * Note this is not a promotion if the promotion piece is a pawn
+     */
+    if (promoted != chess::Piece::PAWN)
+        EXPECT_EQ(pos->PieceOn(to), promoted);
+    else {
+        std::uint64_t expected_pieces = get_pieces64(moved, orig_player);
+        jfern::bitops::clear(from, &expected_pieces);
+        jfern::bitops::set(to, &expected_pieces);
+        EXPECT_EQ(expected_pieces, get_pieces64(moved, post_player));
+        EXPECT_EQ(pos->PieceOn(to), moved);
     }
 
     if (captured != chess::Piece::EMPTY) {
         EXPECT_EQ(orig_opponent.Material()
                     - chess::data_tables::kPieceValue[captured],
                   post_opponent.Material());
+        if (captured == chess::Piece::PAWN && !enPassant) {
+            std::uint64_t expected_pieces =
+                get_pieces64(captured, orig_opponent);
+
+            std::uint64_t expected_occupied = orig_opponent.Occupied();
+
+            jfern::bitops::clear(to, &expected_occupied);
+            jfern::bitops::clear(to, &expected_pieces);
+
+            const std::uint64_t actual_pieces =
+                                    get_pieces64(captured, post_opponent);
+            const std::uint64_t actual_occupied =
+                                    post_opponent.Occupied();
+
+            EXPECT_EQ(expected_pieces, actual_pieces)
+                        << chess::debug::PrintMove(move)
+                        << chess::debug::PrintBitBoard(actual_pieces);
+            EXPECT_EQ(expected_occupied, actual_occupied)
+                        << chess::debug::PrintMove(move)
+                            << chess::debug::PrintBitBoard(actual_occupied);
+        }
     }
 
     if (captured == chess::Piece::ROOK) {
@@ -127,6 +199,62 @@ void CheckMove(chess::Position* pos, std::int32_t move) {
                     == 0) {
             EXPECT_FALSE(post_opponent.CanCastleShort());
         }
+    }
+
+    if (moved == chess::Piece::ROOK) {
+        if (chess::util::GetFile(from) == 0 && orig_player.CanCastleShort()) {
+            EXPECT_FALSE(post_player.CanCastleShort());
+            reversible = false;
+        } else if (
+            chess::util::GetFile(from) == 7 && orig_player.CanCastleLong() ) {
+            EXPECT_FALSE(post_player.CanCastleLong());
+            reversible = false;
+        }
+    } else if (moved == chess::Piece::KING) {
+        EXPECT_EQ(post_player.KingSquare(), to);
+
+        reversible = reversible && !orig_player.CanCastle();
+
+        std::uint64_t expected_occupied = orig_player.Occupied();
+        jfern::bitops::clear(from, &expected_occupied);
+        jfern::bitops::set(to, &expected_occupied);
+
+        if (castled) {
+            chess::Square rook_from, rook_to;
+
+            if (castled_long) {
+                chess::Square rook_from = to + 2;
+                chess::Square root_to   = to - 1;
+            } else {
+                chess::Square rook_from = to - 1;
+                chess::Square root_to   = to + 1;
+            }
+
+            EXPECT_EQ(pos->PieceOn(rook_to), chess::Piece::ROOK);
+            EXPECT_EQ(pos->PieceOn(rook_from), chess::Piece::EMPTY);
+
+            std::uint64_t expected_rooks =
+                get_pieces64(chess::Piece::ROOK, orig_player);
+
+            jfern::bitops::clear(rook_from, &expected_rooks);
+            jfern::bitops::set(rook_to, &expected_rooks);
+            jfern::bitops::clear(rook_from, &expected_occupied);
+            jfern::bitops::set(rook_to, &expected_occupied);
+
+            EXPECT_EQ(get_pieces64(chess::Piece::ROOK, post_player),
+                      expected_rooks);
+        }
+        
+        EXPECT_EQ(expected_occupied, post_player.Occupied());
+
+        EXPECT_FALSE(post_player.CanCastle());
+    }
+
+    if (reversible) {
+        EXPECT_EQ(pos->HalfMoveNumber(),
+                  orig.HalfMoveNumber()+ 1);
+    } else {
+        EXPECT_EQ(pos->HalfMoveNumber(), 0);
     }
 
     pos->UnMakeMove<who>(move, 0);
@@ -909,7 +1037,101 @@ TEST(Position, Validate) {
 TEST(Position, MakeUndoMove) {
     SCOPED_TRACE("MakeUndoMove");
 
+    constexpr std::array<chess::Piece, 4> promotions = { chess::Piece::ROOK,
+                                                         chess::Piece::KNIGHT,
+                                                         chess::Piece::BISHOP,
+                                                         chess::Piece::QUEEN };
+
+    constexpr std::array<char, 5> captures = { 'p', 'r', 'n', 'b', 'q' };
+
+    constexpr char template_fen[] =
+        "1*1*2k1/2P5/8/1pPp4/8/1+1+4/2P5/6K1 w - - 0 1";
+
     auto pos = chess::Position();
+
+    // Pawn advances and promotes
+
+    std::string fen(template_fen);
+    std::replace(fen.begin(), fen.end(), '*', 'n');
+    std::replace(fen.begin(), fen.end(), '+', 'n');
+
+    for (auto promoted : promotions) {
+        ASSERT_EQ(pos.Reset(fen), chess::Position::FenError::kSuccess);
+
+        const std::int32_t move = chess::util::PackMove(chess::Piece::EMPTY,
+                                                        chess::Square::C7,
+                                                        chess::Piece::PAWN,
+                                                        promoted,
+                                                        chess::Square::C8);
+
+        CheckMove<chess::Player::kWhite>(&pos, move);
+    }
+
+    // Pawn captures and promotes
+
+    for (auto promoted : promotions) {
+        for (char captured : captures) {
+            if (captured == 'p') continue;
+            fen = template_fen;
+            std::replace(fen.begin(), fen.end(), '*', captured);
+            std::replace(fen.begin(), fen.end(), '+', 'n');
+
+            ASSERT_EQ(pos.Reset(fen), chess::Position::FenError::kSuccess);
+
+            const std::int32_t capture_left =
+                chess::util::PackMove(chess::util::CharToPiece(captured),
+                                      chess::Square::C7,
+                                      chess::Piece::PAWN,
+                                      promoted,
+                                      chess::Square::B8);
+
+            CheckMove<chess::Player::kWhite>(
+                &pos, capture_left);
+
+            const std::int32_t capture_right =
+                chess::util::PackMove(chess::util::CharToPiece(captured),
+                                      chess::Square::C7,
+                                      chess::Piece::PAWN,
+                                      promoted,
+                                      chess::Square::D8);
+
+            CheckMove<chess::Player::kWhite>(
+                &pos, capture_right);
+        }
+    }
+
+    // Pawn captures
+
+    for (char captured : captures) {
+        fen = template_fen;
+        std::replace(fen.begin(), fen.end(), '*', 'n');
+        std::replace(fen.begin(), fen.end(), '+', captured);
+
+        ASSERT_EQ(pos.Reset(fen), chess::Position::FenError::kSuccess);
+
+            const std::int32_t capture_left =
+                chess::util::PackMove(chess::util::CharToPiece(captured),
+                                      chess::Square::C2,
+                                      chess::Piece::PAWN,
+                                      chess::Piece::PAWN,
+                                      chess::Square::B3);
+
+            CheckMove<chess::Player::kWhite>(
+                &pos, capture_left);
+
+            const std::int32_t capture_right =
+                chess::util::PackMove(chess::util::CharToPiece(captured),
+                                      chess::Square::C2,
+                                      chess::Piece::PAWN,
+                                      chess::Piece::PAWN,
+                                      chess::Square::D3);
+
+            CheckMove<chess::Player::kWhite>(
+                &pos, capture_right);
+    }
+
+#if 0
+    ASSERT_EQ(pos.Reset(fen), chess::Position::FenError::kSuccess);
 
     auto get_pieces64_b = [](const chess::Position& psn, chess::Piece piece) {
         switch (piece) {
@@ -1453,6 +1675,7 @@ TEST(Position, MakeUndoMove) {
     }
 
     CheckMove<chess::Player::kWhite>(&pos, 0);
+#endif
 }
 
 }  // namespace

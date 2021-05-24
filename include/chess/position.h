@@ -381,6 +381,8 @@ inline void Position::MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
     history_.can_castle_short[util::index<Player::kWhite>()][ply] =
         white_.CanCastleShort();
 
+    bool castling_changed = false;
+
     history_.ep_target[ply] = en_passant_target_;
 
     /*
@@ -433,8 +435,10 @@ inline void Position::MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
             const int file = util::GetFile(from);
             if (file == 7) {
                 player.CanCastleLong() = false;
+                castling_changed = true;
             } else if (file == 0) {
                 player.CanCastleShort() = false;
+                castling_changed = true;
             }
         }
         break;
@@ -456,10 +460,13 @@ inline void Position::MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
             }
         }
 
-        /*
-         * Clear all castling rights for this player
-         */
-        player.InhibitCastle();
+        if (player.CanCastle()) {
+            /*
+             * Clear all castling rights for this player
+             */
+            player.InhibitCastle();
+            castling_changed = true;
+        }
         break;
       default:
         break;
@@ -499,7 +506,8 @@ inline void Position::MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
             opponent.Lift(captured, to);
             break;
         }
-    } else if (moved != Piece::PAWN) {
+    } else if (moved != Piece::PAWN
+                && !castling_changed) {
         half_move_number_++;
     }
 
