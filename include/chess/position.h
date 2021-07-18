@@ -935,6 +935,7 @@ void Position::PlayerInfo<player>::Move(Square from, Square to) noexcept {
 
     pieces_.pieces64[piece] ^= clear_set;
     occupied_ ^= clear_set;
+    pieces_.king_square[piece] = to;
 }
 
 /**
@@ -955,6 +956,7 @@ void Position::PlayerInfo<player>::Move(Piece piece, Square from, Square to)
 
     pieces_.pieces64[piece] ^= clear_set;
     occupied_ ^= clear_set;
+    pieces_.king_square[piece] = to;
 }
 
 /**
