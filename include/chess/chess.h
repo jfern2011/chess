@@ -45,7 +45,7 @@ constexpr std::uint64_t kFileC = kFileH << 5;
 constexpr std::uint64_t kFileB = kFileH << 6;
 constexpr std::uint64_t kFileA = kFileH << 7;
 
-constexpr char* kSquareStr[65] = {
+constexpr const char* kSquareStr[65] = {
     "h1","g1","f1","e1","d1","c1","b1","a1",
     "h2","g2","f2","e2","d2","c2","b2","a2",
     "h3","g3","f3","e3","d3","c3","b3","a3",

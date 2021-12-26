@@ -44,7 +44,6 @@ endif()
 # -----------------------------------------------------------------------------
 
 add_library(core STATIC
-    src/chess.cc
     src/debug.cc
     src/position.cc
     src/util.cc
