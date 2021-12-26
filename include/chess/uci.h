@@ -40,7 +40,7 @@ private:
      * Mapping from UCI command name to handler
      */
     std::map<std::string, cmd_handler_t>
-        m_commands;
+        commands_;
 };
 
 }  // namespace chess

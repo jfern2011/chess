@@ -10,7 +10,7 @@ namespace chess {
 /**
  * @brief Constructor
  */
-UciProtocol::UciProtocol() : m_commands() {
+UciProtocol::UciProtocol() : commands_() {
 }
 
 /**
@@ -25,7 +25,7 @@ bool UciProtocol::RegisterCommand(
     const std::string& name, cmd_handler_t handler) {
     if (name.empty() || !handler) return false;
 
-    m_commands[name] = handler;
+    commands_[name] = handler;
     return true;
 }
 
