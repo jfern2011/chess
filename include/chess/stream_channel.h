@@ -7,6 +7,7 @@
 #ifndef CHESS_STREAM_CHANNEL_H_
 #define CHESS_STREAM_CHANNEL_H_
 
+#include <functional>
 #include <string>
 
 #include "chess/data_buffer.h"

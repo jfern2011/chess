@@ -46,6 +46,7 @@ endif()
 add_library(core STATIC
     src/debug.cc
     src/position.cc
+    src/stream_channel.cc
     src/util.cc
 )
 
@@ -60,13 +61,28 @@ target_link_libraries(core
 
 # -----------------------------------------------------------------------------
 
+add_library(engine STATIC
+    src/stdio_channel.cc
+)
+
+target_include_directories(engine PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}/include
+)
+
+target_link_libraries(engine
+    core
+)
+
+# -----------------------------------------------------------------------------
+
 add_executable(chess-ut
     test/data_tables_ut.cc
     test/main.cc
     test/position_ut.cc
+    test/stdio_channel_ut.cc
 )
 
 target_link_libraries(chess-ut
     gtest_main
-    core
+    engine
 )
