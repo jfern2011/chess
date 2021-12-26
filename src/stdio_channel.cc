@@ -41,8 +41,8 @@ void StdinChannel::Poll() noexcept {
 /**
  * This method is performed by a thread whose only task is to sit and
  * wait for messages to come in from standard input. When a message
- * arrives it is copied to the input buffer. Once this buffer is read
- * by the parent process, the thread resumes waiting for input
+ * arrives it is copied to the input buffer. A mutex is used to avoid
+ * simultaneous buffer access by the thread and its parent
  */
 void StdinChannel::ReadInput() {
     std::string input;
