@@ -34,10 +34,10 @@ public:
 
 private:
     /** Pointer to the buffer itself */
-    std::uint8_t* m_buf;
+    std::uint8_t* buf_;
 
     /** The size of this data buffer */
-    std::size_t m_size;
+    std::size_t size_;
 };
 
 /**
@@ -60,10 +60,10 @@ public:
 
 private:
     /** Pointer to the buffer itself */
-    const char* m_buf;
+    const char* buf_;
 
     /** The size of this data buffer */
-    std::size_t m_size;
+    std::size_t size_;
 };
 
 }  // namespace chess
