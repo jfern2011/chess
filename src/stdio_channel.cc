@@ -6,6 +6,7 @@
 
 #include "chess/stdio_channel.h"
 
+#include <chrono>
 #include <iostream>
 
 namespace chess {
@@ -16,7 +17,16 @@ StdinChannel::StdinChannel()
     : messages_(),
       messages_avail_(false),
       stdin_thread_(&StdinChannel::ReadInput, this),
-      queue_mutex_() {
+      queue_mutex_(),
+      quit_(false) {
+}
+
+/**
+ * @brief Destructor
+ */
+StdinChannel::~StdinChannel() {
+    SetExitNow(true);
+    stdin_thread_.join();
 }
 
 /**
@@ -43,18 +53,39 @@ void StdinChannel::Poll() noexcept {
  * wait for messages to come in from standard input. When a message
  * arrives it is copied to the input buffer. A mutex is used to avoid
  * simultaneous buffer access by the thread and its parent
+ *
+ * @todo Consider simply blocking on getline() even though tear
+ *       down will look ugly
  */
 void StdinChannel::ReadInput() {
-    std::string input;
-    while (true) {
-        std::getline(std::cin, input);
-        queue_mutex_.lock();
-    
-        messages_.push_back(input);
+    std::ios::sync_with_stdio(false);
 
-        SetMessagesAvailable(true);
-        queue_mutex_.unlock();
+    std::string input;
+    std::streambuf* sb = std::cin.rdbuf();
+
+    while (!ExitNow()) {
+        if (sb->in_avail() > 0) {
+            std::getline(std::cin, input);
+            queue_mutex_.lock();
+
+            messages_.push_back(input);
+
+            SetMessagesAvailable(true);
+            queue_mutex_.unlock();
+        }
+
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(200));
     }
+}
+
+/**
+ * Check if the thread waiting on standard input should exit
+ * 
+ * @return True to exit
+ */
+bool StdinChannel::ExitNow() const noexcept {
+    return quit_.load(std::memory_order_relaxed);
 }
 
 /**
@@ -64,6 +95,15 @@ void StdinChannel::ReadInput() {
  */
 bool StdinChannel::MessagesAvailable() const noexcept {
     return messages_avail_.load(std::memory_order_relaxed);
+}
+
+/**
+ * @brief Set the ExitNow() flag
+ * 
+ * @param value True to have the standard input thread exit
+ */
+void StdinChannel::SetExitNow(bool value) noexcept {
+    quit_.store(value, std::memory_order_relaxed);
 }
 
 /**

@@ -33,7 +33,7 @@ public:
     StdinChannel& operator=(const StdinChannel& channel) = delete;
     StdinChannel& operator=(StdinChannel&& channel)      = default;
 
-    ~StdinChannel() = default;
+    ~StdinChannel();
 
     void Poll() noexcept override;
 
@@ -43,7 +43,9 @@ private:
     /**
      * Atomic operations @{
      */
+    bool ExitNow() const noexcept;
     bool MessagesAvailable() const noexcept;
+    void SetExitNow(bool value) noexcept;
     void SetMessagesAvailable(bool value) noexcept;
     /** @} */
 
@@ -58,6 +60,9 @@ private:
 
     /** Avoids race conditions on the queue */
     std::mutex queue_mutex_;
+
+    /** Flag to request the stdin thread to exit */
+    std::atomic<bool> quit_;
 };
 
 }  // namespace chess

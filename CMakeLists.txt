@@ -5,6 +5,8 @@ project(Chess)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+find_package(Threads REQUIRED)
+
 # Download and unpack googletest at configure time
 configure_file(CMakeLists.txt.in googletest-download/CMakeLists.txt)
 execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
@@ -85,5 +87,16 @@ add_executable(chess-ut
 
 target_link_libraries(chess-ut
     gtest_main
+    engine
+)
+
+# -----------------------------------------------------------------------------
+
+add_executable(stdio-exe
+    test/stdio_channel_exe.cc
+)
+
+target_link_libraries(stdio-exe
+    Threads::Threads
     engine
 )
