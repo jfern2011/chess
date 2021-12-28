@@ -1,12 +1,11 @@
 /**
- *  \file   stdio_channel_ut.cc
+ *  \file   stdio_channel_exe.cc
  *  \author Jason Fernandez
- *  \date   12/26/2021
+ *  \date   12/27/2021
  */
 
 #include <chrono>
 #include <ctime>
-#include <iomanip>
 #include <iostream>
 #include <mutex>
 #include <thread>
@@ -44,14 +43,14 @@ int main(int argc, char** argv) {
     while (true) {
         channel.Poll();
 
-        std::cout << now() << ": ";
-
-        input_mutex.lock();
-
         if (input.find("quit") != std::string::npos) {
             std::cout << std::endl;
             break;
         }
+
+        std::cout << now() << ": ";
+
+        input_mutex.lock();
 
         if (input.empty()) {
             std::cout << "<no data>";
