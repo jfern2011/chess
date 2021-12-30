@@ -89,14 +89,3 @@ target_link_libraries(chess-ut
     gtest_main
     engine
 )
-
-# -----------------------------------------------------------------------------
-
-add_executable(stdio-exe
-    test/stdio_channel_exe.cc
-)
-
-target_link_libraries(stdio-exe
-    Threads::Threads
-    engine
-)
