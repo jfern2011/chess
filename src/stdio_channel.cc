@@ -36,7 +36,7 @@ void StdinChannel::Poll() noexcept {
     if (MessagesAvailable()) {
         queue_mutex_.lock();
         while (!messages_.empty()) {
-            const std::string input = messages_.front();
+            const std::string& input = messages_.front();
 
             if (emit_) emit_(ConstDataBuffer(input.c_str(), input.size()));
             messages_.pop_front();
