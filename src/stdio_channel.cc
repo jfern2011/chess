@@ -6,8 +6,9 @@
 
 #include "chess/stdio_channel.h"
 
-#include <chrono>
 #include <iostream>
+
+#include "superstring/superstring.h"
 
 namespace chess {
 /**
@@ -17,15 +18,13 @@ StdinChannel::StdinChannel()
     : messages_(),
       messages_avail_(false),
       stdin_thread_(&StdinChannel::ReadInput, this),
-      queue_mutex_(),
-      quit_(false) {
+      queue_mutex_() {
 }
 
 /**
  * @brief Destructor
  */
 StdinChannel::~StdinChannel() {
-    SetExitNow(true);
     stdin_thread_.join();
 }
 
@@ -53,39 +52,33 @@ void StdinChannel::Poll() noexcept {
  * wait for messages to come in from standard input. When a message
  * arrives it is copied to the input buffer. A mutex is used to avoid
  * simultaneous buffer access by the thread and its parent
- *
- * @todo Consider simply blocking on getline() even though tear
- *       down will look ugly
  */
 void StdinChannel::ReadInput() {
-    std::ios::sync_with_stdio(false);
-
     std::string input;
-    std::streambuf* sb = std::cin.rdbuf();
+    while (true) {
+        std::getline(std::cin, input);
+        queue_mutex_.lock();
+    
+        messages_.push_back(input);
 
-    while (!ExitNow()) {
-        if (sb->in_avail() > 0) {
-            std::getline(std::cin, input);
-            queue_mutex_.lock();
+        SetMessagesAvailable(true);
+        queue_mutex_.unlock();
 
-            messages_.push_back(input);
+        // Check for the UCI "quit" command. We shouldn't be parsing commands
+        // here since the purpose of a channel object is to simply forward
+        // content to consumers. However, as of C++14 this is probably the
+        // simplest way of exiting this thread since there's no portable way
+        // for the parent process to terminate this thread cleanly. Also,
+        // std::getline() is a blocking call, which means we cannot
+        // periodically check a condition to break this loop. Polling the
+        // standard input buffer by using std::sync_with_stdio(false) combined
+        // with std::cin.rdbuf()->in_avail() seems to work, but the C++
+        // stream library doesn't guarantee the desired behavior
 
-            SetMessagesAvailable(true);
-            queue_mutex_.unlock();
-        }
-
-        std::this_thread::sleep_for(
-            std::chrono::milliseconds(200));
+        const std::string cmd = jfern::superstring(input).to_lower().trim();
+        if (cmd.find("quit") != std::string::npos)
+            break;
     }
-}
-
-/**
- * Check if the thread waiting on standard input should exit
- * 
- * @return True to exit
- */
-bool StdinChannel::ExitNow() const noexcept {
-    return quit_.load(std::memory_order_relaxed);
 }
 
 /**
@@ -95,15 +88,6 @@ bool StdinChannel::ExitNow() const noexcept {
  */
 bool StdinChannel::MessagesAvailable() const noexcept {
     return messages_avail_.load(std::memory_order_relaxed);
-}
-
-/**
- * @brief Set the ExitNow() flag
- * 
- * @param value True to have the standard input thread exit
- */
-void StdinChannel::SetExitNow(bool value) noexcept {
-    quit_.store(value, std::memory_order_relaxed);
 }
 
 /**

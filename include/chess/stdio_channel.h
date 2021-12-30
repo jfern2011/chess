@@ -9,7 +9,6 @@
 
 #include <atomic>
 #include <deque>
-#include <functional>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -43,9 +42,7 @@ private:
     /**
      * Atomic operations @{
      */
-    bool ExitNow() const noexcept;
     bool MessagesAvailable() const noexcept;
-    void SetExitNow(bool value) noexcept;
     void SetMessagesAvailable(bool value) noexcept;
     /** @} */
 
@@ -60,9 +57,6 @@ private:
 
     /** Avoids race conditions on the queue */
     std::mutex queue_mutex_;
-
-    /** Flag to request the stdin thread to exit */
-    std::atomic<bool> quit_;
 };
 
 }  // namespace chess
