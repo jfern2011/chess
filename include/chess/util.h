@@ -206,6 +206,9 @@ template <> constexpr int index<Player::kWhite>() noexcept {
  * @}
  */
 
+constexpr std::int8_t Lsb(std::uint64_t qword) noexcept;
+constexpr std::int8_t Msb(std::uint64_t qword) noexcept;
+
 /**
  * Get the opposing side
  *

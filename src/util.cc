@@ -8,6 +8,8 @@
 
 #include <cctype>
 
+#include "chess/data_tables.h"
+
 namespace chess {
 namespace util {
 
@@ -39,6 +41,38 @@ Piece CharToPiece(char piece) {
         default:
             return Piece::EMPTY;
     }
+}
+
+/**
+ * @brief Get the zero-indexed least significant bit (LSB) set
+ *
+ * @param qword The word whose LSB to compute
+ *
+ * @return The index of the least significant bit, or -1 if no bits are set
+ */
+constexpr std::int8_t Lsb(std::uint64_t qword) noexcept {
+    qword &= (-qword);
+
+    if (qword < 0x0000000010000ull) return 00 + data_tables::kLsb[qword >> 00];
+    if (qword < 0x0000100000000ull) return 16 + data_tables::kLsb[qword >> 16];
+    if (qword < 0x1000000000000ull) return 32 + data_tables::kLsb[qword >> 32];
+	    
+    return 48 + data_tables::kLsb[qword >> 48];
+}
+
+/**
+ * @brief Get the zero-indexed most significant bit (MSB) set
+ *
+ * @param qword The word whose MSB to compute
+ *
+ * @return The index of the most significant bit, or -1 if no bits are set
+ */
+constexpr std::int8_t Msb(std::uint64_t qword) noexcept {
+    if (qword < 0x0000000010000ull) return 00 + data_tables::kMsb[qword >> 00];
+    if (qword < 0x0000100000000ull) return 16 + data_tables::kMsb[qword >> 16];
+    if (qword < 0x1000000000000ull) return 32 + data_tables::kMsb[qword >> 32];
+
+    return 48 + data_tables::kMsb[qword >> 48];
 }
 
 /**
