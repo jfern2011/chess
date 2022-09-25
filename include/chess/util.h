@@ -238,17 +238,121 @@ template <> constexpr Player opponent<Player::kWhite>() noexcept {
  *
  * @return The bit-packed move
  */
-constexpr std::int32_t PackMove(int captured,
-                                int from,
-                                int moved,
-                                int promoted,
-                                int to) noexcept {
+constexpr std::int32_t PackMove(std::int32_t captured,
+                                std::int32_t from,
+                                std::int32_t moved,
+                                std::int32_t promoted,
+                                std::int32_t to) noexcept {
     return (captured << 15) |
            (from) |
            (moved << 12) |
            (promoted << 18) |
            (to << 6);
 }
+
+/**
+ * Bit-shift pawns to emulate one-step pawn advances, from the specified
+ * player's perspective
+ *
+ * @tparam P The player whose pawns to shift
+ *
+ * @param pawns The bitboard representing the pawns to shift
+ *
+ * @return The shifted pawns
+ */
+template <Player P> constexpr
+std::uint64_t AdvancePawns1(std::uint64_t ) noexcept(P != Player::kBoth) {
+    throw std::logic_error(__func__);
+}
+template<>
+constexpr std::uint64_t AdvancePawns1<Player::kBlack>(std::uint64_t pawns) {
+    return pawns >> 8;
+}
+template<>
+constexpr std::uint64_t AdvancePawns1<Player::kWhite>(std::uint64_t pawns) {
+    return pawns << 8;
+}
+/**
+ * @}
+ */
+
+/**
+ * Bit-shift pawns to emulate two-step pawn advances, from the specified
+ * player's perspective
+ *
+ * @tparam P The player whose pawns to shift
+ *
+ * @param pawns The bitboard representing the pawns to shift
+ *
+ * @return The shifted pawns
+ */
+template <Player P> constexpr
+std::uint64_t AdvancePawns2(std::uint64_t ) noexcept(P != Player::kBoth) {
+    throw std::logic_error(__func__);
+}
+template<>
+constexpr std::uint64_t AdvancePawns2<Player::kBlack>(std::uint64_t pawns) {
+    return pawns >> 16;
+}
+template<>
+constexpr std::uint64_t AdvancePawns2<Player::kWhite>(std::uint64_t pawns) {
+    return pawns << 16;
+}
+/**
+ * @}
+ */
+
+/**
+ * Bit-shift pawns to emulate captures to the left, from the specified
+ * player's perspective
+ *
+ * @tparam P The player whose pawns to shift
+ *
+ * @param pawns The bitboard representing the pawns to shift
+ *
+ * @return The shifted pawns
+ */
+template <Player P> constexpr
+std::uint64_t ShiftPawnsL(std::uint64_t ) noexcept(P != Player::kBoth) {
+    throw std::logic_error(__func__);
+}
+template<>
+constexpr std::uint64_t ShiftPawnsR<Player::kBlack>(std::uint64_t pawns) {
+    return pawns >> 9;
+}
+template<>
+constexpr std::uint64_t ShiftPawnsR<Player::kWhite>(std::uint64_t pawns) {
+    return pawns << 9;
+}
+/**
+ * @}
+ */
+
+/**
+ * Bit-shift pawns to emulate captures to the right, from the specified
+ * player's perspective
+ *
+ * @tparam P The player whose pawns to shift
+ *
+ * @param pawns The bitboard representing the pawns to shift
+ *
+ * @return The shifted pawns
+ */
+template <Player P> constexpr
+std::uint64_t ShiftPawnsR(std::uint64_t ) noexcept(P != Player::kBoth) {
+    throw std::logic_error(__func__);
+}
+template<>
+constexpr std::uint64_t ShiftPawnsR<Player::kBlack>(std::uint64_t pawns) {
+    return pawns >> 7;
+}
+template<>
+constexpr std::uint64_t ShiftPawnsR<Player::kWhite>(std::uint64_t pawns) {
+    return pawns << 7;
+}
+/**
+ * @}
+ */
 
 Piece  CharToPiece(char piece);
 char   PieceToChar(Piece piece, bool to_lower = false);

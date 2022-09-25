@@ -34,6 +34,23 @@ template<> constexpr auto k3rdRank<Player::kWhite> = kRank3;
  */
 
 /**
+ * The "7th" rank, as seen from each player's perspective
+ *
+ * @{
+ */
+
+template <Player P>
+auto k7thRank = std::uint64_t(0);
+
+template<> constexpr auto k7thRank<Player::kBlack> = kRank2;
+
+template<> constexpr auto k7thRank<Player::kWhite> = kRank7;
+
+/**
+ * @}
+ */
+
+/**
  * Bitboards representing an a1-h8 diagonal that a given square lies on
  */
 constexpr auto kA1H8_64 = internal::CreateTable<64>(internal::GetDiagA1H8);
