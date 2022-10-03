@@ -187,7 +187,8 @@ std::size_t GeneratePawnCaptures(const Position& pos,
         }
     }
 
-    captures = util::ShiftPawnsL<P>(pawns) & target & opponent.Occupied();
+    captures =
+        util::ShiftPawnsL<P>(pawns) & target & opponent.Occupied();
 
     while (captures) {
         const std::int8_t to = util::Msb(captures);
@@ -244,7 +245,55 @@ std::size_t GeneratePawnCaptures(const Position& pos,
 
     // Finally, handle en passant captures
 
-    return 0;
+    const Square ep_target = pos.EnPassantTarget();
+    if (ep_target == Square::Overflow)
+        return n_moves;
+
+    const std::uint64_t attackers =
+        data_tables::kPawnAttacks<util::opponent<P>()>[ep_target] & pawns;
+
+    const Square origins[2] = {
+        data_tables::kMinus7<P>[ep_target],
+        data_tables::kMinus9<P>[ep_target]
+    };
+
+    for (std::size_t i = 0; i <= 1 && attackers != 0u; i++) {
+        const Square from = origins[i];
+        const std::uint64_t from_mask = data_tables::kSetMask[from];
+        if (attackers & from_mask) {
+            if ((pinned & from_mask == 0u) ||
+                (data_tables::kDirections[from][king_square] ==
+                    data_tables::kDirections[from][to])) {
+                // The capturing pawn isn't pinned but we still want
+                // to protect against this sort of thing:
+                //
+                // 4k3/8/8/2KPp1r1/8/8/8/8 w - e6 0 2
+                //
+                // In this case White still can't capture en passant
+                // because of the rook!
+                const std::uint64_t occupied =
+                    (pos.Occupied() ^ from_mask);
+
+                const Square victim = data_tables::kMinus8<P>[ep_target];
+
+                const std::uint64_t rank_attacks =
+                    AttacksFrom<Piece::ROOK>(victim, occupied)
+                        & data_tables::kRanks64[from];
+
+                const std::uint64_t rooks_queens = info.Rooks() |
+                                                   info.Queens();
+                
+                if ((rank_attacks & info.King()) == 0u ||
+                    (rank_attacks & rooks_queens) == 0u) {
+                    moves[n_moves++] =
+                        util::PackMove(Piece::PAWN, from, Piece::PAWN,
+                                       Piece::EMPTY, to);
+                }
+            }
+        }  // If attacker in range
+    }
+
+    return n_moves;
 }
 
 /**
