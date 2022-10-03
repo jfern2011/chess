@@ -149,6 +149,101 @@ std::size_t GeneratePawnCaptures(const Position& pos,
                                  std::uint64_t target,
                                  std::uint64_t pinned,
                                  std::uint32_t* moves) noexcept {
+    const auto& info = pos.GetPlayerInfo<P>();
+    const auto& opponent = pos.GetPlayerInfo<util::opponent<P>()>();
+
+    const std::uint64_t pawns = info.Pawns();
+
+    std::uint64_t captures =
+         util::ShiftPawnsR<P>(pawns) & target & opponent.Occupied();
+
+    const Square king_square = info.KingSquare();
+
+    while (captures) {
+        const std::int8_t to = util::Msb(captures);
+
+        const auto from = static_cast<int>(data_tables::kMinus7<P>[to]);
+
+        captures &= data_tables::kClearMask[to];
+
+        const std::uint64_t source = data_tables::kSetMask[from];
+
+        // If this pawn is pinned, it can only capture if it does so
+        // along the direction of the pin
+        if ((source & pinned) && data_tables::kDirections[king_square][to] !=
+            Direction::kAlongA1H8) continue;
+
+        const Piece captured = pos.PieceOn(to);
+
+        if ((data_tables::kSetMask[to] & (kRank1 | kRank8)) == 0u) {
+            moves[n_moves++] = util::PackMove(
+                captured, from, Piece::PAWN, Piece::EMPTY, to);
+        } else {
+            for (auto promoted = Piece::ROOK; promoted <= Piece::QUEEN;
+                 promoted++) {
+                moves[n_moves++] = util::PackMove(
+                    captured, from, Piece::PAWN, promoted, to);
+            }
+        }
+    }
+
+    captures = util::ShiftPawnsL<P>(pawns) & target & opponent.Occupied();
+
+    while (captures) {
+        const std::int8_t to = util::Msb(captures);
+
+        const auto from = static_cast<int>(data_tables::kMinus9<P>[to]);
+
+        captures &= data_tables::kClearMask[to];
+
+        const std::uint64_t source = data_tables::kSetMask[from];
+
+        // If this pawn is pinned, it can only capture if it does so
+        // along the direction of the pin
+        if ((source & pinned) && data_tables::kDirections[king_square][to] !=
+            Direction::kAlongH1A8) continue;
+
+        const Piece captured = pos.PieceOn(to);
+
+        if ((data_tables::kSetMask[to] & (kRank1 | kRank8)) == 0u) {
+            moves[n_moves++] = util::PackMove(
+                captured, from, Piece::PAWN, Piece::EMPTY, to);
+        } else {
+            for (auto promoted = Piece::ROOK; promoted <= Piece::QUEEN;
+                 promoted++) {
+                moves[n_moves++] = util::PackMove(
+                    captured, from, Piece::PAWN, promoted, to);
+            }
+        }
+    }
+
+    // Now handle promotions via pawn pushes
+
+    constexpr std::uint64_t kBackRank =
+        data_tables::kBackRank<util::opponent<P>()>;
+
+    std::uint64_t advances1 =
+        util::AdvancePawns1<P>(pawns) & kBackRank & vacant & target;
+
+    while (advances1) {
+        const std::int8_t to = util::Msb(advances1);
+
+        const auto from = static_cast<int>(data_tables::kMinus8<P>[to]);
+
+        if ((pinned & data_tables::kSetMask[from]) == 0u) {
+            const Piece captured = pos.PieceOn(to);
+            for (auto promoted = Piece::ROOK ; promoted <= Piece::QUEEN;
+                 promoted++) {
+                moves[n_moves++] = util::PackMove(
+                    captured, from, Piece::PAWN, promoted, to);
+            }
+        }
+
+        advances1 &= data_tables::kClearMask[to];
+    }
+
+    // Finally, handle en passant captures
+
     return 0;
 }
 

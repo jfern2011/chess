@@ -344,11 +344,11 @@ std::uint64_t ShiftPawnsR(std::uint64_t ) noexcept(P != Player::kBoth) {
 }
 template<>
 constexpr std::uint64_t ShiftPawnsR<Player::kBlack>(std::uint64_t pawns) {
-    return pawns >> 7;
+    return (pawns & (~kFileA)) >> 7;
 }
 template<>
 constexpr std::uint64_t ShiftPawnsR<Player::kWhite>(std::uint64_t pawns) {
-    return pawns << 7;
+    return (pawns & (~kFileH)) << 7;
 }
 /**
  * @}

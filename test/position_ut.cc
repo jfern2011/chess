@@ -193,7 +193,7 @@ void CheckMove(chess::Position* pos, std::int32_t move) {
 
     if (captured == chess::Piece::ROOK) {
         /*
-         * If the opponent could have used this rook for casting, he may
+         * If the opponent could have used this rook for castling, he may
          * no longer castle with it
          */
         if (orig_opponent.CanCastleLong() && chess::util::GetFile(to) == 7) {
