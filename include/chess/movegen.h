@@ -480,7 +480,7 @@ std::size_t GenerateMoves(const Position& pos,
  *
  * @return The number of moves generated
  */
-inline template <Player P> std::size_t GenerateKingMoves(
+template <Player P> inline std::size_t GenerateKingMoves(
     const Position& pos,
     std::uint64_t target,
     std::array<std::uint32_t, 256>* moves) noexcept {
@@ -506,9 +506,21 @@ inline template <Player P> std::size_t GenerateKingMoves(
 }
 
 template <Player player>
-void GenerateCaptures(const Position& pos,
-                      std::array<std::uint32_t, 256>* moves) noexcept;
+inline void GenerateCaptures(const Position& pos,
+                             std::array<std::uint32_t, 256>* moves) noexcept {
+    return;
+}
 
+/**
+ * @brief Generate moves which get a king out of check
+ *
+ * @tparam P The player to generate moves for
+ *
+ * @param[in] pos     The position from which to generate moves
+ * @param[out] moves  The set of legal moves
+ *
+ * @return The number of moves generated
+ */
 template <Player player>
 std::size_t GenerateCheckEvasions(
     const Position& pos, std::array<std::uint32_t, 256>* moves) noexcept {
@@ -548,18 +560,31 @@ std::size_t GenerateCheckEvasions(
         data_tables::kRaySegment[king_square][attacker];
 
     /*
-     * Step 4: Generate knight, rook, bishop, and queen interposing moves
+     * Step 4: Generate knight, rook, bishop, and queen interposing moves and
+     *         moves that capture the checking piece
      */
     
     const std::uint64_t pinned = pos.PinnedPieces<P>();
 
-    n_moves += GenerateMoves<P>(pos, target, pinned, &generated[n_moves]);
+    n_moves += GenerateMoves<P>(pos, target | attackers,
+                                pinned,
+                                &generated[n_moves]);
 
     /*
-     * Step 5: Generate pawn moves
+     * Step 5: Generate pawn interposing moves
      */
+    n_moves +=
+        GeneratePawnAdvances<P>(pos, target, pinned, &generated[n_moves]);
+
+    /*
+     * Step 6: Generate pawn moves which capture the checking piece
+     */
+    n_moves +=
+        GeneratePawnCaptures<P>(pos, attackers, pinned, &generated[n_moves]);
+
+    return n_moves;
 }
-	
+
 template <Player player>
 void GenerateChecks(const Position& pos,
                     std::array<std::uint32_t, 256>* moves) noexcept;
