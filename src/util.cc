@@ -50,7 +50,7 @@ Piece CharToPiece(char piece) {
  *
  * @return The index of the least significant bit, or -1 if no bits are set
  */
-constexpr std::int8_t Lsb(std::uint64_t qword) noexcept {
+std::int8_t Lsb(std::uint64_t qword) noexcept {
     qword &= (-qword);
 
     if (qword < 0x0000000010000ull) return 00 + data_tables::kLsb[qword >> 00];
@@ -67,7 +67,7 @@ constexpr std::int8_t Lsb(std::uint64_t qword) noexcept {
  *
  * @return The index of the most significant bit, or -1 if no bits are set
  */
-constexpr std::int8_t Msb(std::uint64_t qword) noexcept {
+std::int8_t Msb(std::uint64_t qword) noexcept {
     if (qword < 0x0000000010000ull) return 00 + data_tables::kMsb[qword >> 00];
     if (qword < 0x0000100000000ull) return 16 + data_tables::kMsb[qword >> 16];
     if (qword < 0x1000000000000ull) return 32 + data_tables::kMsb[qword >> 32];

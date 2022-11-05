@@ -617,6 +617,32 @@ TEST(Position, HalfMoveNumber) {
     EXPECT_EQ(pos.HalfMoveNumber(), 2);
 }
 
+TEST(Position, PinnedPieces) {
+    auto pos = chess::Position();
+    EXPECT_EQ(pos.Reset("4r2b/4N3/5P2/1q1PKP1r/3PP3/8/1q2r3/5k2 w - - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    constexpr auto one = std::uint64_t(1);
+
+    std::uint64_t pinned_expected = (one << chess::Square::E4) |
+                                    (one << chess::Square::D4) |
+                                    (one << chess::Square::D5) |
+                                    (one << chess::Square::F5) |
+                                    (one << chess::Square::F6) |
+                                    (one << chess::Square::E7);
+
+    EXPECT_EQ(pos.PinnedPieces<chess::Player::kWhite>(), pinned_expected);
+
+    EXPECT_EQ(
+        pos.Reset("4r2b/4N1P1/5P2/1q1PKPPr/3PP3/2P1p3/1q2r3/5k2 w - - 0 1"),
+        chess::Position::FenError::kSuccess);
+
+    pinned_expected = (one << chess::Square::D5) |
+                      (one << chess::Square::E7);
+
+    EXPECT_EQ(pos.PinnedPieces<chess::Player::kWhite>(), pinned_expected);
+}
+
 TEST(Position, Reset) {
     auto pos = chess::Position();
     EXPECT_EQ(pos.Reset(), chess::Position::FenError::kSuccess);

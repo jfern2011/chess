@@ -559,19 +559,19 @@ constexpr Piece Position::PieceOn(Square square) const noexcept {
  */
 template <Player player>
 constexpr std::uint64_t Position::PinnedPieces() const noexcept {
-    constexpr std::uint64_t occupied = Occupied();
+    const std::uint64_t occupied = Occupied();
 
-    constexpr auto& who = GetPlayerInfo<player>();
-    constexpr auto& opponent = GetPlayerInfo<util::opponent<player>()>();
+    const auto& who = GetPlayerInfo<player>();
+    const auto& opponent = GetPlayerInfo<util::opponent<player>()>();
 
-    constexpr Square king_square = who.KingSquare();
+    const Square king_square = who.KingSquare();
 
     std::uint64_t pinned =
         AttacksFrom<Piece::QUEEN>(king_square, occupied) & who.Occupied();
     std::uint64_t temp_pinned = pinned;
     
     while (temp_pinned) {
-        const auto from = util::Msb(temp_pinned);
+        const auto from = static_cast<Square>(util::Msb(temp_pinned));
 
         switch (data_tables::kDirections[from][king_square]) {
           case Direction::kAlongRank: {
