@@ -66,7 +66,7 @@ constexpr bool SafeForKing(const Position& pos, Square square) noexcept {
 /**
  * @brief Generate pawn advances for the given player (both 1 and 2 steps)
  *
- * @note Does not handle promotions
+ * @note Includes promotions
  *
  * @tparam P The player to generate moves for
  *
@@ -77,7 +77,7 @@ constexpr bool SafeForKing(const Position& pos, Square square) noexcept {
  *
  * @return The number of moves generated
  */
-inline template <Player P>
+template <Player P> inline
 std::size_t GeneratePawnAdvances(const Position& pos,
                                  std::uint64_t target,
                                  std::uint64_t pinned,
@@ -87,12 +87,10 @@ std::size_t GeneratePawnAdvances(const Position& pos,
 
     const std::uint64_t vacant = ~pos.Occupied();
 
-    constexpr std::uint64_t kBackRank =
-        data_tables::kBackRank<util::opponent<P>()>;
     constexpr std::uint64_t k3rdRank = data_tables::k3rdRank<P>;
 
     std::uint64_t advances1 =
-        util::AdvancePawns1<P>(pawns) & (~kBackRank) & vacant & target;
+        util::AdvancePawns1<P>(pawns) & vacant & target;
     std::uint64_t advances2 =
         util::AdvancePawns1<P>(advances1) & k3rdRank & vacant & target;
 
@@ -109,8 +107,16 @@ std::size_t GeneratePawnAdvances(const Position& pos,
                     Direction::kAlongFile;
 
         if (!immovable) {
-            moves[n_moves++] = util::PackMove(
-                Piece::EMPTY, from, Piece::PAWN, Piece::EMPTY, to);
+            if ((data_tables::kSetMask[to] & (kRank1 | kRank8)) == 0u) {
+                moves[n_moves++] = util::PackMove(
+                    Piece::EMPTY, from, Piece::PAWN, Piece::EMPTY, to);
+            } else {
+                for (auto promoted = Piece::ROOK; promoted <= Piece::QUEEN;
+                     promoted++) {
+                    moves[n_moves++] = util::PackMove(
+                        Piece::EMPTY, from, Piece::PAWN, promoted, to);
+                }
+            }
         } else {
             advances2 &= data_tables::kClearMask[from];
         }
@@ -144,7 +150,7 @@ std::size_t GeneratePawnAdvances(const Position& pos,
  *
  * @return The number of moves generated
  */
-inline template <Player P>
+template <Player P> inline
 std::size_t GeneratePawnCaptures(const Position& pos,
                                  std::uint64_t target,
                                  std::uint64_t pinned,
@@ -483,7 +489,7 @@ std::size_t GenerateMoves(const Position& pos,
 template <Player P> inline std::size_t GenerateKingMoves(
     const Position& pos,
     std::uint64_t target,
-    std::array<std::uint32_t, 256>* moves) noexcept {
+    std::uint32_t* moves) noexcept {
     std::size_t n_moves = 0;
 
     const Square king_square = pos.GetPlayerInfo<P>().KingSquare();
@@ -494,7 +500,7 @@ template <Player P> inline std::size_t GenerateKingMoves(
     while (attacks) {
         const std::int8_t to = util::Msb(attacks);
 
-        if (SafeForKing<P>(pos, to)) {
+        if (detail::SafeForKing<P>(pos, to)) {
             generated[n_moves++] = util::PackMove(
                 pos.PieceOn(to), from, Piece::KING, Piece::EMPTY, to);
         }
@@ -505,10 +511,79 @@ template <Player P> inline std::size_t GenerateKingMoves(
     return n_moves;
 }
 
-template <Player player>
-inline void GenerateCaptures(const Position& pos,
-                             std::array<std::uint32_t, 256>* moves) noexcept {
-    return;
+/**
+ * @brief Generate castling moves for the king
+ *
+ * @note Assumes player is NOT in check
+ *
+ * @tparam P The player to generate moves for
+ *
+ * @param[in] pos     The position from which to generate moves
+ * @param[out] moves  The set of legal moves
+ *
+ * @return The number of moves generated
+ */
+template <Player P> inline std::size_t GenerateCastleMoves(
+    const Position& pos,
+    std::uint32_t* moves) noexcept {
+    std::size_t n_moves = 0;
+
+    constexpr Player O = util::opponent<P>();
+
+    const auto& info = pos.GetPlayerInfo<P>();
+
+    auto& generated = *moves;
+
+    if (info.CanCastleLong() &&
+        !pos.UnderAttack<O>(data_tables::kCastleLongPath<P>[0]) &&
+        !pos.UnderAttack<O>(data_tables::kCastleLongPath<P>[1])) {
+            generated[n_moves++] =
+                util::PackMove(Piece::EMPTY, data_tables::kKingHome<P>,
+                               Piece::KING, Piece::EMPTY,
+                               data_tables::kCastleLongDest<P>);
+    }
+
+    if (info.CanCastleLong() &&
+        !pos.UnderAttack<O>(data_tables::kCastleShortPath<P>[0]) &&
+        !pos.UnderAttack<O>(data_tables::kCastleShortPath<P>[1])) {
+            generated[n_moves++] =
+                util::PackMove(Piece::EMPTY, data_tables::kKingHome<P>,
+                               Piece::KING, Piece::EMPTY,
+                               data_tables::kCastleShortDest<P>);
+    }
+
+    return n_moves;
+}
+
+/**
+ * @brief Generate moves which capture a piece
+ *
+ * @note Assumes player is NOT in check
+ *
+ * @tparam P The player to generate moves for
+ *
+ * @param[in] pos     The position from which to generate moves
+ * @param[out] moves  The set of legal moves
+ *
+ * @return The number of moves generated
+ */
+template <Player P>
+inline std::size_t GenerateCaptures(const Position& pos,
+                                    std::uint32_t* moves) noexcept {
+    const std::uint64_t target =
+        pos.GetPlayerInfo<util::opponent<P>()>().Occupied();
+    const std::uint64_t pinned = pos.PinnedPieces<P>();
+
+    // Generate knight, bishop, rook, and queen captures
+    std::size_t n_moves = GenerateMoves<P>(pos, target, pinned, moves);
+
+    // Generate pawn captures
+    n_moves += GeneratePawnCaptures<P>(pos, target, pinned, &moves[n_moves]);
+    
+    // Generate king captures
+    n_moves += GenerateKingMoves<P>(pos, target, &moves[n_moves]);
+
+    return n_moves;
 }
 
 /**
@@ -589,13 +664,64 @@ template <Player player>
 void GenerateChecks(const Position& pos,
                     std::array<std::uint32_t, 256>* moves) noexcept;
 
-template <Player player>
-void GenerateLegalMoves(const Position& pos,
-                        std::array<std::uint32_t, 256>* moves) noexcept;
+/**
+ * @brief Generate quiet moves
+ *
+ * @note Assumes player is NOT in check
+ *
+ * @tparam P The player to generate moves for
+ *
+ * @param[in] pos     The position from which to generate moves
+ * @param[out] moves  The set of legal moves
+ *
+ * @return The number of moves generated
+ */
+template <Player player> inline
+std::size_t GenerateNonCaptures(const Position& pos,
+                                std::uint32_t* moves) noexcept {
+    const std::uint64_t target = ~pos.Occupied();
+    const std::uint64_t pinned = pos.PinnedPieces<P>();
 
+    // Generate knight, bishop, rook, and queen non-captures
+    std::size_t n_moves = GenerateMoves<P>(pos, target, pinned, moves);
+
+    // Generate pawn advances but exclude promotions
+    const std::uint64_t pawn_target =
+        target ^ (target & (~data_tables::kBackRank<util::opponent<P>()>));
+
+    n_moves +=
+        GeneratePawnAdvances<P>(pos, pawn_target, pinned, &moves[n_moves]);
+
+    // Generate king non-captures
+    n_moves += GenerateKingMoves<P>(pos, target, &moves[n_moves]);
+
+    // Generate king castling moves
+    n_moves += GenerateCastleMoves<P>(pos, &moves[n_moves]);
+
+    return n_moves;
+}
+
+/**
+ * @brief Generate strictly legal moves
+ *
+ * @note Assumes player is NOT in check
+ *
+ * @tparam P The player to generate moves for
+ *
+ * @param[in] pos     The position from which to generate moves
+ * @param[out] moves  The set of legal moves
+ *
+ * @return The number of moves generated
+ */
 template <Player player>
-void GenerateNonCaptures(const Position& pos,
-                         std::array<std::uint32_t, 256>* moves) noexcept;
+std::size_t GenerateLegalMoves(const Position& pos,
+                               std::uint32_t* moves) noexcept {
+    std::size_t n_moves = GenerateCaptures<P>(pos, moves);
+
+    n_moves += GenerateNonCaptures<P>(pos, &moves[n_moves]);
+
+    return m_moves;
+}
 
 template <Player player>
 bool ValidateMove(const Position& pos, std::uint32_t move) noexcept;
