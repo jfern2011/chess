@@ -81,6 +81,7 @@ target_link_libraries(engine
 add_executable(chess-ut
     test/data_tables_ut.cc
     test/main.cc
+    test/movegen_ut.cc
     test/position_ut.cc
     test/stdio_channel_ut.cc
 )

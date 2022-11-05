@@ -90,7 +90,7 @@ std::size_t GeneratePawnAdvances(const Position& pos,
     constexpr std::uint64_t k3rdRank = data_tables::k3rdRank<P>;
 
     std::uint64_t advances1 =
-        util::AdvancePawns1<P>(pawns) & vacant & target;
+        util::AdvancePawns1<P>(info.Pawns()) & vacant & target;
     std::uint64_t advances2 =
         util::AdvancePawns1<P>(advances1) & k3rdRank & vacant & target;
 
