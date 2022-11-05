@@ -182,7 +182,7 @@ public:
     template <Player player>
     constexpr bool InCheck() const noexcept;
 
-    template<Player player>
+    template <Player player>
     void MakeMove(std::int32_t move, std::uint32_t ply) noexcept;
 
     constexpr std::uint64_t Occupied() const noexcept;
@@ -191,6 +191,9 @@ public:
     constexpr bool OccupiedBy(Square square) const noexcept;
 
     constexpr Piece PieceOn(Square square) const noexcept;
+
+    template <Player player>
+    constexpr std::uint64_t PinnedPieces() const noexcept;
 
     FenError Reset(const std::string& fen_ = kDefaultFen);
 
@@ -547,6 +550,74 @@ constexpr bool Position::OccupiedBy(Square square) const noexcept {
  */
 constexpr Piece Position::PieceOn(Square square) const noexcept {
     return pieces_[square];
+}
+
+/**
+ * Get a bitboard representing pinned pieces for the given player
+ * 
+ * @return A bitboard with a 1-bit for each pinned piece
+ */
+template <Player player>
+constexpr std::uint64_t Position::PinnedPieces() const noexcept {
+    constexpr std::uint64_t occupied = Occupied();
+
+    constexpr auto& who = GetPlayerInfo<player>();
+    constexpr auto& opponent = GetPlayerInfo<util::opponent<player>()>();
+
+    constexpr Square king_square = who.KingSquare();
+
+    std::uint64_t pinned =
+        AttacksFrom<Piece::QUEEN>(king_square, occupied) & who.Occupied();
+    std::uint64_t temp_pinned = pinned;
+    
+    while (temp_pinned) {
+        const auto from = util::Msb(temp_pinned);
+
+        switch (data_tables::kDirections[from][king_square]) {
+          case Direction::kAlongRank: {
+            const std::uint64_t rooks_queens =
+                opponent.Rooks() | opponent.Queens();
+            if (!(rooks_queens & AttacksFrom<Piece::ROOK>(from, occupied) &
+                data_tables::kRanks64[from])) {
+                pinned &= data_tables::kClearMask[from];
+            }
+            break;
+          }
+          case Direction::kAlongFile: {
+            const std::uint64_t rooks_queens =
+                opponent.Rooks() | opponent.Queens();
+            if (!(rooks_queens & AttacksFrom<Piece::ROOK>(from, occupied) &
+                data_tables::kFiles64[from])) {
+                pinned &= data_tables::kClearMask[from];
+            }
+            break;
+          }
+          case Direction::kAlongA1H8: {
+            const std::uint64_t bishops_queens =
+                opponent.Bishops() | opponent.Queens();
+            if (!(bishops_queens & AttacksFrom<Piece::BISHOP>(from, occupied) &
+                data_tables::kA1H8_64[from])) {
+                pinned &= data_tables::kClearMask[from];
+            }
+            break;
+          }
+          case Direction::kAlongH1A8: {
+            const std::uint64_t bishops_queens =
+                opponent.Bishops() | opponent.Queens();
+            if (!(bishops_queens & AttacksFrom<Piece::BISHOP>(from, occupied) &
+                data_tables::kH1A8_64[from])) {
+                pinned &= data_tables::kClearMask[from];
+            }
+            break;
+          }
+        }
+
+        // Done examining this potentially pinned piece
+        temp_pinned &=
+            data_tables::kClearMask[from];
+    }
+
+    return pinned;
 }
 
 /**

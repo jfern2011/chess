@@ -264,12 +264,12 @@ template <Player P> constexpr
 std::uint64_t AdvancePawns1(std::uint64_t ) noexcept(P != Player::kBoth) {
     throw std::logic_error(__func__);
 }
-template<>
-constexpr std::uint64_t AdvancePawns1<Player::kBlack>(std::uint64_t pawns) {
+template<> constexpr
+std::uint64_t AdvancePawns1<Player::kBlack>(std::uint64_t pawns) noexcept {
     return pawns >> 8;
 }
-template<>
-constexpr std::uint64_t AdvancePawns1<Player::kWhite>(std::uint64_t pawns) {
+template<> constexpr
+std::uint64_t AdvancePawns1<Player::kWhite>(std::uint64_t pawns) noexcept {
     return pawns << 8;
 }
 /**
@@ -290,12 +290,12 @@ template <Player P> constexpr
 std::uint64_t AdvancePawns2(std::uint64_t ) noexcept(P != Player::kBoth) {
     throw std::logic_error(__func__);
 }
-template<>
-constexpr std::uint64_t AdvancePawns2<Player::kBlack>(std::uint64_t pawns) {
+template<> constexpr
+std::uint64_t AdvancePawns2<Player::kBlack>(std::uint64_t pawns) noexcept {
     return pawns >> 16;
 }
-template<>
-constexpr std::uint64_t AdvancePawns2<Player::kWhite>(std::uint64_t pawns) {
+template<> constexpr
+std::uint64_t AdvancePawns2<Player::kWhite>(std::uint64_t pawns) noexcept {
     return pawns << 16;
 }
 /**
@@ -316,13 +316,13 @@ template <Player P> constexpr
 std::uint64_t ShiftPawnsL(std::uint64_t ) noexcept(P != Player::kBoth) {
     throw std::logic_error(__func__);
 }
-template<>
-constexpr std::uint64_t ShiftPawnsR<Player::kBlack>(std::uint64_t pawns) {
-    return pawns >> 9;
+template<> constexpr
+std::uint64_t ShiftPawnsL<Player::kBlack>(std::uint64_t pawns) noexcept {
+    return (pawns & (~kFileH)) >> 9;
 }
-template<>
-constexpr std::uint64_t ShiftPawnsR<Player::kWhite>(std::uint64_t pawns) {
-    return pawns << 9;
+template<> constexpr
+std::uint64_t ShiftPawnsL<Player::kWhite>(std::uint64_t pawns) noexcept {
+    return (pawns & (~kFileA)) << 9;
 }
 /**
  * @}
@@ -342,12 +342,12 @@ template <Player P> constexpr
 std::uint64_t ShiftPawnsR(std::uint64_t ) noexcept(P != Player::kBoth) {
     throw std::logic_error(__func__);
 }
-template<>
-constexpr std::uint64_t ShiftPawnsR<Player::kBlack>(std::uint64_t pawns) {
+template<> constexpr
+std::uint64_t ShiftPawnsR<Player::kBlack>(std::uint64_t pawns) noexcept {
     return (pawns & (~kFileA)) >> 7;
 }
-template<>
-constexpr std::uint64_t ShiftPawnsR<Player::kWhite>(std::uint64_t pawns) {
+template<> constexpr
+std::uint64_t ShiftPawnsR<Player::kWhite>(std::uint64_t pawns) noexcept {
     return (pawns & (~kFileH)) << 7;
 }
 /**

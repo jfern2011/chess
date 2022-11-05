@@ -563,16 +563,17 @@ template <Player P> inline std::size_t GenerateCastleMoves(
  * @tparam P The player to generate moves for
  *
  * @param[in] pos     The position from which to generate moves
+ * @param[in] pinned  The set of pieces pinned on the king
  * @param[out] moves  The set of legal moves
  *
  * @return The number of moves generated
  */
 template <Player P>
 inline std::size_t GenerateCaptures(const Position& pos,
+                                    std::uint64_t pinned,
                                     std::uint32_t* moves) noexcept {
     const std::uint64_t target =
         pos.GetPlayerInfo<util::opponent<P>()>().Occupied();
-    const std::uint64_t pinned = pos.PinnedPieces<P>();
 
     // Generate knight, bishop, rook, and queen captures
     std::size_t n_moves = GenerateMoves<P>(pos, target, pinned, moves);
@@ -662,6 +663,7 @@ std::size_t GenerateCheckEvasions(
 
 template <Player player>
 void GenerateChecks(const Position& pos,
+                    std::uint64_t pinned,
                     std::array<std::uint32_t, 256>* moves) noexcept;
 
 /**
@@ -672,15 +674,16 @@ void GenerateChecks(const Position& pos,
  * @tparam P The player to generate moves for
  *
  * @param[in] pos     The position from which to generate moves
+ * @param[in] pinned  The set of pieces pinned on the king
  * @param[out] moves  The set of legal moves
  *
  * @return The number of moves generated
  */
 template <Player player> inline
 std::size_t GenerateNonCaptures(const Position& pos,
+                                std::uint64_t pinned,
                                 std::uint32_t* moves) noexcept {
     const std::uint64_t target = ~pos.Occupied();
-    const std::uint64_t pinned = pos.PinnedPieces<P>();
 
     // Generate knight, bishop, rook, and queen non-captures
     std::size_t n_moves = GenerateMoves<P>(pos, target, pinned, moves);
@@ -716,9 +719,10 @@ std::size_t GenerateNonCaptures(const Position& pos,
 template <Player player>
 std::size_t GenerateLegalMoves(const Position& pos,
                                std::uint32_t* moves) noexcept {
-    std::size_t n_moves = GenerateCaptures<P>(pos, moves);
+    const std::uint64_t pinned = pos.PinnedPieces<P>();
+    std::size_t n_moves = GenerateNonCaptures<P>(pos, pinned, moves);
 
-    n_moves += GenerateNonCaptures<P>(pos, &moves[n_moves]);
+    n_moves += GenerateCaptures<P>(pos, pinned, &moves[n_moves]);
 
     return m_moves;
 }
