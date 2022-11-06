@@ -287,6 +287,83 @@ TEST(MoveGen, GeneratePawnCaptures) {
 }
 
 TEST(MoveGen, EnPassantCaptures) {
+    auto pos = chess::Position();
+    EXPECT_EQ(pos.Reset("4k1b1/8/8/3PpP2/2K5/8/8/8 w - e6 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    std::uint64_t pinned = pos.PinnedPieces<chess::Player::kWhite>();
+    std::uint64_t target =
+        ~pos.GetPlayerInfo<chess::Player::kWhite>().Occupied();
+
+    std::array<std::uint32_t, 256> moves{0};
+
+    std::size_t n_moves = chess::GeneratePawnCaptures<chess::Player::kWhite>(
+                            pos, target, pinned, moves.data());
+
+    EXPECT_EQ(n_moves, 2u);
+
+    std::vector<std::uint32_t> expected = {
+        chess::util::PackMove(chess::Piece::PAWN,
+                              chess::Square::D5,
+                              chess::Piece::PAWN,
+                              chess::Piece::EMPTY,
+                              chess::Square::E6),
+        chess::util::PackMove(chess::Piece::PAWN,
+                              chess::Square::F5,
+                              chess::Piece::PAWN,
+                              chess::Piece::EMPTY,
+                              chess::Square::E6)
+    };
+
+    for (std::uint32_t move : expected) {
+        auto iter = std::find(expected.begin(), expected.end(), move);
+        EXPECT_NE(iter, expected.end());
+    }
+
+    const std::vector<std::string> fens = {
+        "3rk3/8/8/3PpP2/8/8/8/3K4 w - e6 0 1",
+        "b3k3/8/8/3PpP2/4K3/8/8/8 w - e6 0 1"
+    };
+
+    for (const std::string& fen : fens) {
+        EXPECT_EQ(pos.Reset(fen), chess::Position::FenError::kSuccess);
+
+        pinned = pos.PinnedPieces<chess::Player::kWhite>();
+        target = ~pos.GetPlayerInfo<chess::Player::kWhite>().Occupied();
+
+        moves.fill(0);
+
+        n_moves = chess::GeneratePawnCaptures<chess::Player::kWhite>(
+                    pos, target, pinned, moves.data());
+
+        EXPECT_EQ(n_moves, 1u);
+
+        expected = {
+            chess::util::PackMove(chess::Piece::PAWN,
+                                  chess::Square::F5,
+                                  chess::Piece::PAWN,
+                                  chess::Piece::EMPTY,
+                                  chess::Square::E6)
+        };
+
+        for (std::uint32_t move : expected) {
+            auto iter = std::find(expected.begin(), expected.end(), move);
+            EXPECT_NE(iter, expected.end());
+        }
+    }
+
+    EXPECT_EQ(pos.Reset("4k3/8/8/2KPpr2/8/8/8/8 w - e6 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    pinned = pos.PinnedPieces<chess::Player::kWhite>();
+    target = ~pos.GetPlayerInfo<chess::Player::kWhite>().Occupied();
+
+    moves.fill(0);
+
+    n_moves = chess::GeneratePawnCaptures<chess::Player::kWhite>(
+                pos, target, pinned, moves.data());
+
+    EXPECT_EQ(n_moves, 0u);
 }
 
 }  // namespace

@@ -273,7 +273,7 @@ std::size_t GeneratePawnCaptures(const Position& pos,
         const Square from = origins[i];
         const std::uint64_t from_mask = data_tables::kSetMask[from];
         if (attackers & from_mask) {
-            if ((pinned & from_mask == 0u) ||
+            if ((pinned & from_mask) == 0u ||
                 (data_tables::kDirections[from][king_square] ==
                     data_tables::kDirections[from][ep_target])) {
                 // The capturing pawn isn't pinned but we still want
@@ -292,8 +292,8 @@ std::size_t GeneratePawnCaptures(const Position& pos,
                     AttacksFrom<Piece::ROOK>(victim, occupied)
                         & data_tables::kRanks64[from];
 
-                const std::uint64_t rooks_queens = info.Rooks() |
-                                                   info.Queens();
+                const std::uint64_t rooks_queens = opponent.Rooks() |
+                                                   opponent.Queens();
                 
                 if ((rank_attacks & info.King()) == 0u ||
                     (rank_attacks & rooks_queens) == 0u) {
