@@ -28,6 +28,6 @@ TEST(MoveGen, GeneratePawnAdvances) {
     std::size_t n_moves = chess::GeneratePawnAdvances<chess::Player::kWhite>(
                             pos, target, pinned, moves.data());
 
-    EXPECT_EQ(n_moves, 4u);
+    EXPECT_EQ(n_moves, 2u);
 }
 }  // namespace

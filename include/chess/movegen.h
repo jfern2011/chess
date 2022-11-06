@@ -18,6 +18,13 @@
 namespace chess {
 namespace detail {
 /**
+ * The set of pieces that a pawn can be promoted to
+ */
+constexpr std::array<Piece, 4> kPromotions = {
+    Piece::ROOK, Piece::KNIGHT, Piece::BISHOP, Piece::QUEEN
+};
+
+/**
  * Check if it is safe to move the king to the specified square (i.e. moving
  * here will not put the king in check)
  *
@@ -111,8 +118,7 @@ std::size_t GeneratePawnAdvances(const Position& pos,
                 moves[n_moves++] = util::PackMove(
                     Piece::EMPTY, from, Piece::PAWN, Piece::EMPTY, to);
             } else {
-                for (auto promoted = Piece::ROOK; promoted <= Piece::QUEEN;
-                     promoted++) {
+                for (auto promoted : detail::kPromotions) {
                     moves[n_moves++] = util::PackMove(
                         Piece::EMPTY, from, Piece::PAWN, promoted, to);
                 }
@@ -165,8 +171,10 @@ std::size_t GeneratePawnCaptures(const Position& pos,
 
     const Square king_square = info.KingSquare();
 
+    std::size_t n_moves = 0;
+
     while (captures) {
-        const std::int8_t to = util::Msb(captures);
+        const auto to = static_cast<Square>(util::Msb(captures));
 
         const auto from = static_cast<int>(data_tables::kMinus7<P>[to]);
 
@@ -185,8 +193,7 @@ std::size_t GeneratePawnCaptures(const Position& pos,
             moves[n_moves++] = util::PackMove(
                 captured, from, Piece::PAWN, Piece::EMPTY, to);
         } else {
-            for (auto promoted = Piece::ROOK; promoted <= Piece::QUEEN;
-                 promoted++) {
+            for (auto promoted : detail::kPromotions) {
                 moves[n_moves++] = util::PackMove(
                     captured, from, Piece::PAWN, promoted, to);
             }
@@ -197,7 +204,7 @@ std::size_t GeneratePawnCaptures(const Position& pos,
         util::ShiftPawnsL<P>(pawns) & target & opponent.Occupied();
 
     while (captures) {
-        const std::int8_t to = util::Msb(captures);
+        const auto to = static_cast<Square>(util::Msb(captures));
 
         const auto from = static_cast<int>(data_tables::kMinus9<P>[to]);
 
@@ -216,8 +223,7 @@ std::size_t GeneratePawnCaptures(const Position& pos,
             moves[n_moves++] = util::PackMove(
                 captured, from, Piece::PAWN, Piece::EMPTY, to);
         } else {
-            for (auto promoted = Piece::ROOK; promoted <= Piece::QUEEN;
-                 promoted++) {
+            for (auto promoted : detail::kPromotions) {
                 moves[n_moves++] = util::PackMove(
                     captured, from, Piece::PAWN, promoted, to);
             }
@@ -226,6 +232,7 @@ std::size_t GeneratePawnCaptures(const Position& pos,
 
     // Now handle promotions via pawn pushes
 
+    const std::uint64_t vacant = ~pos.Occupied();
     constexpr std::uint64_t kBackRank =
         data_tables::kBackRank<util::opponent<P>()>;
 
@@ -233,14 +240,13 @@ std::size_t GeneratePawnCaptures(const Position& pos,
         util::AdvancePawns1<P>(pawns) & kBackRank & vacant & target;
 
     while (advances1) {
-        const std::int8_t to = util::Msb(advances1);
+        const auto to = static_cast<Square>(util::Msb(advances1));
 
         const auto from = static_cast<int>(data_tables::kMinus8<P>[to]);
 
         if ((pinned & data_tables::kSetMask[from]) == 0u) {
             const Piece captured = pos.PieceOn(to);
-            for (auto promoted = Piece::ROOK ; promoted <= Piece::QUEEN;
-                 promoted++) {
+            for (auto promoted : detail::kPromotions) {
                 moves[n_moves++] = util::PackMove(
                     captured, from, Piece::PAWN, promoted, to);
             }
@@ -269,7 +275,7 @@ std::size_t GeneratePawnCaptures(const Position& pos,
         if (attackers & from_mask) {
             if ((pinned & from_mask == 0u) ||
                 (data_tables::kDirections[from][king_square] ==
-                    data_tables::kDirections[from][to])) {
+                    data_tables::kDirections[from][ep_target])) {
                 // The capturing pawn isn't pinned but we still want
                 // to protect against this sort of thing:
                 //
@@ -293,7 +299,7 @@ std::size_t GeneratePawnCaptures(const Position& pos,
                     (rank_attacks & rooks_queens) == 0u) {
                     moves[n_moves++] =
                         util::PackMove(Piece::PAWN, from, Piece::PAWN,
-                                       Piece::EMPTY, to);
+                                       Piece::EMPTY, ep_target);
                 }
             }
         }  // If attacker in range
@@ -327,8 +333,6 @@ std::size_t GenerateMoves(const Position& pos,
 
     const Square king_square = info.KingSquare();
 
-    auto& generated = *moves;
-
     /*
      * Generate knight moves
      */
@@ -339,7 +343,7 @@ std::size_t GenerateMoves(const Position& pos,
         while (attacks) {
             const auto to = static_cast<Square>(util::Msb(attacks));
 
-            generated[n_moves++] = util::PackMove(
+            moves[n_moves++] = util::PackMove(
                 pos.PieceOn(to), from, Piece::KNIGHT, Piece::EMPTY, to);
 
             attacks &= data_tables::kClearMask[to];
@@ -381,7 +385,7 @@ std::size_t GenerateMoves(const Position& pos,
         while (attacks) {
             const auto to = static_cast<Square>(util::Msb(attacks));
 
-            generated[n_moves++] = util::PackMove(
+            moves[n_moves++] = util::PackMove(
                 pos.PieceOn(to), from, Piece::ROOK, Piece::EMPTY, to);
 
             attacks &= data_tables::kClearMask[to];
@@ -423,7 +427,7 @@ std::size_t GenerateMoves(const Position& pos,
         while (attacks) {
             const auto to = static_cast<Square>(util::Msb(attacks));
 
-            generated[n_moves++] = util::PackMove(
+            moves[n_moves++] = util::PackMove(
                 pos.PieceOn(to), from, Piece::BISHOP, Piece::EMPTY, to);
 
             attacks &= data_tables::kClearMask[to];
@@ -463,7 +467,7 @@ std::size_t GenerateMoves(const Position& pos,
         while (attacks) {
             const auto to = static_cast<Square>(util::Msb(attacks));
 
-            generated[n_moves++] = util::PackMove(
+            moves[n_moves++] = util::PackMove(
                 pos.PieceOn(to), from, Piece::QUEEN, Piece::EMPTY, to);
 
             attacks &= data_tables::kClearMask[to];
@@ -494,15 +498,13 @@ template <Player P> inline std::size_t GenerateKingMoves(
 
     const Square king_square = pos.GetPlayerInfo<P>().KingSquare();
 
-    auto& generated = *moves;
-
     std::uint64_t attacks = data_tables::kKingAttacks[king_square] & target;
     while (attacks) {
-        const std::int8_t to = util::Msb(attacks);
+        const auto to = static_cast<Square>(util::Msb(attacks));
 
         if (detail::SafeForKing<P>(pos, to)) {
-            generated[n_moves++] = util::PackMove(
-                pos.PieceOn(to), from, Piece::KING, Piece::EMPTY, to);
+            moves[n_moves++] = util::PackMove(
+                pos.PieceOn(to), king_square, Piece::KING, Piece::EMPTY, to);
         }
 
         attacks &= data_tables::kClearMask[to];
@@ -532,12 +534,10 @@ template <Player P> inline std::size_t GenerateCastleMoves(
 
     const auto& info = pos.GetPlayerInfo<P>();
 
-    auto& generated = *moves;
-
     if (info.CanCastleLong() &&
         !pos.UnderAttack<O>(data_tables::kCastleLongPath<P>[0]) &&
         !pos.UnderAttack<O>(data_tables::kCastleLongPath<P>[1])) {
-            generated[n_moves++] =
+            moves[n_moves++] =
                 util::PackMove(Piece::EMPTY, data_tables::kKingHome<P>,
                                Piece::KING, Piece::EMPTY,
                                data_tables::kCastleLongDest<P>);
@@ -546,7 +546,7 @@ template <Player P> inline std::size_t GenerateCastleMoves(
     if (info.CanCastleLong() &&
         !pos.UnderAttack<O>(data_tables::kCastleShortPath<P>[0]) &&
         !pos.UnderAttack<O>(data_tables::kCastleShortPath<P>[1])) {
-            generated[n_moves++] =
+            moves[n_moves++] =
                 util::PackMove(Piece::EMPTY, data_tables::kKingHome<P>,
                                Piece::KING, Piece::EMPTY,
                                data_tables::kCastleShortDest<P>);
@@ -597,7 +597,7 @@ inline std::size_t GenerateCaptures(const Position& pos,
  *
  * @return The number of moves generated
  */
-template <Player player>
+template <Player P>
 std::size_t GenerateCheckEvasions(
     const Position& pos, std::array<std::uint32_t, 256>* moves) noexcept {
     const std::uint64_t occupied = pos.Occupied();
@@ -661,7 +661,7 @@ std::size_t GenerateCheckEvasions(
     return n_moves;
 }
 
-template <Player player>
+template <Player P>
 void GenerateChecks(const Position& pos,
                     std::uint64_t pinned,
                     std::array<std::uint32_t, 256>* moves) noexcept;
@@ -679,7 +679,7 @@ void GenerateChecks(const Position& pos,
  *
  * @return The number of moves generated
  */
-template <Player player> inline
+template <Player P> inline
 std::size_t GenerateNonCaptures(const Position& pos,
                                 std::uint64_t pinned,
                                 std::uint32_t* moves) noexcept {
@@ -716,7 +716,7 @@ std::size_t GenerateNonCaptures(const Position& pos,
  *
  * @return The number of moves generated
  */
-template <Player player>
+template <Player P>
 std::size_t GenerateLegalMoves(const Position& pos,
                                std::uint32_t* moves) noexcept {
     const std::uint64_t pinned = pos.PinnedPieces<P>();
@@ -724,10 +724,10 @@ std::size_t GenerateLegalMoves(const Position& pos,
 
     n_moves += GenerateCaptures<P>(pos, pinned, &moves[n_moves]);
 
-    return m_moves;
+    return n_moves;
 }
 
-template <Player player>
+template <Player P>
 bool ValidateMove(const Position& pos, std::uint32_t move) noexcept;
 
 }  // namespace chess
