@@ -621,4 +621,53 @@ TEST(MoveGen, GenerateCastleMoves) {
     EXPECT_EQ(n_moves, 0u);
 }
 
+TEST(MoveGen, GenerateKingMoves) {
+    auto pos = chess::Position();
+    EXPECT_EQ(pos.Reset("4k3/1n6/p3b3/8/2K4r/8/8/4q3 w - - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    std::array<std::uint32_t, 256> moves{0};
+
+    std::size_t n_moves = chess::GenerateKingMoves<chess::Player::kWhite>(
+                            pos, ~pos.Occupied(), moves.data());
+
+    std::vector<std::uint32_t> expected = {
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::C4,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::D3)
+    };
+
+    EXPECT_EQ(n_moves, expected.size());
+
+    for (std::uint32_t move : expected) {
+        auto iter = std::find(expected.begin(), expected.end(), move);
+        EXPECT_NE(iter, expected.end());
+    }
+
+    EXPECT_EQ(pos.Reset("3r4/8/p7/8/2K5/8/2k5/6b1 w - - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    moves.fill(0);
+
+    n_moves = chess::GenerateKingMoves<chess::Player::kWhite>(
+                pos, ~pos.Occupied(), moves.data());
+
+    expected = {
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::C4,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::B4)
+    };
+
+    EXPECT_EQ(n_moves, expected.size());
+
+    for (std::uint32_t move : expected) {
+        auto iter = std::find(expected.begin(), expected.end(), move);
+        EXPECT_NE(iter, expected.end());
+    }
+}
+
 }  // namespace
