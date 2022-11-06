@@ -613,12 +613,14 @@ std::size_t GenerateCheckEvasions(
      * Step 1: Gather all squares which contain an enemy piece attacking
      *         our king
      */
-    const std::uint64_t attackers = opponent.AttacksTo(king_square);
+    const std::uint64_t attackers =
+        opponent.AttacksTo(king_square, occupied);
 
     /*
      * Step 2: Generate king moves that get out of check
      */
-    std::size_t n_moves = GenerateKingMoves<P>(pos, ~info.Occupied(), moves);
+    std::size_t n_moves =
+        GenerateKingMoves<P >(pos, ~info.Occupied(), moves->data());
 
     /*
      * Step 3a: If the king is attacked twice, we are done

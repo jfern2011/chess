@@ -362,7 +362,7 @@ TEST(Position, PlayerInfo_AttacksTo) {
         (std::uint64_t(1) << chess::Square::D2) |
         (std::uint64_t(1) << chess::Square::E5);
 
-    const auto actual = info.AttacksTo(chess::Square::D5);
+    const auto actual = info.AttacksTo(chess::Square::D5, info.Occupied());
 
     EXPECT_EQ(expect, actual) << "Actual:\n"
                               << chess::debug::PrintBitBoard(actual)

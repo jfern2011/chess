@@ -670,4 +670,270 @@ TEST(MoveGen, GenerateKingMoves) {
     }
 }
 
+TEST(MoveGen, GenerateCheckEvasions) {
+    auto pos = chess::Position();
+    EXPECT_EQ(pos.Reset("4k3/1n6/p3b3/8/2K4r/8/8/4q3 w - - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    std::array<std::uint32_t, 256> moves{0};
+
+    std::size_t n_moves = chess::GenerateCheckEvasions<chess::Player::kWhite>(
+                            pos, &moves);
+
+    std::vector<std::uint32_t> expected = {
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::C4,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::D3)
+    };
+
+    EXPECT_EQ(n_moves, expected.size());
+
+    for (std::uint32_t move : expected) {
+        auto iter = std::find(expected.begin(), expected.end(), move);
+        EXPECT_NE(iter, expected.end());
+    }
+
+    EXPECT_EQ(pos.Reset("4k1B1/1b6/7R/8/3PK3/2N5/Q7/8 w - - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    moves.fill(0);
+
+    n_moves = chess::GenerateCheckEvasions<chess::Player::kWhite>(
+                pos, &moves);
+
+    expected = {
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::E4,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::D3),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::E4,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::E3),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::E4,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::F4),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::E4,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::F5),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::E4,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::E5),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::D4,
+                              chess::Piece::PAWN,
+                              chess::Piece::EMPTY,
+                              chess::Square::D5),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::C3,
+                              chess::Piece::KNIGHT,
+                              chess::Piece::EMPTY,
+                              chess::Square::D5),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::A2,
+                              chess::Piece::QUEEN,
+                              chess::Piece::EMPTY,
+                              chess::Square::D5),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::G8,
+                              chess::Piece::BISHOP,
+                              chess::Piece::EMPTY,
+                              chess::Square::D5),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::H6,
+                              chess::Piece::PAWN,
+                              chess::Piece::EMPTY,
+                              chess::Square::C6)
+    };
+
+    EXPECT_EQ(n_moves, expected.size());
+
+    for (std::uint32_t move : expected) {
+        auto iter = std::find(expected.begin(), expected.end(), move);
+        EXPECT_NE(iter, expected.end());
+    }
+
+    EXPECT_EQ(pos.Reset("4k3/2b5/8/8/8/8/r5PK/8 w - - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    moves.fill(0);
+
+    n_moves = chess::GenerateCheckEvasions<chess::Player::kWhite>(
+                pos, &moves);
+
+    expected = {
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::H2,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::H1),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::H2,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::H3),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::H2,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::G1)
+    };
+
+    EXPECT_EQ(n_moves, expected.size());
+
+    for (std::uint32_t move : expected) {
+        auto iter = std::find(expected.begin(), expected.end(), move);
+        EXPECT_NE(iter, expected.end());
+    }
+
+    EXPECT_EQ(pos.Reset("4k3/8/8/8/8/7r/q5PK/8 w - - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    moves.fill(0);
+
+    n_moves = chess::GenerateCheckEvasions<chess::Player::kWhite>(
+                pos, &moves);
+
+    expected = {
+        chess::util::PackMove(chess::Piece::ROOK,
+                              chess::Square::H2,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::H3),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::H2,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::G1)
+    };
+
+    EXPECT_EQ(n_moves, expected.size());
+
+    for (std::uint32_t move : expected) {
+        auto iter = std::find(expected.begin(), expected.end(), move);
+        EXPECT_NE(iter, expected.end());
+    }
+
+    EXPECT_EQ(pos.Reset("B3k3/Q7/8/8/1PK4q/1PP1P3/3P1R2/8 w - - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    moves.fill(0);
+
+    n_moves = chess::GenerateCheckEvasions<chess::Player::kWhite>(
+                pos, &moves);
+
+    expected = {
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::F2,
+                              chess::Piece::ROOK,
+                              chess::Piece::EMPTY,
+                              chess::Square::F4),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::E3,
+                              chess::Piece::PAWN,
+                              chess::Piece::EMPTY,
+                              chess::Square::E4),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::D2,
+                              chess::Piece::PAWN,
+                              chess::Piece::EMPTY,
+                              chess::Square::D4),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::A7,
+                              chess::Piece::QUEEN,
+                              chess::Piece::EMPTY,
+                              chess::Square::D4),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::A8,
+                              chess::Piece::BISHOP,
+                              chess::Piece::EMPTY,
+                              chess::Square::E4),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::C4,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::B5),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::C4,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::C5),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::C4,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::D5)
+    };
+
+    EXPECT_EQ(n_moves, expected.size());
+
+    for (std::uint32_t move : expected) {
+        auto iter = std::find(expected.begin(), expected.end(), move);
+        EXPECT_NE(iter, expected.end());
+    }
+
+    EXPECT_EQ(pos.Reset("3k4/4r3/B5Q1/8/8/3n3R/2PPPP2/2N1K2R w K - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    moves.fill(0);
+
+    n_moves = chess::GenerateCheckEvasions<chess::Player::kWhite>(
+                pos, &moves);
+
+    expected = {
+        chess::util::PackMove(chess::Piece::KNIGHT,
+                              chess::Square::C2,
+                              chess::Piece::PAWN,
+                              chess::Piece::EMPTY,
+                              chess::Square::D3),
+        chess::util::PackMove(chess::Piece::KNIGHT,
+                              chess::Square::C1,
+                              chess::Piece::KNIGHT,
+                              chess::Piece::EMPTY,
+                              chess::Square::D3),
+        chess::util::PackMove(chess::Piece::KNIGHT,
+                              chess::Square::H3,
+                              chess::Piece::ROOK,
+                              chess::Piece::EMPTY,
+                              chess::Square::D3),
+        chess::util::PackMove(chess::Piece::KNIGHT,
+                              chess::Square::G7,
+                              chess::Piece::QUEEN,
+                              chess::Piece::EMPTY,
+                              chess::Square::D3),
+        chess::util::PackMove(chess::Piece::KNIGHT,
+                              chess::Square::A6,
+                              chess::Piece::BISHOP,
+                              chess::Piece::EMPTY,
+                              chess::Square::D3),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::E1,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::D1),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::E1,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::F1)
+    };
+
+    EXPECT_EQ(n_moves, expected.size());
+
+    for (std::uint32_t move : expected) {
+        auto iter = std::find(expected.begin(), expected.end(), move);
+        EXPECT_NE(iter, expected.end());
+    }
+}
+
 }  // namespace

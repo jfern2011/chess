@@ -97,7 +97,9 @@ public:
         PlayerInfo& operator=(PlayerInfo&& info)      = default;
         ~PlayerInfo()                                 = default;
 
-        constexpr std::uint64_t AttacksTo(Square square) const noexcept;
+        constexpr
+        std::uint64_t AttacksTo(Square square,
+                                std::uint64_t occupied) const noexcept;
 
         constexpr std::uint64_t Bishops() const noexcept;
         constexpr std::uint64_t King()    const noexcept;
@@ -796,21 +798,23 @@ Position::PlayerInfo<player>::PlayerInfo() :
  *
  * @tparam player The player who is attacking
  *
- * @param[in] square The square being attacked
+ * @param[in] square   The square being attacked
+ * @param[in] occupied The set of all occupied squares
  *
  * @return The squares attacking \a square
  */
-template <Player player>
-constexpr std::uint64_t Position::PlayerInfo<player>::AttacksTo(Square square)
+template <Player player> constexpr
+std::uint64_t Position::PlayerInfo<player>::AttacksTo(Square square,
+                                                      std::uint64_t occupied)
     const noexcept {
     std::uint64_t out = 0;
 
     out |= data_tables::kPawnAttacks<util::opponent<player>()>[square]
             & Pawns();
 
-    out |= AttacksFrom<Piece::ROOK>(square, occupied_) & (Rooks() | Queens());
+    out |= AttacksFrom<Piece::ROOK>(square, occupied) & (Rooks() | Queens());
 
-    out |= AttacksFrom<Piece::BISHOP>(square, occupied_)
+    out |= AttacksFrom<Piece::BISHOP>(square, occupied)
             & (Bishops() | Queens());
 
     out |= data_tables::kKnightAttacks[square] & Knights();
