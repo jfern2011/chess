@@ -127,4 +127,166 @@ TEST(MoveGen, GeneratePawnAdvances) {
         }
     }
 }
+
+TEST(MoveGen, GeneratePawnCaptures) {
+    auto pos = chess::Position();
+    EXPECT_EQ(pos.Reset("2r5/1P5k/8/8/2p1r3/3P4/7K/8 w - - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    std::uint64_t pinned = pos.PinnedPieces<chess::Player::kWhite>();
+    std::uint64_t target =
+        ~pos.GetPlayerInfo<chess::Player::kWhite>().Occupied();
+
+    std::array<std::uint32_t, 256> moves{0};
+
+    std::size_t n_moves = chess::GeneratePawnCaptures<chess::Player::kWhite>(
+                            pos, target, pinned, moves.data());
+
+    EXPECT_EQ(n_moves, 10u);
+
+    std::vector<std::uint32_t> expected = {
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::B7,
+                              chess::Piece::PAWN,
+                              chess::Piece::ROOK,
+                              chess::Square::B8),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::B7,
+                              chess::Piece::PAWN,
+                              chess::Piece::KNIGHT,
+                              chess::Square::B8),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::B7,
+                              chess::Piece::PAWN,
+                              chess::Piece::BISHOP,
+                              chess::Square::B8),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::B7,
+                              chess::Piece::PAWN,
+                              chess::Piece::QUEEN,
+                              chess::Square::B8),
+        chess::util::PackMove(chess::Piece::ROOK,
+                              chess::Square::B7,
+                              chess::Piece::PAWN,
+                              chess::Piece::ROOK,
+                              chess::Square::C8),
+        chess::util::PackMove(chess::Piece::ROOK,
+                              chess::Square::B7,
+                              chess::Piece::PAWN,
+                              chess::Piece::KNIGHT,
+                              chess::Square::C8),
+        chess::util::PackMove(chess::Piece::ROOK,
+                              chess::Square::B7,
+                              chess::Piece::PAWN,
+                              chess::Piece::BISHOP,
+                              chess::Square::C8),
+        chess::util::PackMove(chess::Piece::ROOK,
+                              chess::Square::B7,
+                              chess::Piece::PAWN,
+                              chess::Piece::QUEEN,
+                              chess::Square::C8),
+        chess::util::PackMove(chess::Piece::PAWN,
+                              chess::Square::D3,
+                              chess::Piece::PAWN,
+                              chess::Piece::EMPTY,
+                              chess::Square::C4),
+        chess::util::PackMove(chess::Piece::ROOK,
+                              chess::Square::D3,
+                              chess::Piece::PAWN,
+                              chess::Piece::EMPTY,
+                              chess::Square::E4)
+    };
+
+    for (std::uint32_t move : expected) {
+        auto iter = std::find(expected.begin(), expected.end(), move);
+        EXPECT_NE(iter, expected.end());
+    }
+
+    EXPECT_EQ(pos.Reset("2r5/KP4qk/8/8/2p1r3/3P4/8/8 w - - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    pinned = pos.PinnedPieces<chess::Player::kWhite>();
+    target = ~pos.GetPlayerInfo<chess::Player::kWhite>().Occupied();
+
+    moves.fill(0);
+
+    n_moves = chess::GeneratePawnCaptures<chess::Player::kWhite>(
+                pos, target, pinned, moves.data());
+
+    EXPECT_EQ(n_moves, 2u);
+
+    expected = {
+        chess::util::PackMove(chess::Piece::PAWN,
+                              chess::Square::D3,
+                              chess::Piece::PAWN,
+                              chess::Piece::EMPTY,
+                              chess::Square::C4),
+        chess::util::PackMove(chess::Piece::ROOK,
+                              chess::Square::D3,
+                              chess::Piece::PAWN,
+                              chess::Piece::EMPTY,
+                              chess::Square::E4)
+    };
+
+    for (std::uint32_t move : expected) {
+        auto iter = std::find(expected.begin(), expected.end(), move);
+        EXPECT_NE(iter, expected.end());
+    }
+
+    EXPECT_EQ(pos.Reset("8/7k/8/8/2p5/2KP3r/8/8 w - - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    pinned = pos.PinnedPieces<chess::Player::kWhite>();
+    target = ~pos.GetPlayerInfo<chess::Player::kWhite>().Occupied();
+
+    moves.fill(0);
+
+    n_moves = chess::GeneratePawnCaptures<chess::Player::kWhite>(
+                pos, target, pinned, moves.data());
+
+    EXPECT_EQ(n_moves, 0u);
+
+    EXPECT_EQ(pos.Reset("8/7k/8/8/2p1b3/3P4/2K5/8 w - - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    pinned = pos.PinnedPieces<chess::Player::kWhite>();
+    target = ~pos.GetPlayerInfo<chess::Player::kWhite>().Occupied();
+
+    moves.fill(0);
+
+    n_moves = chess::GeneratePawnCaptures<chess::Player::kWhite>(
+                pos, target, pinned, moves.data());
+
+    EXPECT_EQ(n_moves, 1u);
+
+    expected = {
+        chess::util::PackMove(chess::Piece::BISHOP,
+                              chess::Square::D3,
+                              chess::Piece::PAWN,
+                              chess::Piece::EMPTY,
+                              chess::Square::E4)
+    };
+
+    for (std::uint32_t move : expected) {
+        auto iter = std::find(expected.begin(), expected.end(), move);
+        EXPECT_NE(iter, expected.end());
+    }
+
+    EXPECT_EQ(pos.Reset("8/7k/8/1q6/4b3/3P4/4K3/8 w - - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    pinned = pos.PinnedPieces<chess::Player::kWhite>();
+    target = ~pos.GetPlayerInfo<chess::Player::kWhite>().Occupied();
+
+    moves.fill(0);
+
+    n_moves = chess::GeneratePawnCaptures<chess::Player::kWhite>(
+                pos, target, pinned, moves.data());
+
+    EXPECT_EQ(n_moves, 0u);
+}
+
+TEST(MoveGen, EnPassantCaptures) {
+}
+
 }  // namespace
