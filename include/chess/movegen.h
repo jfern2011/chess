@@ -356,7 +356,7 @@ std::size_t GenerateMoves(const Position& pos,
      * Generate rook moves
      */
     for (std::uint64_t rooks = info.Rooks(); rooks; ) {
-        const std::int8_t from = util::Msb(rooks);
+        const auto from = static_cast<Square>(util::Msb(rooks));
 
         /*
          * If this rook is pinned along a diagonal then we can't move it, so
@@ -398,7 +398,7 @@ std::size_t GenerateMoves(const Position& pos,
      * Generate bishop moves
      */
     for (std::uint64_t bishops = info.Bishops(); bishops; ) {
-        const std::int8_t from = util::Msb(bishops);
+        const auto from = static_cast<Square>(util::Msb(bishops));
 
         /*
          * If this bishop is pinned along a file or rank then we can't move it,
@@ -440,7 +440,7 @@ std::size_t GenerateMoves(const Position& pos,
      * Generate queen moves
      */
     for (std::uint64_t queens = info.Queens(); queens; ) {
-        const std::int8_t from = util::Msb(queens);
+        const auto from = static_cast<Square>(util::Msb(queens));
 
         /*
          * If the queen is pinned, restrict its movement to along the
@@ -690,10 +690,10 @@ std::size_t GenerateNonCaptures(const Position& pos,
 
     // Generate pawn advances but exclude promotions
     const std::uint64_t pawn_target =
-        target ^ (target & (~data_tables::kBackRank<util::opponent<P>()>));
+        target & (~data_tables::kBackRank<util::opponent<P>()>);
 
-    n_moves +=
-        GeneratePawnAdvances<P>(pos, pawn_target, pinned, &moves[n_moves]);
+    n_moves += GeneratePawnAdvances<P>(
+                pos, pawn_target, pinned, &moves[n_moves]);
 
     // Generate king non-captures
     n_moves += GenerateKingMoves<P>(pos, target, &moves[n_moves]);
