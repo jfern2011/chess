@@ -578,4 +578,47 @@ TEST(MoveGen, GenerateNonCaptures) {
     }
 }
 
+TEST(MoveGen, GenerateCastleMoves) {
+    auto pos = chess::Position();
+    EXPECT_EQ(pos.Reset("3rk3/8/8/8/8/8/6p1/R3K2R w KQ - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    std::array<std::uint32_t, 256> moves{0};
+
+    std::size_t n_moves = chess::GenerateCastleMoves<chess::Player::kWhite>(
+                            pos, moves.data());
+
+    EXPECT_EQ(n_moves, 0u);
+
+    EXPECT_EQ(pos.Reset("4k3/8/8/8/8/4n3/8/R3K2R w KQ - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    moves.fill(0);
+
+    n_moves = chess::GenerateCastleMoves<chess::Player::kWhite>(
+                pos, moves.data());
+
+    EXPECT_EQ(n_moves, 0u);
+
+    EXPECT_EQ(pos.Reset("4k3/8/8/8/8/q6n/8/R3K2R w KQ - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    moves.fill(0);
+
+    n_moves = chess::GenerateCastleMoves<chess::Player::kWhite>(
+                pos, moves.data());
+
+    EXPECT_EQ(n_moves, 0u);
+
+    EXPECT_EQ(pos.Reset("8/8/8/8/2b5/8/2k5/R3K2R w KQ - 0 1"),
+              chess::Position::FenError::kSuccess);
+
+    moves.fill(0);
+
+    n_moves = chess::GenerateCastleMoves<chess::Player::kWhite>(
+                pos, moves.data());
+
+    EXPECT_EQ(n_moves, 0u);
+}
+
 }  // namespace
