@@ -99,7 +99,7 @@ std::size_t GeneratePawnAdvances(const Position& pos,
     std::uint64_t advances1 =
         util::AdvancePawns1<P>(info.Pawns()) & vacant & target;
     std::uint64_t advances2 =
-        util::AdvancePawns1<P>(advances1) & k3rdRank & vacant & target;
+        util::AdvancePawns1<P>(advances1 & k3rdRank) & vacant & target;
 
     std::size_t n_moves = 0;
 
