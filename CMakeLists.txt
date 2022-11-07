@@ -90,3 +90,9 @@ target_link_libraries(chess-ut
     gtest_main
     engine
 )
+
+# -----------------------------------------------------------------------------
+
+add_executable(perft
+    src/perft.cc
+)
