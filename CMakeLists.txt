@@ -37,6 +37,14 @@ endif()
 # Utilities submodule
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/utility EXCLUDE_FROM_ALL)
 
+# Fetch latest argparse
+include(FetchContent)
+FetchContent_Declare(
+    argparse
+    GIT_REPOSITORY https://github.com/p-ranav/argparse.git
+)
+FetchContent_MakeAvailable(argparse)
+
 # Add flags to support the heavy use of constexpr (GNU compiler only)
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     SET(CXX_CUSTOM_COMPILE_FLAGS "-fconstexpr-ops-limit=1000000000")
@@ -95,4 +103,8 @@ target_link_libraries(chess-ut
 
 add_executable(perft
     src/perft.cc
+)
+
+target_link_libraries(perft
+    argparse
 )
