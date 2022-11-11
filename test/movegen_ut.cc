@@ -872,10 +872,16 @@ TEST(MoveGen, GenerateCheckEvasions) {
                               chess::Square::C4,
                               chess::Piece::KING,
                               chess::Piece::EMPTY,
-                              chess::Square::D5)
+                              chess::Square::D5),
+        chess::util::PackMove(chess::Piece::EMPTY,
+                              chess::Square::C4,
+                              chess::Piece::KING,
+                              chess::Piece::EMPTY,
+                              chess::Square::D3)
     };
 
-    EXPECT_EQ(n_moves, expected.size());
+    EXPECT_EQ(n_moves, expected.size())
+        << PrintMoves(moves.data(), n_moves);
 
     for (std::uint32_t move : expected) {
         auto iter = std::find(expected.begin(), expected.end(), move);
