@@ -429,9 +429,12 @@ inline void Position::MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
         player.template Lift<Piece::PAWN>(from);
 
         /*
-         * Note the promotion piece will be a pawn if this was
-         * not actually a pawn promotion
+         * Set the target piece type depending on whether this was
+         * a promotion or not
          */
+        promoted =
+            promoted == Piece::EMPTY ? Piece::PAWN : promoted;
+
         pieces_[to] = promoted;
         player.Drop(promoted, to);
 
