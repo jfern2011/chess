@@ -258,8 +258,9 @@ std::size_t GeneratePawnCaptures(const Position& pos,
     // Finally, handle en passant captures
 
     const Square ep_target = pos.EnPassantTarget();
-    if (ep_target == Square::Overflow)
+    if (ep_target < Square::H1 || ep_target > Square::A8) {
         return n_moves;
+    }
 
     const std::uint64_t attackers =
         data_tables::kPawnAttacks<util::opponent<P>()>[ep_target] & pawns;
