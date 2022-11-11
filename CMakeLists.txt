@@ -107,4 +107,5 @@ add_executable(perft
 
 target_link_libraries(perft
     argparse
+    core
 )

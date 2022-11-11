@@ -599,15 +599,13 @@ inline std::size_t GenerateCaptures(const Position& pos,
  */
 template <Player P>
 std::size_t GenerateCheckEvasions(
-    const Position& pos, std::array<std::uint32_t, 256>* moves) noexcept {
+    const Position& pos, std::uint32_t* moves) noexcept {
     const std::uint64_t occupied = pos.Occupied();
 
     const auto& info = pos.GetPlayerInfo<P>();
     const auto& opponent = pos.GetPlayerInfo<util::opponent<P>()>();
 
     const Square king_square = info.KingSquare();
-
-    auto& generated = *moves;
 
     /*
      * Step 1: Gather all squares which contain an enemy piece attacking
@@ -619,8 +617,7 @@ std::size_t GenerateCheckEvasions(
     /*
      * Step 2: Generate king moves that get out of check
      */
-    std::size_t n_moves =
-        GenerateKingMoves<P >(pos, ~info.Occupied(), moves->data());
+    std::size_t n_moves = GenerateKingMoves<P>(pos, ~info.Occupied(), moves);
 
     /*
      * Step 3a: If the king is attacked twice, we are done
@@ -646,19 +643,19 @@ std::size_t GenerateCheckEvasions(
 
     n_moves += GenerateMoves<P>(pos, target | attackers,
                                 pinned,
-                                &generated[n_moves]);
+                                &moves[n_moves]);
 
     /*
      * Step 5: Generate pawn interposing moves
      */
     n_moves +=
-        GeneratePawnAdvances<P>(pos, target, pinned, &generated[n_moves]);
+        GeneratePawnAdvances<P>(pos, target, pinned, &moves[n_moves]);
 
     /*
      * Step 6: Generate pawn moves which capture the checking piece
      */
     n_moves +=
-        GeneratePawnCaptures<P>(pos, attackers, pinned, &generated[n_moves]);
+        GeneratePawnCaptures<P>(pos, attackers, pinned, &moves[n_moves]);
 
     return n_moves;
 }

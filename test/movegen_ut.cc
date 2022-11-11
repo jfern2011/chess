@@ -678,7 +678,7 @@ TEST(MoveGen, GenerateCheckEvasions) {
     std::array<std::uint32_t, 256> moves{0};
 
     std::size_t n_moves = chess::GenerateCheckEvasions<chess::Player::kWhite>(
-                            pos, &moves);
+                            pos, &moves[0]);
 
     std::vector<std::uint32_t> expected = {
         chess::util::PackMove(chess::Piece::EMPTY,
@@ -701,7 +701,7 @@ TEST(MoveGen, GenerateCheckEvasions) {
     moves.fill(0);
 
     n_moves = chess::GenerateCheckEvasions<chess::Player::kWhite>(
-                pos, &moves);
+                pos, &moves[0]);
 
     expected = {
         chess::util::PackMove(chess::Piece::EMPTY,
@@ -769,7 +769,7 @@ TEST(MoveGen, GenerateCheckEvasions) {
     moves.fill(0);
 
     n_moves = chess::GenerateCheckEvasions<chess::Player::kWhite>(
-                pos, &moves);
+                pos, &moves[0]);
 
     expected = {
         chess::util::PackMove(chess::Piece::EMPTY,
@@ -802,7 +802,7 @@ TEST(MoveGen, GenerateCheckEvasions) {
     moves.fill(0);
 
     n_moves = chess::GenerateCheckEvasions<chess::Player::kWhite>(
-                pos, &moves);
+                pos, &moves[0]);
 
     expected = {
         chess::util::PackMove(chess::Piece::ROOK,
@@ -830,7 +830,7 @@ TEST(MoveGen, GenerateCheckEvasions) {
     moves.fill(0);
 
     n_moves = chess::GenerateCheckEvasions<chess::Player::kWhite>(
-                pos, &moves);
+                pos, &moves[0]);
 
     expected = {
         chess::util::PackMove(chess::Piece::EMPTY,
@@ -888,7 +888,7 @@ TEST(MoveGen, GenerateCheckEvasions) {
     moves.fill(0);
 
     n_moves = chess::GenerateCheckEvasions<chess::Player::kWhite>(
-                pos, &moves);
+                pos, &moves[0]);
 
     expected = {
         chess::util::PackMove(chess::Piece::KNIGHT,
