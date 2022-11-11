@@ -49,15 +49,12 @@ public:
      */
     std::size_t Run(chess::Position* pos, std::size_t depth) {
         max_depth_ = depth;
-        node_count_ = 0;
 
         if (pos->ToMove() == chess::Player::kWhite) {
-            Trace<chess::Player::kWhite>(pos, 0);
+            return Trace<chess::Player::kWhite>(pos, 0);
         } else {
-            Trace<chess::Player::kBlack>(pos, 0);
+            return Trace<chess::Player::kBlack>(pos, 0);
         }
-
-        return node_count_;
     }
 
 private:
@@ -81,13 +78,12 @@ private:
             chess::GenerateCheckEvasions<P>(*pos, moves);
 
         for (std::size_t i = 0; i < n_moves; i++) {
-            node_count_ = 0;
-
             const std::uint32_t move = moves[i];
 
             pos->MakeMove<P>(move, 0);
 
-            Trace<chess::util::opponent<P>()>(pos, 1);
+            const std::uint64_t nodes =
+                Trace<chess::util::opponent<P>()>(pos, 1);
 
             pos->UnMakeMove<P>(move, 0);
 
@@ -95,10 +91,10 @@ private:
             chess::Square dest = chess::util::ExtractTo(move);
 
             std::cout << chess::kSquareStr[orig]
-                      << chess::kSquareStr[dest] << ": " << node_count_
+                      << chess::kSquareStr[dest] << ": " << nodes
                       << std::endl;
 
-            total_nodes += node_count_;
+            total_nodes += nodes;
         }
 
         return total_nodes;
@@ -113,39 +109,35 @@ private:
      * @param depth The current depth
      */
     template <chess::Player P>
-    void Trace(chess::Position* pos, std::uint32_t depth) {
-        if (depth >= max_depth_) {
-            node_count_++;
-        } else {
-            std::uint32_t moves[chess::kMaxMoves];
-            const std::size_t n_moves = !pos->InCheck<P>() ?
-                chess::GenerateLegalMoves<P>(*pos, moves) :
-                chess::GenerateCheckEvasions<P>(*pos, moves);
+    std::size_t Trace(chess::Position* pos, std::uint32_t depth) {
+        std::uint32_t moves[chess::kMaxMoves];
 
-            if (n_moves == 0) {
-                node_count_++;
-            } else {
-                for (std::size_t i = 0; i < n_moves; i++) {
-                    const std::uint32_t move = moves[i];
-                    pos->MakeMove<P>(move, depth);
+        if (depth >= max_depth_) return 1u;
 
-                    Trace<chess::util::opponent<P>()>(pos, depth+1);
+        const std::size_t n_moves = !pos->InCheck<P>() ?
+            chess::GenerateLegalMoves<P>(*pos, moves) :
+            chess::GenerateCheckEvasions<P>(*pos, moves);
 
-                    pos->UnMakeMove<P>(move, depth);
-                }
-            }
+        if (depth+1 >= max_depth_) return n_moves;
+
+        std::uint64_t nodes = 0;
+
+        for (std::size_t i = 0; i < n_moves; i++) {
+            const std::uint32_t move = moves[i];
+            pos->MakeMove<P>(move, depth);
+
+            nodes += Trace<chess::util::opponent<P>()>(pos, depth+1);
+
+            pos->UnMakeMove<P>(move, depth);
         }
+
+        return nodes;
     }
 
     /**
      * Maximum recursive trace depth
      */
     std::size_t max_depth_;
-
-    /**
-     * The total number of nodes visited
-     */
-    std::size_t node_count_;
 };
 
 /**
