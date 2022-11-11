@@ -71,7 +71,7 @@ private:
      */
     template <chess::Player P>
     std::size_t Divide_(chess::Position* pos, std::size_t depth) {
-        max_depth_ = depth == 0 ? depth : (depth-1);
+        max_depth_ = depth;
 
         std::size_t total_nodes = 0;
 
