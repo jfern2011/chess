@@ -97,9 +97,12 @@ std::size_t GeneratePawnAdvances(const Position& pos,
     constexpr std::uint64_t k3rdRank = data_tables::k3rdRank<P>;
 
     std::uint64_t advances1 =
-        util::AdvancePawns1<P>(info.Pawns()) & vacant & target;
+        util::AdvancePawns1<P>(info.Pawns()) & vacant;
     std::uint64_t advances2 =
         util::AdvancePawns1<P>(advances1 & k3rdRank) & vacant & target;
+
+    // Apply target mask only after computing double advancements
+    advances1 &= target;
 
     std::size_t n_moves = 0;
 
@@ -123,8 +126,9 @@ std::size_t GeneratePawnAdvances(const Position& pos,
                         Piece::EMPTY, from, Piece::PAWN, promoted, to);
                 }
             }
-        } else {
-            advances2 &= data_tables::kClearMask[from];
+        } else if ((data_tables::k3rdRank<P> & data_tables::kSetMask[to])) {
+            advances2 &=
+                data_tables::kClearMask[data_tables::kPlus8<P>[to]];
         }
 
         advances1 &= data_tables::kClearMask[to];
