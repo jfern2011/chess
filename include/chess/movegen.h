@@ -537,19 +537,31 @@ template <Player P> inline std::size_t GenerateCastleMoves(
     if (info.CanCastleLong() &&
         !pos.UnderAttack<O>(data_tables::kCastleLongPath<P>[0]) &&
         !pos.UnderAttack<O>(data_tables::kCastleLongPath<P>[1])) {
+        constexpr std::uint64_t path_mask =
+            (std::uint64_t(1) << data_tables::kCastleLongPath<P>[0]) |
+            (std::uint64_t(1) << data_tables::kCastleLongPath<P>[1]);
+
+        if ((pos.Occupied() & path_mask) == 0) {
             moves[n_moves++] =
                 util::PackMove(Piece::EMPTY, data_tables::kKingHome<P>,
                                Piece::KING, Piece::EMPTY,
                                data_tables::kCastleLongDest<P>);
+        }
     }
 
-    if (info.CanCastleLong() &&
+    if (info.CanCastleShort() &&
         !pos.UnderAttack<O>(data_tables::kCastleShortPath<P>[0]) &&
         !pos.UnderAttack<O>(data_tables::kCastleShortPath<P>[1])) {
+        constexpr std::uint64_t path_mask =
+            (std::uint64_t(1) << data_tables::kCastleShortPath<P>[0]) |
+            (std::uint64_t(1) << data_tables::kCastleShortPath<P>[1]);
+
+        if ((pos.Occupied() & path_mask) == 0) {
             moves[n_moves++] =
                 util::PackMove(Piece::EMPTY, data_tables::kKingHome<P>,
                                Piece::KING, Piece::EMPTY,
                                data_tables::kCastleShortDest<P>);
+        }
     }
 
     return n_moves;
