@@ -730,10 +730,12 @@ void Position::UnMakeMove(std::int32_t move, std::uint32_t ply) noexcept {
         player.template Drop<Piece::PAWN>(from);
 
         /*
-         * Note the promotion piece will be a pawn if this was not actually
-         * a pawn promotion
+         * Remove the piece at the destination square depending
+         * on whether or not this was a pawn promotion
          */
-        player.Lift(promoted, to);
+        promoted == Piece::EMPTY ? player.Lift(Piece::PAWN, to) :
+                                   player.Lift(promoted, to);
+
         break;
       case Piece::KING:
         if (std::abs(from - to) == 2) {
