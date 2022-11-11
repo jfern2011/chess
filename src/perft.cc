@@ -176,7 +176,7 @@ bool go(const argparse::ArgumentParser& parser) {
     const auto stop  = std::chrono::steady_clock::now();
 
     std::size_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        start - stop).count();
+                        stop - start).count();
 
     std::cout << "Nodes=" << node_count << " Time=" << ms << "ms"
               << std::endl;
