@@ -241,7 +241,7 @@ std::size_t GeneratePawnCaptures(const Position& pos,
         data_tables::kBackRank<util::opponent<P>()>;
 
     std::uint64_t advances1 =
-        util::AdvancePawns1<P>(pawns) & kBackRank & vacant;
+        util::AdvancePawns1<P>(pawns) & kBackRank & vacant & target;
 
     while (advances1) {
         const auto to = static_cast<Square>(util::Msb(advances1));
