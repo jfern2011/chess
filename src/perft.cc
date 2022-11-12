@@ -87,15 +87,25 @@ private:
 
             pos->UnMakeMove<P>(move, 0);
 
-            chess::Square orig = chess::util::ExtractFrom(move);
-            chess::Square dest = chess::util::ExtractTo(move);
+            // Display the size of this subtree
+
+            const chess::Square orig = chess::util::ExtractFrom(move);
+            const chess::Square dest = chess::util::ExtractTo(move);
+            const chess::Piece promoted = chess::util::ExtractPromoted(move);
 
             std::cout << chess::kSquareStr[orig]
-                      << chess::kSquareStr[dest] << ": " << nodes
-                      << std::endl;
+                      << chess::kSquareStr[dest];
+
+            if (promoted != chess::Piece::EMPTY) {
+                std::cout << "=" << chess::util::PieceToChar(promoted);
+            }
+
+            std::cout << " " << nodes << std::endl;
 
             total_nodes += nodes;
         }
+
+        std::cout << "Moves=" << n_moves << std::endl;
 
         return total_nodes;
     }

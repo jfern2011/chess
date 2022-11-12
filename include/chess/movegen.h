@@ -724,7 +724,7 @@ std::size_t GenerateNonCaptures(const Position& pos,
  *
  * @return The number of moves generated
  */
-template <Player P>
+template <Player P> inline
 std::size_t GenerateLegalMoves(const Position& pos,
                                std::uint32_t* moves) noexcept {
     const std::uint64_t pinned = pos.PinnedPieces<P>();
