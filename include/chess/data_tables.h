@@ -706,6 +706,26 @@ constexpr auto kRookDbShifts =
     internal::CreateTable<64>(internal::RookDbShift);
 
 /**
+ * The home squares of the rooks
+ *
+ * @{
+ */
+
+template <Player P>
+auto kRookHomeA = Square::Underflow;
+template<> constexpr auto kRookHomeA<Player::kWhite> = Square::A1;
+template<> constexpr auto kRookHomeA<Player::kBlack> = Square::A8;
+
+template <Player P>
+auto kRookHomeH = Square::Underflow;
+template<> constexpr auto kRookHomeH<Player::kWhite> = Square::H1;
+template<> constexpr auto kRookHomeH<Player::kBlack> = Square::H8;
+
+/**
+ * @}
+ */
+
+/**
  * The magic numbers used to look up "attacks_from" boards for rooks in the
  * magic bitboard hashing algorithm
  */

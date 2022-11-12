@@ -1959,6 +1959,26 @@ TEST(data_tables, kRookDbShifts) {
     }
 }
 
+TEST(data_tables, kRookHomeA) {
+    constexpr auto kHomeWhite = chess::Square::A1;
+    constexpr auto kHomeBlack = chess::Square::A8;
+
+    EXPECT_EQ(chess::data_tables::kRookHomeA<chess::Player::kWhite>,
+              kHomeWhite);
+    EXPECT_EQ(chess::data_tables::kRookHomeA<chess::Player::kBlack>,
+              kHomeBlack);
+}
+
+TEST(data_tables, kRookHomeH) {
+    constexpr auto kHomeWhite = chess::Square::H1;
+    constexpr auto kHomeBlack = chess::Square::H8;
+
+    EXPECT_EQ(chess::data_tables::kRookHomeH<chess::Player::kWhite>,
+              kHomeWhite);
+    EXPECT_EQ(chess::data_tables::kRookHomeH<chess::Player::kBlack>,
+              kHomeBlack);
+}
+
 TEST(data_tables, kRookMobility) {
     for (std::size_t i = 0;
          i < chess::data_tables::internal::kAttacksRookDbSize; i++) {

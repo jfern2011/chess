@@ -446,10 +446,10 @@ inline void Position::MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
         }
         break;
       case Piece::ROOK:
-        if (player.CanCastleLong() && util::GetFile(from) == 7) {
+        if (from == data_tables::kRookHomeA<who>) {
             player.CanCastleLong() = false;
             castling_changed = true;
-        } else if (player.CanCastleShort() && util::GetFile(from) == 0) {
+        } else if (from == data_tables::kRookHomeH<who>) {
             player.CanCastleShort() = false;
             castling_changed = true;
         }
@@ -501,15 +501,11 @@ inline void Position::MakeMove(std::int32_t move, std::uint32_t ply) noexcept {
           case Piece::ROOK:
             opponent.template Lift<Piece::ROOK>(to);
 
-            /*
-             * Update the opponent's castling rights if he could have castled
-             * with this rook
-             */
             if (opponent.CanCastle()) {
-                const int file = util::GetFile(to);
-                if (file == 7) {
+                if (to == data_tables::kRookHomeA<util::opponent<who>()>) {
                     opponent.CanCastleLong() = false;
-                } else if (file == 0) {
+                } else if (
+                    to == data_tables::kRookHomeH<util::opponent<who>()>) {
                     opponent.CanCastleShort() = false;
                 }
             }
