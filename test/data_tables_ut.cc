@@ -994,6 +994,28 @@ TEST(data_tables, kCastleShortPath) {
                 57);
 }
 
+TEST(data_tables, kCastleShortClearance) {
+    constexpr std::uint64_t one = 1;
+    constexpr auto kClearanceWhite = (one << 1)  | (one << 2);
+    constexpr auto kClearanceBlack = (one << 57) | (one << 58);
+
+    EXPECT_EQ(chess::data_tables::kCastleShortClearance<chess::Player::kWhite>,
+              kClearanceWhite);
+    EXPECT_EQ(chess::data_tables::kCastleShortClearance<chess::Player::kBlack>,
+              kClearanceBlack);
+}
+
+TEST(data_tables, kCastleLongClearance) {
+    constexpr std::uint64_t one = 1;
+    constexpr auto kClearanceWhite = (one << 4)  | (one << 5)  | (one << 6);
+    constexpr auto kClearanceBlack = (one << 60) | (one << 61) | (one << 62);
+
+    EXPECT_EQ(chess::data_tables::kCastleLongClearance<chess::Player::kWhite>,
+              kClearanceWhite);
+    EXPECT_EQ(chess::data_tables::kCastleLongClearance<chess::Player::kBlack>,
+              kClearanceBlack);
+}
+
 TEST(data_tables, kClearMask) {
     for (int i = 0; i < 64; i++) {
         EXPECT_EQ(chess::data_tables::kClearMask[i],

@@ -187,6 +187,50 @@ template<> constexpr auto kCastleShortPath<Player::kBlack> =
  */
 
 /**
+ * The squares that must be empty for a king to castle short
+ *
+ * @{
+ */
+
+template <Player P>
+auto kCastleShortClearance = std::uint64_t(0);
+
+template<> constexpr auto kCastleShortClearance<Player::kWhite> =
+    (std::uint64_t(1) << Square::F1) |
+    (std::uint64_t(1) << Square::G1);
+
+template<> constexpr auto kCastleShortClearance<Player::kBlack> =
+    (std::uint64_t(1) << Square::F8) |
+    (std::uint64_t(1) << Square::G8);
+
+/**
+ * @}
+ */
+
+/**
+ * The squares that must be empty for a king to castle long
+ *
+ * @{
+ */
+
+template <Player P>
+auto kCastleLongClearance = std::uint64_t(0);
+
+template<> constexpr auto kCastleLongClearance<Player::kWhite> =
+    (std::uint64_t(1) << Square::D1) |
+    (std::uint64_t(1) << Square::C1) |
+    (std::uint64_t(1) << Square::B1);
+
+template<> constexpr auto kCastleLongClearance<Player::kBlack> =
+    (std::uint64_t(1) << Square::D8) |
+    (std::uint64_t(1) << Square::C8) |
+    (std::uint64_t(1) << Square::B8);
+
+/**
+ * @}
+ */
+
+/**
  * Bitmasks used to clear single bits. All bits are set except at the
  * corresponding index
  */
