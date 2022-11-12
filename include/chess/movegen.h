@@ -587,9 +587,13 @@ inline std::size_t GenerateCaptures(const Position& pos,
     // Generate knight, bishop, rook, and queen captures
     std::size_t n_moves = GenerateMoves<P>(pos, target, pinned, moves);
 
-    // Generate pawn captures
-    n_moves += GeneratePawnCaptures<P>(pos, target, pinned, &moves[n_moves]);
-    
+    // Generate pawn captures and promotions
+    const std::uint64_t pawn_target =
+        target | data_tables::kBackRank<util::opponent<P>()>;
+
+    n_moves +=
+        GeneratePawnCaptures<P>(pos, pawn_target, pinned, &moves[n_moves]);
+
     // Generate king captures
     n_moves += GenerateKingMoves<P>(pos, target, &moves[n_moves]);
 
