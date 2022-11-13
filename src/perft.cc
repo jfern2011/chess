@@ -9,19 +9,65 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <memory.h>
 #include <stdexcept>
 #include <string>
 
 #include "argparse/argparse.hpp"
 
+#include "chess/command_dispatcher.h"
 #include "chess/position.h"
 #include "chess/movegen.h"
+#include "chess/stdio_channel.h"
 
 /**
  * @brief PERFormance Test
  */
 class Perft final {
 public:
+    /**
+     * @brief Constructor
+     * 
+     * @param channel Channel to listen for user commands
+     */
+    explicit Perft(std::shared_ptr<chess::InputStreamChannel> channel)
+        : dispatcher_(),
+          input_channel_(channel),
+          max_depth_(0),
+          position_() {
+        dispatcher_.RegisterCommand(
+            "divide",
+            std::bind(&Perft::HandleCommandDivide, this,
+                      std::placeholders::_1));
+        dispatcher_.RegisterCommand(
+            "help",
+            std::bind(&Perft::HandleCommandHelp, this,
+                      std::placeholders::_1));
+        dispatcher_.RegisterCommand(
+            "move",
+            std::bind(&Perft::HandleCommandMove, this,
+                      std::placeholders::_1));
+        dispatcher_.RegisterCommand(
+            "perft",
+            std::bind(&Perft::HandleCommandPerft, this,
+                      std::placeholders::_1));
+        dispatcher_.RegisterCommand(
+            "position",
+            std::bind(&Perft::HandleCommandPosition, this,
+                      std::placeholders::_1));
+        dispatcher_.RegisterCommand(
+            "quit",
+            std::bind(&Perft::HandleCommandQuit, this,
+                      std::placeholders::_1));
+
+        input_channel_->emit_ =
+            std::bind(&chess::CommandDispatcher::HandleCommand,
+                      &dispatcher_,
+                      std::placeholders::_1);
+
+        position_.Reset();
+    }
+
     /**
      * Run the performance test, computing the number of nodes
      * in the subtree below each move
@@ -58,6 +104,68 @@ public:
     }
 
 private:
+    /**
+     * @brief Handle the "divide" command
+     *
+     * @param args Arguments to this command
+     *
+     * @return True on success
+     */
+    bool HandleCommandDivide(const std::vector<std::string>& args) {
+        return true;
+    }
+
+    /**
+     * @brief Handle the "help" command
+     *
+     * @return True on success
+     */
+    bool HandleCommandHelp(const std::vector<std::string>& ) {
+        return true;
+    }
+
+    /**
+     * @brief Handle the "move" command
+     *
+     * @param args Arguments to this command
+     *
+     * @return True on success
+     */
+    bool HandleCommandMove(const std::vector<std::string>& args) {
+        return true;
+    }
+
+    /**
+     * @brief Handle the "perft" command
+     *
+     * @param args Arguments to this command
+     *
+     * @return True on success
+     */
+    bool HandleCommandPerft(const std::vector<std::string>& args) {
+        return true;
+    }
+
+    /**
+     * @brief Handle the "position" command
+     *
+     * @param args Arguments to this command
+     *
+     * @return True on success
+     */
+    bool HandleCommandPosition(const std::vector<std::string>& args) {
+        return true;
+    }
+
+    /**
+     * @brief Handle the "quit" command
+     *
+     * @return True on success
+     */
+    bool HandleCommandQuit(const std::vector<std::string>& ) {
+        return true;
+    }
+
     /**
      * Run divide() on the specified player
      *
@@ -145,9 +253,25 @@ private:
     }
 
     /**
+     * Handles user commands
+     */
+    chess::CommandDispatcher dispatcher_;
+
+    /**
+     * Channel to listen for commands
+     */
+    std::shared_ptr<chess::InputStreamChannel>
+        input_channel_;
+
+    /**
      * Maximum recursive trace depth
      */
     std::size_t max_depth_;
+
+    /**
+     * The position on which to run perft calculations
+     */
+    chess::Position position_;
 };
 
 /**
@@ -169,7 +293,9 @@ bool go(const argparse::ArgumentParser& parser) {
         return false;
     }
 
-    Perft perft;
+    auto channel = std::make_shared<chess::StdinChannel>();
+
+    Perft perft(channel);
 
     const auto start = std::chrono::steady_clock::now();
     const std::size_t node_count =
