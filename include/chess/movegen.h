@@ -261,11 +261,12 @@ std::size_t GeneratePawnCaptures(const Position& pos,
 
     // Finally, handle en passant captures
 
-    const Square ep_target = pos.EnPassantTarget();
-    if (ep_target < Square::H1 || ep_target > Square::A8) {
+    if ((data_tables::k3rdRank<util::opponent<P>()>
+         & pos.EnPassantTargetMask() & target) == 0u) {
         return n_moves;
     }
 
+    const Square ep_target = pos.EnPassantTarget();
     const std::uint64_t attackers =
         data_tables::kPawnAttacks<util::opponent<P>()>[ep_target] & pawns;
 
@@ -589,7 +590,8 @@ inline std::size_t GenerateCaptures(const Position& pos,
 
     // Generate pawn captures and promotions
     const std::uint64_t pawn_target =
-        target | data_tables::kBackRank<util::opponent<P>()>;
+        target | data_tables::kBackRank<util::opponent<P>()>
+               | pos.EnPassantTargetMask();
 
     n_moves +=
         GeneratePawnCaptures<P>(pos, pawn_target, pinned, &moves[n_moves]);
@@ -667,8 +669,13 @@ std::size_t GenerateCheckEvasions(
     /*
      * Step 6: Generate pawn moves which capture the checking piece
      */
+    const std::uint64_t pawn_target =
+        (data_tables::kMinus8<util::opponent<P>()>[attacker] ==
+            pos.EnPassantTarget()) ?
+                (attackers | pos.EnPassantTargetMask()) : attackers;
+
     n_moves +=
-        GeneratePawnCaptures<P>(pos, attackers, pinned, &moves[n_moves]);
+        GeneratePawnCaptures<P>(pos, pawn_target, pinned, &moves[n_moves]);
 
     return n_moves;
 }

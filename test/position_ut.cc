@@ -568,6 +568,19 @@ TEST(Position, EnPassantTarget) {
     EXPECT_EQ(pos.EnPassantTarget(), chess::Square::D3);
 }
 
+TEST(Position, EnPassantTargetMask) {
+    chess::Position pos;
+    EXPECT_EQ(pos.EnPassantTargetMask(), 0u);
+
+    const std::string fen =
+        "r1bqk1nr/ppp2ppp/2nbp3/3p4/2PP1N2/4P3/PP2BPPP/RNBQK2R b KQkq d3 2 7";
+
+    ASSERT_EQ(pos.Reset(fen), chess::Position::FenError::kSuccess);
+
+    EXPECT_EQ(pos.EnPassantTargetMask(),
+              std::uint64_t(1) << chess::Square::D3);
+}
+
 TEST(Position, FullMoveNumber) {
     chess::Position pos;
     EXPECT_EQ(pos.FullMoveNumber(), 0);

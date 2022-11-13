@@ -167,6 +167,8 @@ public:
 
     constexpr Square EnPassantTarget() const;
 
+    constexpr std::uint64_t EnPassantTargetMask() const;
+
     constexpr int FullMoveNumber() const noexcept;
 
     std::string GetFen() const;
@@ -289,6 +291,15 @@ private:
  */
 constexpr Square Position::EnPassantTarget() const {
     return en_passant_target_;
+}
+
+/**
+ * @return The en passant target square as a bitboard
+ */
+constexpr std::uint64_t Position::EnPassantTargetMask() const {
+    return (en_passant_target_ < Square::H1 ||
+            en_passant_target_ > Square::A8) ?
+            0 : std::uint64_t(1) << en_passant_target_;
 }
 
 /**
