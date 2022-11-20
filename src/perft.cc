@@ -320,11 +320,9 @@ private:
 /**
  * @brief Parse command line and run this program
  *
- * @param parser Command line parser
- *
  * @return True on success
  */
-bool go(const argparse::ArgumentParser& parser) {
+bool go(const argparse::ArgumentParser& ) {
     auto channel = std::make_shared<chess::StdinChannel>(true);
 
     Perft perft(channel);
