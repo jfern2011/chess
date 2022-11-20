@@ -21,6 +21,12 @@ public:
     virtual ~InputStreamChannel() = default;
 
     /**
+     * Close this channel. Future calls to Poll() will not produce
+     * any messages
+     */
+    virtual void Close() noexcept = 0;
+
+    /**
      * Poll the input stream. Messages are emitted via the emit_
      * callable, if assigned; otherwise, they are dropped
      */
@@ -28,7 +34,7 @@ public:
 
     /**
      * Check if this channel is closed, i.e. futher calls to
-     * Poll() will not produce data
+     * Poll() will not produce messages
      *
      * @return True if this channel is closed
      */

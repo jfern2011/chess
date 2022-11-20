@@ -107,9 +107,10 @@ private:
                       << "ms" << std::endl;
 
             return true;
+        } else {
+            std::cout << "usage: divide <depth>" << std::endl;
+            return false;
         }
-
-        return false;
     }
 
     /**
@@ -170,9 +171,10 @@ private:
                       << "ms" << std::endl;
 
             return true;
+        } else {
+            std::cout << "usage: perft <depth>" << std::endl;
+            return false;
         }
-
-        return false;
     }
 
     /**
@@ -189,7 +191,8 @@ private:
         const chess::Position::FenError error = position_.Reset(fen);
 
         if (error != chess::Position::FenError::kSuccess) {
-            std::cout << chess::Position::ErrorToString(error) << std::endl;
+            std::cout << "Rejected: " << chess::Position::ErrorToString(error)
+                      << std::endl;
             return false;
         }
 
@@ -202,6 +205,7 @@ private:
      * @return True on success
      */
     bool HandleCommandQuit(const std::vector<std::string>& ) {
+        input_channel_->Close();
         return true;
     }
 
@@ -321,44 +325,17 @@ private:
  * @return True on success
  */
 bool go(const argparse::ArgumentParser& parser) {
-#if 0
-    const auto max_depth = parser.get<std::size_t>("--depth");
-    const auto do_divide = parser.get<bool>("--divide");
-    const auto fen       = parser.get<std::string>("--fen");
-
-    chess::Position position;
-    chess::Position::FenError error = position.Reset(fen);
-    if (error != chess::Position::FenError::kSuccess) {
-        std::cout << chess::Position::ErrorToString(error) << std::endl;
-        return false;
-    }
-#endif
-    auto channel = std::make_shared<chess::StdinChannel>();
+    auto channel = std::make_shared<chess::StdinChannel>(true);
 
     Perft perft(channel);
-    while (!channel->IsClosed()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        channel->Poll();
-    }
+    while (!channel->IsClosed()) channel->Poll();
 
     return true;
 }
 
 int main(int argc, char** argv) {
     argparse::ArgumentParser parser("perft");
-#if 0
-    parser.add_argument("--depth")
-        .help("The maximum recursive trace depth, in plies")
-        .scan<'u', std::size_t>()
-        .required();
-    parser.add_argument("--divide")
-        .help("If true, generate divide() results")
-        .default_value(false)
-        .implicit_value(true);
-    parser.add_argument("--fen")
-        .help("The root position in Forsyth-Edwards notation")
-        .default_value(std::string());
-#endif
+
     try {
         parser.parse_args(argc, argv);
     } catch (const std::runtime_error& error) {

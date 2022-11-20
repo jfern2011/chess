@@ -9,6 +9,7 @@
 
 #include <atomic>
 #include <deque>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -25,7 +26,7 @@ namespace chess {
  */
 class StdinChannel final : public InputStreamChannel {
 public:
-    StdinChannel();
+    explicit StdinChannel(bool synced);
 
     StdinChannel(const StdinChannel& channel)            = delete;
     StdinChannel(StdinChannel&& channel)                 = default;
@@ -34,22 +35,31 @@ public:
 
     ~StdinChannel();
 
+    void Close() noexcept override;
+
     void Poll() noexcept override;
 
     bool IsClosed() const noexcept override;
 
 private:
+    void PollAsync();
+    void PollSync();
     void ReadInput();
 
     /**
      * Atomic operations @{
      */
+    bool Closed() const noexcept;
+    void SetClosed() noexcept;
     bool MessagesAvailable() const noexcept;
     void SetMessagesAvailable(bool value) noexcept;
     /** @} */
 
     /** True if this channel has been closed */
-    bool closed_;
+    std::atomic<bool> closed_;
+
+    /** True if reads are done synchronously */
+    bool is_synced_;
 
     /** The message queue */
     std::deque<std::string> messages_;
@@ -58,7 +68,8 @@ private:
     std::atomic<bool> messages_avail_;
 
     /** Thread that sits and waits on standard input */
-    std::thread stdin_thread_;
+    std::unique_ptr<std::thread>
+        stdin_thread_;
 
     /** Avoids race conditions on the queue */
     std::mutex queue_mutex_;

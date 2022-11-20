@@ -13,20 +13,34 @@
 namespace chess {
 /**
  * @brief Constructor
+ *
+ * @param synced If true, calls to Poll() perform synchronous reads
  */
-StdinChannel::StdinChannel()
+StdinChannel::StdinChannel(bool synced)
     : closed_(false),
+      is_synced_(synced),
       messages_(),
       messages_avail_(false),
-      stdin_thread_(&StdinChannel::ReadInput, this),
+      stdin_thread_(),
       queue_mutex_() {
+    if (!synced) {
+        stdin_thread_ = std::make_unique<std::thread>(
+            &StdinChannel::ReadInput, this);
+    }
 }
 
 /**
  * @brief Destructor
  */
 StdinChannel::~StdinChannel() {
-    stdin_thread_.join();
+    if (!is_synced_) stdin_thread_->join();
+}
+
+/**
+ * @see InputStreamChannel::Close()
+ */
+void StdinChannel::Close() noexcept {
+    SetClosed();
 }
 
 /**
@@ -34,6 +48,20 @@ StdinChannel::~StdinChannel() {
  * callable data member
  */
 void StdinChannel::Poll() noexcept {
+    is_synced_ ? PollSync() : PollAsync();
+}
+
+/**
+ * @see InputStreamChannel::IsClosed()
+ */
+bool StdinChannel::IsClosed() const noexcept {
+    return Closed();
+}
+
+/**
+ * Asynchronous read from standard input
+ */
+void StdinChannel::PollAsync() {
     if (MessagesAvailable()) {
         queue_mutex_.lock();
         while (!messages_.empty()) {
@@ -49,10 +77,18 @@ void StdinChannel::Poll() noexcept {
 }
 
 /**
- * @see InputStreamChannel::IsClosed()
+ * Synchronous read from standard input
  */
-bool StdinChannel::IsClosed() const noexcept {
-    return closed_;
+void StdinChannel::PollSync() {
+    if (!IsClosed()) {
+        std::string input;
+        std::getline(std::cin, input);
+
+        if (emit_) {
+            emit_(ConstDataBuffer(input.c_str(),
+                  input.size()));
+        }
+    }
 }
 
 /**
@@ -63,7 +99,7 @@ bool StdinChannel::IsClosed() const noexcept {
  */
 void StdinChannel::ReadInput() {
     std::string input;
-    while (true) {
+    while (!IsClosed()) {
         std::getline(std::cin, input);
         queue_mutex_.lock();
     
@@ -85,9 +121,25 @@ void StdinChannel::ReadInput() {
 
         const std::string cmd = jfern::superstring(input).to_lower().trim();
         if (cmd.find("quit") != std::string::npos) {
-            closed_ = true; break;
+            SetClosed();
         }
     }
+}
+
+/**
+ * @brief Check if this channel has been closed
+ *
+ * @return True if closed
+ */
+bool StdinChannel::Closed() const noexcept {
+    return closed_.load(std::memory_order_relaxed);
+}
+
+/**
+ * @brief Close the input stream
+ */
+void StdinChannel::SetClosed() noexcept {
+    closed_.store(true, std::memory_order_relaxed);
 }
 
 /**

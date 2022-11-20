@@ -32,7 +32,7 @@ TEST(stdin_channel, poll) {
     std::cin.rdbuf(input.rdbuf());
 
     // Create the channel AFTER assigning the stream buffer
-    chess::StdinChannel channel;
+    chess::StdinChannel channel(false);
 
     channel.emit_ =
         [&] (const chess::ConstDataBuffer& buf) {
