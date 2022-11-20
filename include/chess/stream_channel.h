@@ -27,6 +27,14 @@ public:
     virtual void Poll() noexcept = 0;
 
     /**
+     * Check if this channel is closed, i.e. futher calls to
+     * Poll() will not produce data
+     *
+     * @return True if this channel is closed
+     */
+    virtual bool IsClosed() const noexcept = 0;
+
+    /**
      * Callable object through which stream messages are emitted
      */
     std::function<void(const ConstDataBuffer&)> emit_;

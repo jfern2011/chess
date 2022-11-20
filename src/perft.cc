@@ -12,8 +12,10 @@
 #include <memory.h>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
 #include "argparse/argparse.hpp"
+#include "superstring/superstring.h"
 
 #include "chess/command_dispatcher.h"
 #include "chess/position.h"
@@ -68,41 +70,6 @@ public:
         position_.Reset();
     }
 
-    /**
-     * Run the performance test, computing the number of nodes
-     * in the subtree below each move
-     *
-     * @param pos   The root position
-     * @param depth Maximum recursive depth, in plies
-     *
-     * @return The total node count
-     */
-    std::size_t Divide(chess::Position* pos, std::size_t depth) {
-        if (pos->ToMove() == chess::Player::kWhite) {
-            return Divide_<chess::Player::kWhite>(pos, depth);
-        } else {
-            return Divide_<chess::Player::kBlack>(pos, depth);
-        }
-    }
-
-    /**
-     * Run the performance test
-     *
-     * @param pos   The root position
-     * @param depth Maximum recursive depth, in plies
-     *
-     * @return The total node count
-     */
-    std::size_t Run(chess::Position* pos, std::size_t depth) {
-        max_depth_ = depth;
-
-        if (pos->ToMove() == chess::Player::kWhite) {
-            return Trace<chess::Player::kWhite>(pos, 0);
-        } else {
-            return Trace<chess::Player::kBlack>(pos, 0);
-        }
-    }
-
 private:
     /**
      * @brief Handle the "divide" command
@@ -112,7 +79,37 @@ private:
      * @return True on success
      */
     bool HandleCommandDivide(const std::vector<std::string>& args) {
-        return true;
+        if (!args.empty()) {
+            std::size_t parsed_depth, nodes;
+
+            try {
+                parsed_depth = std::stoul(args[0]);
+            } catch (const std::exception& e) {
+                std::cout << e.what() << std::endl;
+                return false;
+            }
+
+            const auto start = std::chrono::steady_clock::now();
+
+            if (position_.ToMove() == chess::Player::kWhite) {
+                nodes = Divide<chess::Player::kWhite>(&position_, parsed_depth);
+            } else {
+                nodes = Divide<chess::Player::kBlack>(&position_, parsed_depth);
+            }
+
+            const auto stop  = std::chrono::steady_clock::now();
+
+            const std::size_t ms =
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    stop - start).count();
+
+            std::cout << "Nodes=" << nodes << " Time=" << ms
+                      << "ms" << std::endl;
+
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -143,7 +140,39 @@ private:
      * @return True on success
      */
     bool HandleCommandPerft(const std::vector<std::string>& args) {
-        return true;
+        if (!args.empty()) {
+            std::size_t parsed_depth, nodes;
+
+            try {
+                parsed_depth = std::stoul(args[0]);
+            } catch (const std::exception& e) {
+                std::cout << e.what() << std::endl;
+                return false;
+            }
+
+            max_depth_ = parsed_depth;
+
+            const auto start = std::chrono::steady_clock::now();
+
+            if (position_.ToMove() == chess::Player::kWhite) {
+                nodes = Trace<chess::Player::kWhite>(&position_, 0);
+            } else {
+                nodes = Trace<chess::Player::kBlack>(&position_, 0);
+            }
+
+            const auto stop  = std::chrono::steady_clock::now();
+
+            const std::size_t ms =
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    stop - start).count();
+
+            std::cout << "Nodes=" << nodes << " Time=" << ms
+                      << "ms" << std::endl;
+
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -154,6 +183,16 @@ private:
      * @return True on success
      */
     bool HandleCommandPosition(const std::vector<std::string>& args) {
+        const std::string fen =
+            jfern::superstring::build(" ", args.begin(), args.end());
+
+        const chess::Position::FenError error = position_.Reset(fen);
+
+        if (error != chess::Position::FenError::kSuccess) {
+            std::cout << chess::Position::ErrorToString(error) << std::endl;
+            return false;
+        }
+
         return true;
     }
 
@@ -175,7 +214,7 @@ private:
      * @return The total node count
      */
     template <chess::Player P>
-    std::size_t Divide_(chess::Position* pos, std::size_t depth) {
+    std::size_t Divide(chess::Position* pos, std::size_t depth) {
         max_depth_ = depth;
 
         std::size_t total_nodes = 0;
@@ -282,6 +321,7 @@ private:
  * @return True on success
  */
 bool go(const argparse::ArgumentParser& parser) {
+#if 0
     const auto max_depth = parser.get<std::size_t>("--depth");
     const auto do_divide = parser.get<bool>("--divide");
     const auto fen       = parser.get<std::string>("--fen");
@@ -292,29 +332,21 @@ bool go(const argparse::ArgumentParser& parser) {
         std::cout << chess::Position::ErrorToString(error) << std::endl;
         return false;
     }
-
+#endif
     auto channel = std::make_shared<chess::StdinChannel>();
 
     Perft perft(channel);
-
-    const auto start = std::chrono::steady_clock::now();
-    const std::size_t node_count =
-        do_divide ? perft.Divide(&position, max_depth) :
-                    perft.Run(&position, max_depth);
-    const auto stop  = std::chrono::steady_clock::now();
-
-    std::size_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        stop - start).count();
-
-    std::cout << "Nodes=" << node_count << " Time=" << ms << "ms"
-              << std::endl;
+    while (!channel->IsClosed()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        channel->Poll();
+    }
 
     return true;
 }
 
 int main(int argc, char** argv) {
     argparse::ArgumentParser parser("perft");
-
+#if 0
     parser.add_argument("--depth")
         .help("The maximum recursive trace depth, in plies")
         .scan<'u', std::size_t>()
@@ -326,7 +358,7 @@ int main(int argc, char** argv) {
     parser.add_argument("--fen")
         .help("The root position in Forsyth-Edwards notation")
         .default_value(std::string());
-
+#endif
     try {
         parser.parse_args(argc, argv);
     } catch (const std::runtime_error& error) {

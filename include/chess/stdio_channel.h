@@ -36,6 +36,8 @@ public:
 
     void Poll() noexcept override;
 
+    bool IsClosed() const noexcept override;
+
 private:
     void ReadInput();
 
@@ -45,6 +47,9 @@ private:
     bool MessagesAvailable() const noexcept;
     void SetMessagesAvailable(bool value) noexcept;
     /** @} */
+
+    /** True if this channel has been closed */
+    bool closed_;
 
     /** The message queue */
     std::deque<std::string> messages_;

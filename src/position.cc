@@ -17,7 +17,8 @@
 namespace chess {
 
 /** The starting position */
-constexpr char Position::kDefaultFen[];
+const char Position::kDefaultFen[] =
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 /** Mapping from FEN error code to description */
 static const std::map<Position::FenError, std::string> kFenErrorToString {

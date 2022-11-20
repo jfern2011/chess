@@ -151,9 +151,7 @@ public:
         PieceSet pieces_;
     };
 
-    /** The starting position */
-    static constexpr char kDefaultFen[] =
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    static const char kDefaultFen[];
 
     Position();
 

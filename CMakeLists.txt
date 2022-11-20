@@ -104,9 +104,11 @@ target_link_libraries(chess-ut
 
 add_executable(perft
     src/perft.cc
+    src/stdio_channel.cc
 )
 
 target_link_libraries(perft
     argparse
     core
+    Threads::Threads
 )

@@ -15,7 +15,8 @@ namespace chess {
  * @brief Constructor
  */
 StdinChannel::StdinChannel()
-    : messages_(),
+    : closed_(false),
+      messages_(),
       messages_avail_(false),
       stdin_thread_(&StdinChannel::ReadInput, this),
       queue_mutex_() {
@@ -48,6 +49,13 @@ void StdinChannel::Poll() noexcept {
 }
 
 /**
+ * @see InputStreamChannel::IsClosed()
+ */
+bool StdinChannel::IsClosed() const noexcept {
+    return closed_;
+}
+
+/**
  * This method is performed by a thread whose only task is to sit and
  * wait for messages to come in from standard input. When a message
  * arrives it is copied to the input buffer. A mutex is used to avoid
@@ -76,8 +84,9 @@ void StdinChannel::ReadInput() {
         // stream library doesn't guarantee the desired behavior
 
         const std::string cmd = jfern::superstring(input).to_lower().trim();
-        if (cmd.find("quit") != std::string::npos)
-            break;
+        if (cmd.find("quit") != std::string::npos) {
+            closed_ = true; break;
+        }
     }
 }
 
