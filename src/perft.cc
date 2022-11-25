@@ -13,11 +13,13 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "argparse/argparse.hpp"
 #include "superstring/superstring.h"
 
 #include "chess/command_dispatcher.h"
+#include "chess/data_buffer.h"
 #include "chess/position.h"
 #include "chess/movegen.h"
 #include "chess/stdio_channel.h"
@@ -61,6 +63,10 @@ public:
             "quit",
             std::bind(&Perft::HandleCommandQuit, this,
                       std::placeholders::_1));
+
+        dispatcher_.error_callback_ =
+            std::bind(&Perft::HandleCommandUnknown, this,
+                      std::placeholders::_1);
 
         input_channel_->emit_ =
             std::bind(&chess::CommandDispatcher::HandleCommand,
@@ -207,6 +213,21 @@ private:
     bool HandleCommandQuit(const std::vector<std::string>& ) {
         input_channel_->Close();
         return true;
+    }
+
+    /**
+     * Called back when an unknown command is issued
+     *
+     * @param buf The command data
+     */
+    void HandleCommandUnknown(const chess::ConstDataBuffer& buf) {
+        const jfern::superstring sstring(std::string(buf.data(), buf.size()));
+
+        const std::vector<std::string> tokens = sstring.split();
+        if (!tokens.empty()) {
+            std::cout << "Unknown command \'" << tokens[0] << "\'"
+                      << std::endl;
+        }
     }
 
     /**

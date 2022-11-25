@@ -25,6 +25,8 @@ void CommandDispatcher::HandleCommand(const ConstDataBuffer& buf) {
             const std::vector<std::string>
                 args(tokens.begin()+1, tokens.end());
             iter->second(args);
+        } else if (error_callback_) {
+            error_callback_(buf);
         }
     }
 }

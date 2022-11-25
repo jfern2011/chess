@@ -9,6 +9,7 @@
 
 #include <functional>
 #include <map>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -38,6 +39,12 @@ public:
     void HandleCommand(const ConstDataBuffer& buf);
 
     bool RegisterCommand(const std::string& name, cmd_handler_t handler);
+
+    /**
+     * Callback invoked when an unregistered command is received
+     */
+    std::function<void(const ConstDataBuffer&)>
+        error_callback_;
 
 private:
     /**
