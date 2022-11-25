@@ -80,8 +80,9 @@ TEST(stdin_channel, PollSync) {
                   std::string(buf.data(), buf.size()) + "\n");
     };
 
-    channel.Poll();
-    channel.Poll();
+    for (std::size_t i = 0; i < commands.size(); i++) {
+        channel.Poll();
+    }
 
     EXPECT_EQ(emit_count, commands.size());
 
