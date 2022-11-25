@@ -74,9 +74,31 @@ public:
                       std::placeholders::_1);
 
         position_.Reset();
+
+        std::cout << "Type \"help\" for options."
+                  << std::endl;
     }
 
 private:
+    /**
+     * @brief Check the depth argument to the perft and divide commands
+     *
+     * @param depth The selected depth
+     *
+     * @return True if the depth is allowed, false otherwise
+     */
+    bool CheckDepth(std::size_t depth) {
+        constexpr std::size_t kLimit = chess::kMaxMoves;
+
+        if (depth > kLimit) {
+            std::cout << "Depth must be in [0, " << kLimit << "]"
+                      << std::endl;
+            return false;
+        } else {
+            return true;
+        }
+    }
+
     /**
      * @brief Handle the "divide" command
      *
@@ -94,6 +116,9 @@ private:
                 std::cout << e.what() << std::endl;
                 return false;
             }
+
+            if (!CheckDepth(parsed_depth))
+                return false;
 
             const auto start = std::chrono::steady_clock::now();
 
@@ -125,6 +150,28 @@ private:
      * @return True on success
      */
     bool HandleCommandHelp(const std::vector<std::string>& ) {
+        const std::string indentx1(4, ' ');
+        const std::string indentx2 = indentx1 + indentx1;
+
+        std::cout << "\nCommands:\n";
+        std::cout << indentx1 << "divide <depth>\n";
+        std::cout << indentx2
+                  << "Break down the size of every subtree from the current"
+                     " position to the specified depth.\n";
+        std::cout << indentx1 << "help\n";
+        std::cout << indentx2 << "Display this help menu.\n";
+        std::cout << indentx1 << "move <move>\n";
+        std::cout << indentx2 << "Make a move from the current position.\n";
+        std::cout << indentx1 << "perft <depth>\n";
+        std::cout << indentx2 << "Compute the number of terminal nodes from"
+                     " the current position to the specified depth.\n";
+        std::cout << indentx1 << "position <fen>\n";
+        std::cout << indentx2
+                  << "Set the current position to a FEN-encoded one.\n";
+        std::cout << indentx1 << "quit\n";
+        std::cout << indentx2 << "Exit this program.\n"
+                  << std::endl;
+
         return true;
     }
 
@@ -156,6 +203,9 @@ private:
                 std::cout << e.what() << std::endl;
                 return false;
             }
+
+            if (!CheckDepth(parsed_depth))
+                return false;
 
             max_depth_ = parsed_depth;
 
