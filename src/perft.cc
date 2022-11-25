@@ -163,8 +163,9 @@ private:
         std::cout << indentx1 << "move <move>\n";
         std::cout << indentx2 << "Make a move from the current position.\n";
         std::cout << indentx1 << "perft <depth>\n";
-        std::cout << indentx2 << "Compute the number of terminal nodes from"
-                     " the current position to the specified depth.\n";
+        std::cout << indentx2
+                  << "Compute the number of terminal nodes from the current"
+                     " position to the specified depth.\n";
         std::cout << indentx1 << "position <fen>\n";
         std::cout << indentx2
                   << "Set the current position to a FEN-encoded one.\n";
