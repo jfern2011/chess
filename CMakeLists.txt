@@ -57,6 +57,7 @@ add_library(core STATIC
     src/command_dispatcher.cc
     src/data_buffer.cc
     src/debug.cc
+    src/interactive.cc
     src/position.cc
     src/stream_channel.cc
     src/util.cc

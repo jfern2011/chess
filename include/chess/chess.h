@@ -27,6 +27,8 @@ constexpr std::int16_t kQueenValue  = 975;
 constexpr std::int16_t kRookValue   = 500;
 constexpr std::int16_t kEmptyValue  = 0;
 
+constexpr std::uint32_t kBadMove = 0;
+
 constexpr std::uint64_t kRank1 = 0x00000000000000ff;
 constexpr std::uint64_t kRank2 = kRank1 <<  8;
 constexpr std::uint64_t kRank3 = kRank1 << 16;

@@ -20,6 +20,7 @@
 
 #include "chess/command_dispatcher.h"
 #include "chess/data_buffer.h"
+#include "chess/interactive.h"
 #include "chess/position.h"
 #include "chess/movegen.h"
 #include "chess/stdio_channel.h"
@@ -184,6 +185,23 @@ private:
      * @return True on success
      */
     bool HandleCommandMove(const std::vector<std::string>& args) {
+        if (args.empty()) {
+            std::cout << "usage: move <move>" << std::endl;
+            return false;
+        } else {
+            const std::uint32_t move = ResolveMove(position_, args[0]);
+            if (move == 0u) {
+                std::cout << "Invalid move: \"" << args[0] << "\""
+                          << std::endl;
+                return false;
+            } else {
+                position_.ToMove() == chess::Player::kWhite ?
+                    position_.MakeMove<chess::Player::kWhite>(move, 0) :
+                    position_.MakeMove<chess::Player::kBlack>(move, 0);
+            }
+        }
+
+        // Specified move is valid
         return true;
     }
 
