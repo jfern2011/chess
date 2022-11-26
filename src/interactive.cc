@@ -22,7 +22,7 @@ namespace chess {
  * @param pos  The position from which to make the move
  * @param move The desired move
  *
- * @return The bit-packed move, or 0x0 if the move is invalid
+ * @return The bit-packed move, or a null move if \a move is invalid
  */
 std::uint32_t ResolveMove(const Position& pos, const std::string& move) {
     std::array<std::uint32_t, 256> moves;
@@ -57,7 +57,7 @@ std::uint32_t ResolveMove(const Position& pos, const std::string& move) {
     // todo...
 
     // Default return value
-    return kBadMove;
+    return kNullMove;
 }
 
 }  // namespace chess

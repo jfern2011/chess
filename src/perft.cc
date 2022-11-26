@@ -190,7 +190,7 @@ private:
             return false;
         } else {
             const std::uint32_t move = ResolveMove(position_, args[0]);
-            if (move == 0u) {
+            if (move == chess::kNullMove) {
                 std::cout << "Invalid move: \"" << args[0] << "\""
                           << std::endl;
                 return false;
