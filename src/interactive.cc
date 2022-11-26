@@ -6,7 +6,6 @@
 
 #include "chess/interactive.h"
 
-#include <algorithm>
 #include <string>
 #include <vector>
 
