@@ -154,7 +154,7 @@ private:
         const std::string indentx1(4, ' ');
         const std::string indentx2 = indentx1 + indentx1;
 
-        std::cout << "\nCommands:\n";
+        std::cout << "\ncommands:\n";
         std::cout << indentx1 << "divide <depth>\n";
         std::cout << indentx2
                   << "Break down the size of every subtree from the current"

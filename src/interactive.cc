@@ -41,17 +41,13 @@ std::uint32_t ResolveMove(const Position& pos, const std::string& move) {
         const Square parsed_from = util::StrToSquare(tokens[0]);
         const Square parsed_to   = util::StrToSquare(tokens[1]);
 
-        if (parsed_from >= Square::H1 && parsed_to >= Square::H1 &&
-            parsed_from <= Square::A8 && parsed_to <= Square::A8) {
-
-            for (std::size_t i = 0; i < n_moves; i++) {
-                const std::uint32_t mv = moves[i];
-                if (util::ExtractFrom(mv) == parsed_from &&
-                    util::ExtractTo  (mv) == parsed_to) {
-                    const Piece promoted = util::CharToPiece(move.back());
-                    if (util::ExtractPromoted(mv) == promoted) {
-                        return mv;
-                    }
+        for (std::size_t i = 0; i < n_moves; i++) {
+            const std::uint32_t mv = moves[i];
+            if (util::ExtractFrom(mv) == parsed_from &&
+                util::ExtractTo  (mv) == parsed_to) {
+                const Piece promoted = util::CharToPiece(move.back());
+                if (util::ExtractPromoted(mv) == promoted) {
+                    return mv;
                 }
             }
         }
