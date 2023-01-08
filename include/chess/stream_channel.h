@@ -7,6 +7,7 @@
 #ifndef CHESS_STREAM_CHANNEL_H_
 #define CHESS_STREAM_CHANNEL_H_
 
+#include <algorithm>
 #include <cstdio>
 #include <functional>
 #include <string>
@@ -85,6 +86,11 @@ private:
      * The formatted output message to emit from this channel
      */
     std::vector<char> message_;
+
+    /**
+     * Number of bytes to be written to the stream
+     */
+    std::size_t size_;
 };
 
 /**
@@ -95,11 +101,14 @@ private:
  */
 template <typename... Ts>
 void OutputStreamChannel::Write(const char* format, Ts&&... args) noexcept {
+    if (size_ == 0) return;
+
     const int len = std::snprintf(message_.data(), message_.size(),
                                   format, std::forward<Ts>(args)...);
     if (len > 0) {
-        Write(ConstDataBuffer(message_.data(),
-                              static_cast<std::size_t>(len)));
+        const auto size = std::min(size_, static_cast<std::size_t>(len));
+
+        Write(ConstDataBuffer(message_.data(), size));
     }
 }
 

@@ -10,7 +10,8 @@ namespace chess {
 /**
  * @brief Default constructor
  */
-OutputStreamChannel::OutputStreamChannel() : message_(1024) {    
+OutputStreamChannel::OutputStreamChannel() : message_(), size_(0) {
+    Resize(1024);
 }
 
 /**
@@ -32,7 +33,10 @@ OutputStreamChannel& OutputStreamChannel::operator<<(const std::string& str) {
  * @param size The max size, in bytes
  */
 void OutputStreamChannel::Resize(std::size_t size) noexcept {
-    message_.resize(size);
+    size_ = size;
+
+    // Leave 1 byte for the terminating null character used by std::snprintf()
+    message_.resize(size + 1);
 }
 
 /**

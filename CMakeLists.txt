@@ -94,9 +94,11 @@ add_executable(chess-ut
     test/movegen_ut.cc
     test/position_ut.cc
     test/stdio_channel_ut.cc
+    test/stream_channel_ut.cc
 )
 
 target_link_libraries(chess-ut
+    gmock_main
     gtest_main
     engine
 )
