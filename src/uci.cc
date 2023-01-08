@@ -18,7 +18,7 @@ namespace chess {
  * @param logger  Write internal (non-UCI) info to this channel
  * @param engine  The engine to forward commands to
  */
-UciProtocol::UciProtocol(std::shared_ptr<chess::InputStreamChannel> channel,
+UciProtocol::UciProtocol(std::shared_ptr<InputStreamChannel> channel,
                          std::shared_ptr<Logger> logger,
                          std::shared_ptr<EngineInterface> engine)
     : dispatcher_(),
@@ -67,7 +67,7 @@ UciProtocol::UciProtocol(std::shared_ptr<chess::InputStreamChannel> channel,
                   std::placeholders::_1);
 
     input_channel_->emit_ =
-        std::bind(&chess::CommandDispatcher::HandleCommand,
+        std::bind(&CommandDispatcher::HandleCommand,
                   &dispatcher_,
                   std::placeholders::_1);
 }
@@ -192,7 +192,7 @@ bool UciProtocol::HandlePonderHitCommand(const std::vector<std::string>& ) {
  *
  * @param buf The command data
  */
-void UciProtocol::HandleCommandUnknown(const chess::ConstDataBuffer& buf) {
+void UciProtocol::HandleCommandUnknown(const ConstDataBuffer& buf) {
     const jfern::superstring sstring(std::string(buf.data(), buf.size()));
 
     const std::vector<std::string> tokens = sstring.split();
