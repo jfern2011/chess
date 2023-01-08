@@ -8,25 +8,90 @@
 
 namespace chess {
 /**
- * @brief Constructor
+ * @brief Forwards the "uci" command to the engine
+ *
+ * @return True on success
  */
-UciProtocol::UciProtocol() : commands_() {
+bool UciProtocol::HandleUciCommand(const std::vector<std::string>& ) {
+
 }
 
 /**
- * @brief Register a new UCI command
- * 
- * @param name    The command name, e.g. "isready"
- * @param handler The command handler
+ * @brief Forwards the "debug" command to the engine
  *
- * @return True on success. On failure, this method is a no-op
+ * @param args The debugging mode enable flag
+ *
+ * @return True on success
  */
-bool UciProtocol::RegisterCommand(
-    const std::string& name, cmd_handler_t handler) {
-    if (name.empty() || !handler) return false;
+bool UciProtocol::HandleDebugCommand(const std::vector<std::string>& args) {
 
-    commands_[name] = handler;
-    return true;
+}
+
+/**
+ * @brief Forwards the "isready" command to the engine
+ *
+ * @return True on success
+ */
+bool UciProtocol::HandleIsReadyCommand(const std::vector<std::string>& ) {
+
+}
+
+/**
+ * @brief Forwards the "setoption" command to the engine
+ *
+ * @param args Option name and arguments
+ *
+ * @return True on success
+ */
+bool UciProtocol::HandleSetOptionCommand(const std::vector<std::string>& args) {
+
+}
+
+/**
+ * @brief Forwards the "ucinewgame" command to the engine
+ *
+ * @return True on success
+ */
+bool UciProtocol::HandleUciNewGameCommand(const std::vector<std::string>& ) {
+
+}
+
+/**
+ * @brief Forwards the "position" command to the engine
+ *
+ * @param args The FEN-encoded position
+ *
+ * @return True on success
+ */
+bool UciProtocol::HandlePositionCommand(const std::vector<std::string>& ) {
+
+}
+
+/**
+ * @brief Forwards the "go" command to the engine
+ *
+ * @return True on success
+ */
+bool UciProtocol::HandleGoCommand(const std::vector<std::string>& ) {
+
+}
+
+/**
+ * @brief Forwards the "stop" command to the engine
+ *
+ * @return True on success
+ */
+bool UciProtocol::HandleStopCommand(const std::vector<std::string>& ) {
+
+}
+
+/**
+ * @brief Forwards the "ponderhit" command to the engine
+ *
+ * @return True on success
+ */
+bool UciProtocol::HandlePonderHitCommand(const std::vector<std::string>& ) {
+
 }
 
 }  // namespace chess
