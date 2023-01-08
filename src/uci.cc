@@ -15,6 +15,7 @@ namespace chess {
  * @brief Constructor
  *
  * @param channel The channel to listen for UCI commands
+ * @param logger  Write internal (non-UCI) info to this channel
  * @param engine  The engine to forward commands to
  */
 UciProtocol::UciProtocol(std::shared_ptr<chess::InputStreamChannel> channel,

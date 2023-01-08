@@ -139,9 +139,9 @@ bool Engine::Position(const std::vector<std::string>& args) noexcept {
             }
 
             if (master_.ToMove() == Player::kWhite) {
-                master_->MakeMove<Player::kWhite>(move, 0);
+                master_.MakeMove<Player::kWhite>(move, 0);
             } else {
-                master_->MakeMove<Player::kBlack>(move, 0);
+                master_.MakeMove<Player::kBlack>(move, 0);
             }
         }
     }
@@ -154,7 +154,7 @@ bool Engine::Position(const std::vector<std::string>& args) noexcept {
  */
 void Engine::Go() noexcept {
     is_running_ = true;
-    logger->Write("Search has started.\n");
+    logger_->Write("Search has started.\n");
 }
 
 /**
@@ -162,7 +162,7 @@ void Engine::Go() noexcept {
  */
 void Engine::Stop() noexcept {
     is_running_ = false;
-    logger->Write("Search was stopped.\n");
+    logger_->Write("Search was stopped.\n");
 }
 
 /**
