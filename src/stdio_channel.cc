@@ -171,7 +171,7 @@ void StdoutChannel::Flush() noexcept {
 /**
  * @brief Write to the standard output stream. May or may not be buffered
  *
- * @param buffer The data to to write
+ * @param buffer The data to write
  */
 void StdoutChannel::Write(const ConstDataBuffer& buffer) noexcept {
     const auto size = static_cast<int>(buffer.size());

@@ -78,7 +78,7 @@ public:
     template <typename... Ts>
     void Write(const char* format, Ts&&... args) noexcept;
 
-    void Write(const char* format) noexcept;
+    void Write(const char* message) noexcept;
 
 private:
     /**
@@ -98,8 +98,8 @@ void OutputStreamChannel::Write(const char* format, Ts&&... args) noexcept {
     const int len = std::snprintf(message_.data(), message_.size(),
                                   format, std::forward<Ts>(args)...);
     if (len > 0) {
-        Write(ConstDataBuffer(
-            message_.data(), static_cast<std::size_t>(len)));
+        Write(ConstDataBuffer(message_.data(),
+                              static_cast<std::size_t>(len)));
     }
 }
 

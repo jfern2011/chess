@@ -39,7 +39,7 @@ void OutputStreamChannel::Resize(std::size_t size) noexcept {
  * @brief Write to the output stream. Note that data may be buffered and
  *        not immediately written to the stream; @see Flush()
  *
- * @note This overload covers the case where there are not format arguments
+ * @note This overload covers the case where there are no format arguments
  *
  * @param message The text to write
  */
