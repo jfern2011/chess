@@ -10,6 +10,8 @@
 #include <memory>
 
 #include "chess/command_dispatcher.h"
+#include "chess/data_buffer.h"
+#include "chess/logger.h"
 #include "chess/engine_interface.h"
 #include "chess/stream_channel.h"
 
@@ -19,7 +21,8 @@ namespace chess {
  */
 class UciProtocol final {
 public:
-    UciProtocol(std::shared_ptr<chess::InputStreamChannel> channel,
+    UciProtocol(std::shared_ptr<InputStreamChannel> channel,
+                std::shared_ptr<Logger> logger,
                 std::shared_ptr<EngineInterface> engine);
 
     UciProtocol(const UciProtocol& protocol)            = default;
@@ -35,15 +38,16 @@ private:
     bool HandleIsReadyCommand(const std::vector<std::string>& );
     bool HandleSetOptionCommand(const std::vector<std::string>& args);
     bool HandleUciNewGameCommand(const std::vector<std::string>& );
-    bool HandlePositionCommand(const std::vector<std::string>& );
+    bool HandlePositionCommand(const std::vector<std::string>& args);
     bool HandleGoCommand(const std::vector<std::string>& );
     bool HandleStopCommand(const std::vector<std::string>& );
     bool HandlePonderHitCommand(const std::vector<std::string>& );
+    void HandleCommandUnknown(const ConstDataBuffer& buf);
 
     /**
      * Handles user commands
      */
-    chess::CommandDispatcher dispatcher_;
+    CommandDispatcher dispatcher_;
 
     /**
      * Forward commands to this engine
@@ -53,8 +57,13 @@ private:
     /**
      * Channel to listen for commands
      */
-    std::shared_ptr<chess::InputStreamChannel>
+    std::shared_ptr<InputStreamChannel>
         input_channel_;
+
+    /**
+     * Internal log messages written here
+     */
+    std::shared_ptr<Logger> logger_;
 };
 
 }  // namespace chess

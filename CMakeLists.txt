@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.2.2)
 
 project(Chess)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 find_package(Threads REQUIRED)
@@ -57,9 +57,12 @@ add_library(core STATIC
     src/command_dispatcher.cc
     src/data_buffer.cc
     src/debug.cc
+    src/engine.cc
     src/interactive.cc
+    src/logger.cc
     src/position.cc
     src/stream_channel.cc
+    src/uci.cc
     src/util.cc
 )
 
@@ -90,6 +93,7 @@ target_link_libraries(engine
 
 add_executable(chess-ut
     test/data_tables_ut.cc
+    test/logger_ut.cc
     test/main.cc
     test/movegen_ut.cc
     test/position_ut.cc

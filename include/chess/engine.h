@@ -11,6 +11,7 @@
 #include <string>
 
 #include "chess/engine_interface.h"
+#include "chess/logger.h"
 #include "chess/stream_channel.h"
 #include "chess/position.h"
 
@@ -20,13 +21,13 @@ namespace chess {
  */
 class Engine final : public EngineInterface {
 public:
-    Engine(std::shared_ptr<OutputStreamChannel> uci_channel,
-           std::shared_ptr<OutputStreamChannel> log_channel);
+    Engine(std::shared_ptr<OutputStreamChannel> channel,
+           std::shared_ptr<Logger> logger);
 
     Engine(const Engine& engine) = default;
     Engine(Engine&& engine) = default;
     Engine& operator=(const Engine& engine) = default;
-    Engine& operator(Engine&& engine) = default;
+    Engine& operator=(Engine&& engine) = default;
 
     ~Engine() = default;
 
@@ -34,14 +35,20 @@ public:
     void DebugMode(bool enable) noexcept override;
     bool IsReady() const noexcept override;
     bool SetOption(const std::string& name,
-                   const std::string& args) noexcept override;
+                   const std::vector<std::string>& args) noexcept override;
     void UciNewGame() noexcept override;
-    bool Position(const std::string& fen) noexcept override;
+    bool Position (const std::vector<std::string>& args) noexcept override;
     void Go() noexcept override;
     void Stop() noexcept override;
     void PonderHit() noexcept override;
 
 private:
+    /**
+     * Channel through which to emit UCI outputs
+     */
+    std::shared_ptr<OutputStreamChannel>
+        channel_;
+
     /**
      * True if debugging mode is enabled
      */
@@ -53,21 +60,14 @@ private:
     bool is_running_;
 
     /**
-     * Channel through which to log internal info
+     * Object through which to log internal info
      */
-    std::shared_ptr<OutputStreamChannel>
-        log_channel_;
+    std::shared_ptr<Logger> logger_;
 
     /**
      * Master position representing the root of the search tree
      */
-    Position master_;
-
-    /**
-     * Channel through which to emit UCI outputs
-     */
-    std::shared_ptr<OutputStreamChannel>
-        uci_channel_;
+    chess::Position master_;
 };
 
 }  // namespace chess

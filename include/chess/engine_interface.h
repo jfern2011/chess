@@ -8,6 +8,7 @@
 #define CHESS_ENGINE_INTERFACE_H_
 
 #include <string>
+#include <vector>
 
 namespace chess {
 /**
@@ -23,9 +24,9 @@ public:
     virtual void DebugMode(bool enable) noexcept = 0;
     virtual bool IsReady() const noexcept = 0;
     virtual bool SetOption(const std::string& name,
-                           const std::string& args) noexcept = 0;
+                           const std::vector<std::string>& args) noexcept = 0;
     virtual void UciNewGame() noexcept = 0;
-    virtual bool Position(const std::string& fen) noexcept = 0;
+    virtual bool Position (const std::vector<std::string>& args) noexcept = 0;
     virtual void Go() noexcept = 0;
     virtual void Stop() noexcept = 0;
     virtual void PonderHit() noexcept = 0;

@@ -5,21 +5,28 @@
  */
 
 #include "chess/engine.h"
+#include "chess/interactive.h"
+
+#include <algorithm>
+#include <cstdint>
+#include <iterator>
+
+#include "superstring/superstring.h"
 
 namespace chess {
 /**
  * @brief Constructor
  *
- * @param uci_channel Channel through which to emit UCI outputs
- * @param log_channel Channel through which to log internal engine info
+ * @param channel Channel through which to emit UCI outputs
+ * @param logger  For logging internal statistics/data
  */
-Engine::Engine(std::shared_ptr<OutputStreamChannel> uci_channel,
-               std::shared_ptr<OutputStreamChannel> log_channel)
-    : debug_mode_(false),
+Engine::Engine(std::shared_ptr<OutputStreamChannel> channel,
+               std::shared_ptr<Logger> logger)
+    : channel_(channel),
+      debug_mode_(false),
       is_running_(false),
-      log_channel_(log_channel),
-      master_(),
-      uci_channel_(uci_channel) {
+      logger_(logger),
+      master_() {
     master_.Reset();
 }
 
@@ -27,9 +34,9 @@ Engine::Engine(std::shared_ptr<OutputStreamChannel> uci_channel,
  * Handler for the UCI "uci" command
  */
 void Engine::Uci() noexcept {
-    uci_channel_->Write("id name NoName 1.0\n");
-    uci_channel_->Write("id author jfern\n");
-    uci_channel_->Write("uciok\n");
+    channel_->Write("id name NoName 1.0\n");
+    channel_->Write("id author jfern\n");
+    channel_->Write("uciok\n");
 }
 
 /**
@@ -39,6 +46,8 @@ void Engine::Uci() noexcept {
  */
 void Engine::DebugMode(bool enable) noexcept {
     debug_mode_ = enable;
+
+    logger_->Write("Debug mode %s.\n", enable ? "enabled" : "disabled");
 }
 
 /**
@@ -60,7 +69,7 @@ bool Engine::IsReady() const noexcept {
  * @return True if the option was successfully set
  */
 bool Engine::SetOption(const std::string& name,
-                       const std::string& args) noexcept {
+                       const std::vector<std::string>& args) noexcept {
     if (name.empty() && args.empty()) return false;
     return true;
 }
@@ -69,19 +78,75 @@ bool Engine::SetOption(const std::string& name,
  * @brief Handler for the UCI "ucinewgame" command
  */
 void Engine::UciNewGame() noexcept {
+    logger_->Write("Resetting for a new game.\n");
     Stop(); master_.Reset();
 }
 
 /**
  * @brief Handler for the UCI "position" command
  *
- * @param fen The position encoded in Forsyth-Edwards notation (FEN)
+ * @param args Arguments to this command
  *
  * @return True if \a fen was a valid position
  */
-bool Engine::Position(const std::string& fen) noexcept {
+bool Engine::Position(const std::vector<std::string>& args) noexcept {
     Stop();
-    return master_.Reset(fen) == Position::FenError::kSuccess;
+
+    const std::string input_string =
+        jfern::superstring::build(", ", args.begin(), args.end());
+
+    logger_->Write("Received 'position' command with arguments [%s]\n",
+                   input_string.c_str());
+
+    auto moves_start = std::find(args.begin(), args.end(), "moves");
+
+    std::string fen;
+
+    if (args[0] == "fen") {
+        const std::vector<std::string> fen_v(std::next(args.begin()),
+                                                       moves_start);
+
+        fen = jfern::superstring::build(" ", fen_v.begin(), fen_v.end());
+
+    } else if (args[0] == "startpos") {
+        fen = Position::kDefaultFen;
+    } else {
+        logger_->Write("Error: expected 'fen' or 'startpos'\n");
+        return false;
+    }
+
+    chess::Position backup(master_);
+
+    const Position::FenError error = master_.Reset(fen);
+    if (error != Position::FenError::kSuccess) {
+        logger_->Write("Invalid FEN position [%s]: %s\n",
+                       fen.c_str(),
+                       Position::ErrorToString(error).c_str());
+        return false;
+    }
+
+    // Play out the supplied move sequence
+
+    if (moves_start != args.end()) {
+        for (auto iter = std::next(moves_start), end = args.end();
+             iter != end; ++iter) {
+            const std::uint32_t move = ResolveMove(master_, *iter);
+
+            if (move == kNullMove) {
+                logger_->Write("Bad move in sequence '%s'\n", iter->c_str());
+                master_ = backup;  // restore to original
+                return false;
+            }
+
+            if (master_.ToMove() == Player::kWhite) {
+                master_->MakeMove<Player::kWhite>(move, 0);
+            } else {
+                master_->MakeMove<Player::kBlack>(move, 0);
+            }
+        }
+    }
+
+    return true;
 }
 
 /**
@@ -89,6 +154,7 @@ bool Engine::Position(const std::string& fen) noexcept {
  */
 void Engine::Go() noexcept {
     is_running_ = true;
+    logger->Write("Search has started.\n");
 }
 
 /**
@@ -96,6 +162,7 @@ void Engine::Go() noexcept {
  */
 void Engine::Stop() noexcept {
     is_running_ = false;
+    logger->Write("Search was stopped.\n");
 }
 
 /**
