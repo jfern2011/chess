@@ -20,7 +20,7 @@
 namespace chess {
 /**
  * @brief Reads from the standard input stream
- * 
+ *
  * @note Copy construction and assignment are disabled to prevent multiple
  *       instances of this class reading from standard input
  */
@@ -73,6 +73,28 @@ private:
 
     /** Avoids race conditions on the queue */
     std::mutex queue_mutex_;
+};
+
+/**
+ * @brief Writes to the standard output stream
+ *
+ * @note Copy construction and assignment are disabled to prevent multiple
+ *       instances of this class writing to standard output
+ */
+class StdoutChannel final : public OutputStreamChannel {
+public:
+    StdoutChannel() = default;
+
+    StdoutChannel(const StdoutChannel& channel)            = delete;
+    StdoutChannel(StdoutChannel&& channel)                 = default;
+    StdoutChannel& operator=(const StdoutChannel& channel) = delete;
+    StdoutChannel& operator=(StdoutChannel&& channel)      = default;
+
+    ~StdoutChannel() = default;
+
+    void Flush() noexcept override;
+
+    void Write(const ConstDataBuffer& buffer) noexcept override;
 };
 
 }  // namespace chess
