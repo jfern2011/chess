@@ -51,7 +51,7 @@ bool go(const argparse::ArgumentParser& ) {
  * @return Either EXIT_SUCCESS or EXIT_FAILURE
  */
 int main(int argc, char** argv) {
-    argparse::ArgumentParser parser("chess");
+    argparse::ArgumentParser parser(argv[0]);
 
     auto logger = std::make_shared<chess::Logger>(
                     "exec", std::make_shared<chess::StdoutChannel>());
