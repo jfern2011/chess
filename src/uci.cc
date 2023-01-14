@@ -192,7 +192,7 @@ bool UciProtocol::HandlePonderHitCommand(const std::vector<std::string>& ) {
 }
 
 /**
- * @brief Forwards the "quit" command to the engine
+ * @brief Closes the input channel
  *
  * @return True on success
  */
