@@ -6,7 +6,6 @@
 
 #include "chess/stdio_channel.h"
 
-#include <cstdio>
 #include <iostream>
 
 #include "superstring/superstring.h"
@@ -159,23 +158,6 @@ bool StdinChannel::MessagesAvailable() const noexcept {
  */
 void StdinChannel::SetMessagesAvailable(bool value) noexcept {
     messages_avail_.store(value, std::memory_order_relaxed);
-}
-
-/**
- * @brief Flush the standard output stream
- */
-void StdoutChannel::Flush() noexcept {
-    std::fflush(stdout);
-}
-
-/**
- * @brief Write to the standard output stream. May or may not be buffered
- *
- * @param buffer The data to write
- */
-void StdoutChannel::Write(const ConstDataBuffer& buffer) noexcept {
-    const auto size = static_cast<int>(buffer.size());
-    std::printf("%.*s", size, buffer.data());
 }
 
 }  // namespace chess

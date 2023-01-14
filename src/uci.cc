@@ -61,6 +61,10 @@ UciProtocol::UciProtocol(std::shared_ptr<InputStreamChannel> channel,
         "ponderhit",
         std::bind(&UciProtocol::HandlePonderHitCommand, this,
                   std::placeholders::_1));
+    dispatcher_.RegisterCommand(
+        "quit",
+        std::bind(&UciProtocol::HandleQuitCommand, this,
+                  std::placeholders::_1));
 
     dispatcher_.error_callback_ =
         std::bind(&UciProtocol::HandleCommandUnknown, this,
@@ -188,6 +192,15 @@ bool UciProtocol::HandlePonderHitCommand(const std::vector<std::string>& ) {
 }
 
 /**
+ * @brief Forwards the "quit" command to the engine
+ *
+ * @return True on success
+ */
+bool UciProtocol::HandleQuitCommand(const std::vector<std::string>& ) {
+    input_channel_->Close(); return true;
+}
+
+/**
  * Called back when an unknown command is issued
  *
  * @param buf The command data
@@ -197,7 +210,7 @@ void UciProtocol::HandleCommandUnknown(const ConstDataBuffer& buf) {
 
     const std::vector<std::string> tokens = sstring.split();
     if (!tokens.empty()) {
-        logger_->Write("Unknown command \'%s\'\n", tokens[0].c_str());
+        logger_->Write("Unknown command '%s'\n", tokens[0].c_str());
     }
 }
 

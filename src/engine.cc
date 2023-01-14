@@ -56,6 +56,7 @@ void Engine::DebugMode(bool enable) noexcept {
  * @return True if the engine is ready
  */
 bool Engine::IsReady() const noexcept {
+    channel_->Write("readyok\n");
     return true;
 }
 
@@ -78,8 +79,10 @@ bool Engine::SetOption(const std::string& name,
  * @brief Handler for the UCI "ucinewgame" command
  */
 void Engine::UciNewGame() noexcept {
+    Stop();
+
     logger_->Write("Resetting for a new game.\n");
-    Stop(); master_.Reset();
+    master_.Reset();
 }
 
 /**
@@ -98,13 +101,15 @@ bool Engine::Position(const std::vector<std::string>& args) noexcept {
     logger_->Write("Received 'position' command with arguments [%s]\n",
                    input_string.c_str());
 
+    if (args.empty()) return false;
+
     auto moves_start = std::find(args.begin(), args.end(), "moves");
 
     std::string fen;
 
     if (args[0] == "fen") {
         const std::vector<std::string> fen_v(std::next(args.begin()),
-                                                       moves_start);
+                                             moves_start);
 
         fen = jfern::superstring::build(" ", fen_v.begin(), fen_v.end());
 
@@ -161,8 +166,11 @@ void Engine::Go() noexcept {
  * @brief Handler for the UCI "stop" command
  */
 void Engine::Stop() noexcept {
+    if (is_running_) {
+        logger_->Write("Search was stopped.\n");
+    }
+
     is_running_ = false;
-    logger_->Write("Search was stopped.\n");
 }
 
 /**

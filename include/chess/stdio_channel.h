@@ -8,6 +8,7 @@
 #define CHESS_STDIO_CHANNEL_H_
 
 #include <atomic>
+#include <cstdio>
 #include <deque>
 #include <memory>
 #include <mutex>
@@ -76,26 +77,82 @@ private:
 };
 
 /**
- * @brief Writes to the standard output stream
+ * @brief Standard stream IDs for output
+ */
+enum class StreamId {
+    kStandardErr,
+    kStandardOut
+};
+
+/**
+ * @brief Writes to the standard error or standard output stream
+ *
+ * @tparam ID The standard stream ID to write to
  *
  * @note Copy construction and assignment are disabled to prevent multiple
- *       instances of this class writing to standard output
+ *       instances of this class writing to stdout/stderr
  */
-class StdoutChannel final : public OutputStreamChannel {
+template <StreamId ID>
+class StandardXChannel final : public OutputStreamChannel {
 public:
-    StdoutChannel() = default;
+    StandardXChannel() = default;
 
-    StdoutChannel(const StdoutChannel& channel)            = delete;
-    StdoutChannel(StdoutChannel&& channel)                 = default;
-    StdoutChannel& operator=(const StdoutChannel& channel) = delete;
-    StdoutChannel& operator=(StdoutChannel&& channel)      = default;
+    StandardXChannel(const StandardXChannel& channel)            = delete;
+    StandardXChannel(StandardXChannel&& channel)                 = default;
+    StandardXChannel& operator=(const StandardXChannel& channel) = delete;
+    StandardXChannel& operator=(StandardXChannel&& channel)      = default;
 
-    ~StdoutChannel() = default;
+    ~StandardXChannel() = default;
 
     void Flush() noexcept override;
 
     void Write(const ConstDataBuffer& buffer) noexcept override;
+
+private:
+    constexpr auto stream() const noexcept -> decltype(stdout);
 };
+
+/**
+ * @brief Convenience type for writing to standard error
+ */
+using StderrChannel = StandardXChannel<StreamId::kStandardErr>;
+
+/**
+ * @brief Convenience type for writing to standard output
+ */
+using StdoutChannel = StandardXChannel<StreamId::kStandardOut>;
+
+/**
+ * @brief Flush the output stream
+ */
+template <StreamId ID>
+void StandardXChannel<ID>::Flush() noexcept {
+    std::fflush(stream());
+}
+
+/**
+ * @brief Write to the output stream. May or may not be buffered
+ *
+ * @param buffer The data to write
+ */
+template <StreamId ID>
+void StandardXChannel<ID>::Write(const ConstDataBuffer& buffer) noexcept {
+    const auto size = static_cast<int>(buffer.size());
+    std::fprintf(stream(), "%.*s", size, buffer.data());
+}
+
+/**
+ * @brief Get the std::FILE* type in use
+ * 
+ * @tparam ID The standard stream ID to write to
+ *
+ * @return Either stdout or stderr
+ */
+template <StreamId ID>
+constexpr auto StandardXChannel<ID>::stream() const noexcept
+-> decltype(stdout) {
+    return ID == StreamId::kStandardErr ? (stderr) : (stdout);
+}
 
 }  // namespace chess
 

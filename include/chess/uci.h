@@ -42,6 +42,7 @@ private:
     bool HandleGoCommand(const std::vector<std::string>& );
     bool HandleStopCommand(const std::vector<std::string>& );
     bool HandlePonderHitCommand(const std::vector<std::string>& );
+    bool HandleQuitCommand(const std::vector<std::string>& );
     void HandleCommandUnknown(const ConstDataBuffer& buf);
 
     /**

@@ -61,6 +61,7 @@ add_library(core STATIC
     src/interactive.cc
     src/logger.cc
     src/position.cc
+    src/stdio_channel.cc
     src/stream_channel.cc
     src/uci.cc
     src/util.cc
@@ -77,8 +78,8 @@ target_link_libraries(core
 
 # -----------------------------------------------------------------------------
 
-add_library(engine STATIC
-    src/stdio_channel.cc
+add_executable(engine
+    src/engine_main.cc
 )
 
 target_include_directories(engine PUBLIC
@@ -86,7 +87,9 @@ target_include_directories(engine PUBLIC
 )
 
 target_link_libraries(engine
+    argparse
     core
+    Threads::Threads
 )
 
 # -----------------------------------------------------------------------------
@@ -102,16 +105,15 @@ add_executable(chess-ut
 )
 
 target_link_libraries(chess-ut
+    core
     gmock_main
     gtest_main
-    engine
 )
 
 # -----------------------------------------------------------------------------
 
 add_executable(perft
     src/perft.cc
-    src/stdio_channel.cc
 )
 
 target_link_libraries(perft
