@@ -30,10 +30,10 @@ namespace detail {
  * @return The piece that should perform the next capture
  */
 template <Player P>
-Piece NextPiece(const Position& position,
-                Square target,
-                std::uint64_t* attackers,
-                std::uint64_t* defenders) noexcept {
+inline Piece NextPiece(const Position& position,
+                       Square target,
+                       std::uint64_t* attackers,
+                       std::uint64_t* defenders) noexcept {
     constexpr Player O = util::opponent<P>();
 
     const std::uint64_t occupied = position.Occupied();
