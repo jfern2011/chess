@@ -25,7 +25,7 @@ namespace detail {
  * @param position[in]   The position from which to compute SEE
  * @param target[in]     The square over which to play out the capture sequence
  * @param attackers[out] The candidate pieces that can perform the next capture
- * @param defenders[out] The set of defenders belong to the opponent
+ * @param defenders[out] The set of defenders belonging to the opponent
  *
  * @return The piece that should perform the next capture
  */
