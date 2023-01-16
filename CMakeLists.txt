@@ -100,6 +100,7 @@ add_executable(chess-ut
     test/main.cc
     test/movegen_ut.cc
     test/position_ut.cc
+    test/static_exchange_ut.cc
     test/stdio_channel_ut.cc
     test/stream_channel_ut.cc
 )

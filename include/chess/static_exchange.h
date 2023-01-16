@@ -47,7 +47,14 @@ inline Piece NextPiece(const Position& position,
     if (attacking_pieces != 0u) {
         const auto src = static_cast<Square>(util::Msb(attacking_pieces));
 
-        const std::uint64_t ray = data_tables::kRay[target][src];
+        // Need to factor in RaySegment to get a ray whose origin is at src
+        // and not target. When masked with attacks_from, this ensures we don't
+        // pick up a bishop/queen/pawn between src and target since we are
+        // not updating the occupied squares; we don't want to pick up the same
+        // attacker/defender twice along the line of attack
+
+        const std::uint64_t ray = data_tables::kRay[target][src] ^
+                                  data_tables::kRaySegment[target][src];
 
         const std::uint64_t attacks_from =
             ray & AttacksFrom<Piece::BISHOP>(src, occupied);
@@ -85,7 +92,14 @@ inline Piece NextPiece(const Position& position,
     if (attacking_pieces != 0u) {
         const auto src = static_cast<Square>(util::Msb(attacking_pieces));
 
-        const std::uint64_t ray = data_tables::kRay[target][src];
+        // Need to factor in RaySegment to get a ray whose origin is at src
+        // and not target. When masked with attacks_from, this ensures we don't
+        // pick up a bishop/queen/pawn between src and target since we are
+        // not updating the occupied squares; we don't want to pick up the same
+        // attacker/defender twice along the line of attack
+
+        const std::uint64_t ray = data_tables::kRay[target][src] ^
+                                  data_tables::kRaySegment[target][src];
 
         const std::uint64_t attacks_from =
             ray & AttacksFrom<Piece::BISHOP>(src, occupied);
@@ -114,7 +128,14 @@ inline Piece NextPiece(const Position& position,
     if (attacking_pieces != 0u) {
         const auto src = static_cast<Square>(util::Msb(attacking_pieces));
 
-        const std::uint64_t ray = data_tables::kRay[target][src];
+        // Need to factor in RaySegment to get a ray whose origin is at src
+        // and not target. When masked with attacks_from, this ensures we don't
+        // pick up a rook/queen between src and target since we are
+        // not updating the occupied squares; we don't want to pick up the same
+        // attacker/defender twice along the line of attack
+
+        const std::uint64_t ray = data_tables::kRay[target][src] ^
+                                  data_tables::kRaySegment[target][src];
 
         const std::uint64_t attacks_from =
             ray & AttacksFrom<Piece::ROOK>(src, occupied);
@@ -143,7 +164,14 @@ inline Piece NextPiece(const Position& position,
     if (attacking_pieces != 0u) {
         const auto src = static_cast<Square>(util::Msb(attacking_pieces));
 
-        const std::uint64_t ray = data_tables::kRay[target][src];
+        // Need to factor in RaySegment to get a ray whose origin is at src
+        // and not target. When masked with attacks_from, this ensures we don't
+        // pick up a sliding piece between src and target since we are
+        // not updating the occupied squares; we don't want to pick up the same
+        // attacker/defender twice along the line of attack
+
+        const std::uint64_t ray = data_tables::kRay[target][src] ^
+                                  data_tables::kRaySegment[target][src];
 
         const std::uint64_t attacks_from =
             ray & AttacksFrom<Piece::QUEEN>(src, occupied);
