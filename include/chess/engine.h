@@ -7,11 +7,15 @@
 #ifndef CHESS_ENGINE_H_
 #define CHESS_ENGINE_H_
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
 
 #include "chess/engine_interface.h"
 #include "chess/logger.h"
+#include "chess/movegen.h"
 #include "chess/stream_channel.h"
 #include "chess/position.h"
 
@@ -43,6 +47,9 @@ public:
     void PonderHit() noexcept override;
 
 private:
+    template <Player P>
+    std::int16_t Search(std::uint32_t* bestmove);
+
     /**
      * Channel through which to emit UCI outputs
      */
@@ -69,6 +76,26 @@ private:
      */
     chess::Position master_;
 };
+
+/**
+ * Find the best move given the current position
+ *
+ * @param[out] bestmove The best move found by the search
+ *
+ * @return The calculated optimal score
+ */
+template <Player P>
+std::int16_t Engine::Search(std::uint32_t* bestmove) {
+    std::array<std::uint32_t, kMaxMoves> moves;
+
+    const std::size_t n_moves = master_.InCheck<P>() ?
+            GenerateCheckEvasions<P>(master_, moves.data()) :
+               GenerateLegalMoves<P>(master_, moves.data());
+
+    *bestmove = n_moves == 0 ? 0 : moves[0];
+
+    return 0;
+}
 
 }  // namespace chess
 

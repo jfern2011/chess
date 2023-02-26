@@ -76,6 +76,23 @@ std::int8_t Msb(std::uint64_t qword) noexcept {
 }
 
 /**
+ * @brief Convert a bit-packed move to UCI (long algebraic) notation
+ *
+ * @param move The move to convert
+ *
+ * @return The move in UCI notation
+ */
+std::string ToLongAlgebraic(std::uint32_t move) {
+    const Square from = ExtractFrom(move);
+    const Square dest = ExtractTo(move);
+    const Piece promoted = ExtractPromoted(move);
+
+    return std::string(kSquareStr[from]) +
+           std::string(kSquareStr[dest]) +
+           PieceToChar(promoted);
+}
+
+/**
  * Convert a \ref Piece enumeration to a human-readable representation
  *
  * @param[in] piece    The piece to convert

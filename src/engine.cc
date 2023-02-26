@@ -37,6 +37,7 @@ void Engine::Uci() noexcept {
     channel_->Write("id name NoName 1.0\n");
     channel_->Write("id author jfern\n");
     channel_->Write("uciok\n");
+    channel_->Flush();
 }
 
 /**
@@ -57,6 +58,7 @@ void Engine::DebugMode(bool enable) noexcept {
  */
 bool Engine::IsReady() const noexcept {
     channel_->Write("readyok\n");
+    channel_->Flush();
     return true;
 }
 
@@ -160,6 +162,17 @@ bool Engine::Position(const std::vector<std::string>& args) noexcept {
 void Engine::Go() noexcept {
     is_running_ = true;
     logger_->Write("Search has started.\n");
+
+    std::uint32_t bestmove;
+
+    master_.ToMove() == Player::kWhite ? Search<Player::kWhite>(&bestmove) :
+                                         Search<Player::kBlack>(&bestmove);
+
+    if (bestmove != 0u) {
+        const std::string move = util::ToLongAlgebraic(bestmove);
+        channel_->Write("bestmove %s\n", move.c_str());
+        channel_->Flush();
+    }
 }
 
 /**

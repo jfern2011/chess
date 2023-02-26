@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
+#include <string>
 #include <type_traits>
 #include <vector>
 
@@ -353,6 +354,8 @@ std::uint64_t ShiftPawnsR<Player::kWhite>(std::uint64_t pawns) noexcept {
 /**
  * @}
  */
+
+std::string ToLongAlgebraic(std::uint32_t move);
 
 Piece  CharToPiece(char piece);
 char   PieceToChar(Piece piece, bool to_lower = false);
