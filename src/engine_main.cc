@@ -4,13 +4,17 @@
  *  \date   01/14/2023
  */
 
+#include <array>
 #include <cstdlib>
+#include <ctime>
 #include <memory>
 #include <stdexcept>
 #include <sstream>
+#include <string>
 
 #include "argparse/argparse.hpp"
 #include "chess/engine.h"
+#include "chess/file_stream.h"
 #include "chess/logger.h"
 #include "chess/stdio_channel.h"
 #include "chess/uci.h"
@@ -21,13 +25,28 @@
  * @return True on success
  */
 bool go(const argparse::ArgumentParser& ) {
-    // For now, read only from stdin and direct all output to stdout/stderr
+    // For now, read only from stdin and direct all output to a text file
 
     auto input_channel = std::make_shared<chess::StdinChannel>(
                             true /* synced */);
 
     auto output_channel = std::make_shared<chess::StdoutChannel>();
-    auto logging_channel = std::make_shared<chess::StderrChannel>();
+
+    std::array<char, 256> prefix{ 0 };
+
+    std::time_t time = std::time({});
+    std::strftime(prefix.data(), prefix.size(), "%F-%T-GMT",
+                  std::gmtime(&time));
+
+    const std::string fullname = std::string(prefix.data()) + "_log.txt";
+
+    auto logging_channel = std::make_shared<chess::FileStream>(fullname);
+
+    if (!logging_channel->Good()) {
+        return false;
+    } else {
+        (*logging_channel) << "Version 1.0\n";
+    }
 
     auto engine = std::make_shared<chess::Engine>(
         output_channel,

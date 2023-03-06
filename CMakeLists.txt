@@ -58,6 +58,7 @@ add_library(core STATIC
     src/data_buffer.cc
     src/debug.cc
     src/engine.cc
+    src/file_stream.cc
     src/interactive.cc
     src/logger.cc
     src/position.cc
