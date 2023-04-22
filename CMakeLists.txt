@@ -99,6 +99,7 @@ add_executable(chess-ut
     test/data_tables_ut.cc
     test/logger_ut.cc
     test/main.cc
+    test/memory_pool_ut.cc
     test/movegen_ut.cc
     test/position_ut.cc
     test/static_exchange_ut.cc

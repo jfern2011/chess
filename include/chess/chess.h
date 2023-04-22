@@ -15,6 +15,16 @@ constexpr std::uint32_t kMaxMoves   = 256;
 constexpr std::uint32_t kMaxPly     = 512;
 
 /**
+ * Possible outcomes for the game
+ */
+enum class Result {
+    kWhiteWon,
+    kBlackWon,
+    kDraw,
+    kGameNotOver
+};
+
+/**
  * Assign the king a large value that still fits within
  * 16 bits (signed)
  */
