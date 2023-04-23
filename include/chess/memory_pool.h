@@ -111,7 +111,7 @@ MemoryPool<T>::~MemoryPool() {
 /**
  * @brief Allocate an element
  *
- * @tparam T The data type allocated/deallocated elements
+ * @tparam T The data type of allocated/deallocated elements
  *
  * @return Address of the new entry, or nullptr if out of memory
  */
@@ -135,7 +135,7 @@ T* MemoryPool<T>::Allocate() {
  *
  * @note Double-free causes undefined behavior
  *
- * @tparam T The data type allocated/deallocated elements
+ * @tparam T The data type of allocated/deallocated elements
  *
  * @param address Address of the element to free
  *
@@ -163,9 +163,9 @@ bool MemoryPool<T>::Free(T* address) {
 }
 
 /**
- * @brief Check if the memory pull is used up
+ * @brief Check if the memory pool is used up
  *
- * @tparam T The data type allocated/deallocated elements
+ * @tparam T The data type of allocated/deallocated elements
  *
  * @return True if no more memory may be allocated
  */
@@ -177,7 +177,7 @@ bool MemoryPool<T>::Full() const {
 /**
  * @brief Check the number of bytes allocated so far
  *
- * @tparam T The data type allocated/deallocated elements
+ * @tparam T The data type of allocated/deallocated elements
  *
  * @return The amount of memory in use
  */
@@ -189,7 +189,7 @@ std::size_t MemoryPool<T>::InUse() const {
 /**
  * @brief Get the total size of the pool, in bytes
  *
- * @tparam T The data type allocated/deallocated elements
+ * @tparam T The data type of allocated/deallocated elements
  *
  * @return The size of the memory pool in bytes
  */

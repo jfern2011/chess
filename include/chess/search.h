@@ -13,7 +13,7 @@
 
 namespace chess {
 /**
- * @brief Generate interface for a search algorithm
+ * @brief Generic interface for a search algorithm
  */
 class Search {
 public:
