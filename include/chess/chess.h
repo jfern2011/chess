@@ -8,8 +8,10 @@
 #define CHESS_H_
 
 #include <cstdint>
+#include <limits>
 
 namespace chess {
+constexpr double kInfinityF64 = std::numeric_limits<double>::max();
 
 constexpr std::uint32_t kMaxMoves   = 256;
 constexpr std::uint32_t kMaxPly     = 512;

@@ -61,6 +61,7 @@ add_library(core STATIC
     src/file_stream.cc
     src/interactive.cc
     src/logger.cc
+    src/mtcs.cc
     src/position.cc
     src/stdio_channel.cc
     src/stream_channel.cc

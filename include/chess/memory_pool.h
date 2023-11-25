@@ -27,10 +27,10 @@ public:
 
     MemoryPool(std::size_t size, std::shared_ptr<Logger> logger);
 
-    MemoryPool(const MemoryPool& pool);
-    MemoryPool(MemoryPool&& pool);
-    MemoryPool& operator=(const MemoryPool& pool);
-    MemoryPool& operator=(MemoryPool& pool);
+    MemoryPool(const MemoryPool& pool) = delete;
+    MemoryPool(MemoryPool&& pool) = delete;
+    MemoryPool& operator=(const MemoryPool& pool) = delete;
+    MemoryPool& operator=(MemoryPool& pool) = delete;
 
     ~MemoryPool();
 
