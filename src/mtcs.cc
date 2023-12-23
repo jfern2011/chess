@@ -103,7 +103,7 @@ double Mtcs::Node::Average() const {
  *
  * @return The number of visits
  */
-std::size_t Mtcs::Node::visits() const {
+std::uint32_t Mtcs::Node::visits() const {
     return visits_;
 }
 
@@ -150,20 +150,20 @@ std::uint32_t Mtcs::Run(const Position& position) {
         return kNullMove;
     }
 
-    const std::size_t n_iterations = 10000;
+    const std::size_t n_iterations = 2000;
 
     Position pos(position);
 
     std::pair<double, std::uint32_t> result;
 
-    for (std::size_t iter = 0; iter <= n_iterations; iter++) {
+    for (std::size_t iter = 1; iter <= n_iterations; iter++) {
         result = pos.ToMove() == Player::kWhite ? 
                                     SelectRoot<Player::kWhite>(&pos) :
                                     SelectRoot<Player::kBlack>(&pos);
 
         if (node_pool_->Full()) {
             logger_->Write("Ran out of memory after %zu iteration(s)",
-                           iter+1);
+                           iter);
         }
     }
 

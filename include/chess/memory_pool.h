@@ -96,7 +96,7 @@ MemoryPool<T>::MemoryPool(std::size_t size,
         }
     }
 
-    logger->Write("Allocated %zu elements in %zu bytes (%zu requested)",
+    logger->Write("Allocated %zu elements in %zu bytes (%zu requested)\n",
                   n_elements, size_, size);
 }
 

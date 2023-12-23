@@ -15,7 +15,9 @@
 
 #include "chess/engine_interface.h"
 #include "chess/logger.h"
+#include "chess/memory_pool.h"
 #include "chess/movegen.h"
+#include "chess/mtcs.h"
 #include "chess/stream_channel.h"
 #include "chess/position.h"
 
@@ -92,7 +94,19 @@ std::int16_t Engine::Search(std::uint32_t* bestmove) {
             GenerateCheckEvasions<P>(master_, moves.data()) :
                GenerateLegalMoves<P>(master_, moves.data());
 
-    *bestmove = n_moves == 0 ? 0 : moves[0];
+    logger_->Write("Node size = %zu\n", sizeof(Mtcs::Node));
+
+    auto mtcs_log = std::make_shared<Logger>("MTCS", channel_);
+    auto mem_log = std::make_shared<Logger>("MemoryPool", channel_);
+
+    auto pool = std::make_shared<MemoryPool<Mtcs::Node>>(100000000, mem_log);
+
+    auto mtcs = std::make_shared<Mtcs>(pool, mtcs_log);
+
+    auto result = mtcs->Run(master_);
+    mtcs_log->Write("Analysis: %s\n", util::ToLongAlgebraic(result).c_str());
+
+    *bestmove = n_moves == 0 ? 0 : result;
 
     return 0;
 }

@@ -23,6 +23,8 @@
 #include "chess/movegen.h"
 #include "chess/search.h"
 
+#define DEBUG_TRACE 1
+
 namespace chess {
 std::size_t random(std::size_t max_value);
 
@@ -52,7 +54,7 @@ public:
                    MemoryPool<Node>* pool,
                    std::size_t ply);
 
-        std::size_t visits() const;
+        std::uint32_t visits() const;
 
     private:
         Node* End();
@@ -218,7 +220,7 @@ int Mtcs::Node::Select(Position* position,
 
         position->UnMakeMove<P>(moves[selected_index], ply);
     } else {
-        result = Mtcs::Simulate<P>(position, ply+1);
+        result = Mtcs::Simulate<P>(position, ply);
     }
 
     sum_ += result;
@@ -268,6 +270,11 @@ std::pair<double, std::uint32_t> Mtcs::SelectRoot(Position* position) {
 
     iterations_++;
 
+#if DEBUG_TRACE==1
+    if (iterations_ >= 1999)
+    logger_->Write("Iteration %zu\n", iterations_);
+#endif
+
     // First, search for a child node that has not been visited
 
     std::shared_ptr<Node> selected;
@@ -280,9 +287,15 @@ std::pair<double, std::uint32_t> Mtcs::SelectRoot(Position* position) {
             return std::make_pair<double, std::uint32_t>(0, 0);
         }
 
-        childs_.push_back(selected);
-
         selected_index = childs_.size();
+
+        childs_.push_back(selected);
+#if DEBUG_TRACE==1
+        if (iterations_ >= 1999)
+        logger_->Write("(Root): Unexplored child %zu: %s\n",
+                       selected_index,
+                       util::ToLongAlgebraic(moves[selected_index]).c_str());
+#endif
     } else {
         // All nodes have been visited. Compute their UCB1 scores
 
@@ -301,6 +314,13 @@ std::pair<double, std::uint32_t> Mtcs::SelectRoot(Position* position) {
 
             index++;
         }
+#if DEBUG_TRACE==1
+        if (iterations_ >= 1999)
+        logger_->Write("UCB1( selected => %s) = %0.6f with %u visits\n",
+                       util::ToLongAlgebraic(moves[selected_index]).c_str(),
+                       best,
+                       childs_[selected_index]->visits());
+#endif
     }
 
     // Step into the selected node. Note that playouts are never done at
