@@ -36,6 +36,8 @@ public:
 
     T* Allocate();
 
+    void Free();
+
     bool Free(T* address);
 
     bool Full() const;
@@ -128,6 +130,17 @@ T* MemoryPool<T>::Allocate() {
     in_use_ += sizeof(T);
 
     return entry;
+}
+
+/**
+ * @brief Free all memory
+ *
+ * @tparam T The data type of allocated/deallocated elements
+ */
+template <typename T>
+void MemoryPool<T>::Free() {
+    head_ = data_;
+    in_use_ = 0;
 }
 
 /**

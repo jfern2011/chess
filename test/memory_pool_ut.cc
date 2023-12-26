@@ -216,4 +216,41 @@ TEST(MemoryPool, stress_test) {
     }
 }
 
+TEST(MemoryPool, free_all) {
+    auto channel = std::make_shared<NullStreamChannel>();
+    channel->Resize(1024);
+
+    auto logger = std::make_shared<chess::Logger>("Test", channel);
+
+    constexpr std::size_t n_elements = 10;
+    constexpr std::size_t bytes = n_elements * sizeof(MemoryChunk);
+
+    chess::MemoryPool<MemoryChunk> pool(bytes, logger);
+
+    ASSERT_GE(pool.Size(), bytes);
+
+    const std::uint8_t* prev_chunk = nullptr;
+    const MemoryChunk* init_chunk = nullptr;
+
+    for (std::size_t i = 0; i < n_elements; i++) {
+        ASSERT_EQ(pool.InUse(), i * sizeof(MemoryChunk));
+
+        const auto chunk = reinterpret_cast<std::uint8_t*>(pool.Allocate());
+        if (prev_chunk != nullptr) {
+            ASSERT_EQ(prev_chunk + sizeof(MemoryChunk), chunk);
+        } else {
+            init_chunk = reinterpret_cast<MemoryChunk*>(chunk);
+        }
+
+        prev_chunk = chunk;
+    }
+
+    ASSERT_TRUE(pool.Full());
+
+    pool.Free();
+
+    ASSERT_EQ(pool.InUse(), 0u);
+    ASSERT_EQ(pool.Allocate(), init_chunk);
+}
+
 }  // namespace
