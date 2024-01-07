@@ -77,6 +77,12 @@ private:
      * Master position representing the root of the search tree
      */
     chess::Position master_;
+
+    /**
+     * Memory pool to allocate the game tree from
+     */
+    std::shared_ptr<MemoryPool<Mtcs::Node>>
+        mem_pool_;
 };
 
 /**
@@ -97,11 +103,16 @@ std::int16_t Engine::Search(std::uint32_t* bestmove) {
     logger_->Write("Node size = %zu\n", sizeof(Mtcs::Node));
 
     auto mtcs_log = std::make_shared<Logger>("MTCS", channel_);
-    auto mem_log = std::make_shared<Logger>("MemoryPool", channel_);
 
-    auto pool = std::make_shared<MemoryPool<Mtcs::Node>>(100000000, mem_log);
+    if (!mem_pool_) {
+        auto mem_log = std::make_shared<Logger>("MemoryPool", channel_);
 
-    auto mtcs = std::make_shared<Mtcs>(pool, mtcs_log);
+        mem_pool_ = std::make_shared<MemoryPool<Mtcs::Node>>(100000000, mem_log);
+    } else {
+        mem_pool_->Free();
+    }
+
+    auto mtcs = std::make_shared<Mtcs>(mem_pool_, mtcs_log);
 
     auto result = mtcs->Run(master_);
     mtcs_log->Write("Analysis: %s\n", util::ToLongAlgebraic(result).c_str());

@@ -52,9 +52,10 @@ public:
         template <Player P>
         int Select(Position* position,
                    MemoryPool<Node>* pool,
-                   std::size_t ply);
+                   std::size_t ply,
+                   std::uint32_t* predicted);
 
-        std::uint32_t visits() const;
+        std::uint32_t Visits() const;
 
     private:
         Node* End();
@@ -137,25 +138,41 @@ private:
 /**
  * @brief Select the next node to explore
  *
- * @param position The current position at this node
- * @param pool     The memory pool to allocate new nodes from
- * @param ply      The depth at this node
+ * @param position  The current position at this node
+ * @param pool      The memory pool to allocate new nodes from
+ * @param ply       The depth at this node
+ * @param predicted The predicted line of play
  *
  * @return The result of playing the selected move
  */
 template <Player P>
 int Mtcs::Node::Select(Position* position,
                        MemoryPool<Node>* pool,
-                       std::size_t ply) {
+                       std::size_t ply,
+                       std::uint32_t* predicted) {
+    visits_++;
+
+    // If this node has never been visited, simulate a playout
+
+    if (visits_ == 1u) {
+        const int result = Mtcs::Simulate<P>(position, ply);
+
+        sum_ += result;
+
+        predicted[ply] = kNullMove;
+
+        return result;
+    }
+
     std::array<std::uint32_t, kMaxMoves> moves;
 
     const std::size_t n_moves = position->InCheck<P>() ?
             GenerateCheckEvasions<P>(*position, moves.data()) :
             GenerateLegalMoves<P>(*position, moves.data());
 
-    visits_++;
-
     if (n_moves == 0u) {
+        predicted[ply] = kNullMove;
+
         const Result result = GameResult(*position);
         if (result == Result::kDraw) {
             return 0;
@@ -208,20 +225,18 @@ int Mtcs::Node::Select(Position* position,
         }
     }
 
-    // If the selected child is a terminal node, simulate a playout;
-    // otherwise, step into it
+    const std::uint32_t selected_move = moves[selected_index];
 
-    int result;
+    predicted[ply] = selected_move;
 
-    if (selected->childs_) {
-        position->MakeMove<P>(moves[selected_index], ply);
+    position->MakeMove<P>(selected_move, ply);
 
-        result = -selected->Select<util::opponent<P>()>(position, pool, ply+1);
+    const int result = -selected->Select<util::opponent<P>()>(position,
+                                                              pool,
+                                                              ply+1,
+                                                              predicted);
 
-        position->UnMakeMove<P>(moves[selected_index], ply);
-    } else {
-        result = Mtcs::Simulate<P>(position, ply);
-    }
+    position->UnMakeMove<P>(selected_move, ply);
 
     sum_ += result;
 
@@ -304,7 +319,7 @@ std::pair<double, std::uint32_t> Mtcs::SelectRoot(Position* position) {
 
         for (std::shared_ptr<Node>& node : childs_) {
             const double ucb1 = node->Average() +
-                2.0 * std::sqrt(std::log(iterations_) / node->visits());
+                2.0 * std::sqrt(std::log(iterations_) / node->Visits());
 
             if (ucb1 > best) {
                 selected = node;
@@ -319,7 +334,7 @@ std::pair<double, std::uint32_t> Mtcs::SelectRoot(Position* position) {
         logger_->Write("UCB1( selected => %s) = %0.6f with %u visits\n",
                        util::ToLongAlgebraic(moves[selected_index]).c_str(),
                        best,
-                       childs_[selected_index]->visits());
+                       childs_[selected_index]->Visits());
 #endif
     }
 
@@ -328,9 +343,14 @@ std::pair<double, std::uint32_t> Mtcs::SelectRoot(Position* position) {
 
     constexpr std::size_t ply = 0;
 
+    std::array<std::uint32_t, kMaxPly> predicted;
+
     position->MakeMove<P>(moves[selected_index], ply);
 
-    selected->Select<util::opponent<P>()>(position, node_pool_.get(), ply+1);
+    selected->Select<util::opponent<P>()>(position,
+                                          node_pool_.get(),
+                                          ply+1,
+                                          predicted.data());
 
     position->UnMakeMove<P>(moves[selected_index], ply);
 
@@ -339,7 +359,7 @@ std::pair<double, std::uint32_t> Mtcs::SelectRoot(Position* position) {
     auto iter = std::max_element(childs_.begin(), childs_.end(),
                                  [](const std::shared_ptr<Node>& a,
                                     const std::shared_ptr<Node>& b) {
-                                        return a->visits() < b->visits();
+                                        return a->Visits() < b->Visits();
                                  });
 
     const auto index = std::distance(childs_.begin(), iter);
@@ -369,7 +389,7 @@ std::int32_t Mtcs::Simulate(Position* position, std::size_t ply) {
         GenerateCheckEvasions<P>(*position, moves.data()) :
         GenerateLegalMoves<P>(*position, moves.data());
 
-    if (n_moves == 0) {
+    if (n_moves == 0u) {
         return -ComputeWin<util::opponent<P>()>(*position);
     }
 

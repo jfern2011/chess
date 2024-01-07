@@ -58,10 +58,12 @@ add_library(core STATIC
     src/data_buffer.cc
     src/debug.cc
     src/engine.cc
+    src/evaluate.cc
     src/file_stream.cc
     src/interactive.cc
     src/logger.cc
     src/mtcs.cc
+    src/null_stream_channel.cc
     src/position.cc
     src/stdio_channel.cc
     src/stream_channel.cc
@@ -102,6 +104,7 @@ add_executable(chess-ut
     test/main.cc
     test/memory_pool_ut.cc
     test/movegen_ut.cc
+    test/mtcs_ut.cc
     test/position_ut.cc
     test/static_exchange_ut.cc
     test/stdio_channel_ut.cc

@@ -26,7 +26,8 @@ Engine::Engine(std::shared_ptr<OutputStreamChannel> channel,
       debug_mode_(false),
       is_running_(false),
       logger_(logger),
-      master_() {
+      master_(),
+      mem_pool_() {
     master_.Reset();
 }
 

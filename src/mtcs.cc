@@ -103,7 +103,7 @@ double Mtcs::Node::Average() const {
  *
  * @return The number of visits
  */
-std::uint32_t Mtcs::Node::visits() const {
+std::uint32_t Mtcs::Node::Visits() const {
     return visits_;
 }
 
