@@ -47,6 +47,8 @@ public:
     std::size_t Size() const;
 
 private:
+    void Initialize();
+
     /**
      * Underlying storage for the memory pool
      */
@@ -86,16 +88,7 @@ MemoryPool<T>::MemoryPool(std::size_t size,
         data_ = new std::uint8_t[size_];
         head_ = data_;
 
-        for (std::size_t i = 0; i < n_elements; i++) {
-            std::uint8_t* entry = data_ + i * sizeof(T);
-
-            auto current = reinterpret_cast<std::uint8_t**>(entry);
-
-            std::uint8_t* next =
-                (i == n_elements-1) ? nullptr : (entry +sizeof(T));
-
-            *current = next;
-        }
+        Initialize();
     }
 
     logger->Write("Allocated %zu elements in %zu bytes (%zu requested)\n",
@@ -141,6 +134,8 @@ template <typename T>
 void MemoryPool<T>::Free() {
     head_ = data_;
     in_use_ = 0;
+
+    Initialize();
 }
 
 /**
@@ -184,7 +179,7 @@ bool MemoryPool<T>::Free(T* address) {
  */
 template <typename T>
 bool MemoryPool<T>::Full() const {
-    return in_use_ >= size_;
+    return (in_use_ + sizeof(T)) > size_;
 }
 
 /**
@@ -209,6 +204,25 @@ std::size_t MemoryPool<T>::InUse() const {
 template <typename T>
 std::size_t MemoryPool<T>::Size() const {
     return size_;
+}
+
+/**
+ * @brief Initialize internal data structures
+ */
+template <typename T>
+void MemoryPool<T>::Initialize() {
+    const std::size_t n_elements = size_ / sizeof(T);
+
+    for (std::size_t i = 0; i < n_elements; i++) {
+        std::uint8_t* entry = data_ + i * sizeof(T);
+
+        auto current = reinterpret_cast<std::uint8_t**>(entry);
+
+        std::uint8_t* next =
+            (i == n_elements-1) ? nullptr : (entry +sizeof(T));
+
+        *current = next;
+    }
 }
 
 }  // namespace chess
